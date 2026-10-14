@@ -146,17 +146,18 @@
 
 
 /* =========================================================================
- * RESERVED PAINTER TOKENS
+ * ICON COLOURS
  * =========================================================================
+ *  Substituted into the shared SVG templates in themes/icons/ when the
+ *  plugin loads (checkbox ticks, radio dots, spin-box and tree arrows).
  *  @checkmark is drawn on the checked @accent fill — dark ink for ~4.7:1.
- *  Arrow glyph colours are mirrored by the SVGs in ./icons/.
  * =========================================================================
  */
 @checkmark:              #201A0E;
-
-/* ---- Arrow / icon glyph colours ---------------------------------------- */
 @arrow_normal:           #5C564A;
 @arrow_disabled:         #B9B19E;
+@arrow_hover:            #A96E10;
+@branch_hover:           #A96E10;
 
 
 /* =========================================================================

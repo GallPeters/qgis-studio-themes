@@ -5,17 +5,45 @@ from pathlib import Path
 
 
 THEMES_DIR = Path(__file__).parent / "themes"
-# Single stylesheet shared by every theme; only variables.qss differs.
+# Stylesheet and SVG icon templates shared by every theme; each theme
+# folder only provides variables.qss.
 SHARED_STYLE = THEMES_DIR / "style.qss"
+SHARED_ICONS = THEMES_DIR / "icons"
 
 
-def install_shared_style(theme_dir):
-    """QGIS only loads style.qss from inside a theme folder, so copy the
-    shared stylesheet there (rewritten only when it has changed)."""
-    target = theme_dir / "style.qss"
-    style = SHARED_STYLE.read_text(encoding="utf-8")
-    if not target.exists() or target.read_text(encoding="utf-8") != style:
-        target.write_text(style, encoding="utf-8")
+def read_variables(theme_dir):
+    """Parse `@name: value;` lines from a theme's variables.qss."""
+    variables = {}
+    text = (theme_dir / "variables.qss").read_text(encoding="utf-8")
+    for line in text.splitlines():
+        if line.startswith("@") and ":" in line:
+            name, value = line.split(":", 1)
+            variables[name.strip()] = value.strip().rstrip(";").strip()
+    return variables
+
+
+def write_if_changed(target, content):
+    if not target.exists() or target.read_text(encoding="utf-8") != content:
+        target.write_text(content, encoding="utf-8")
+
+
+def build_theme(theme_dir):
+    """QGIS only loads style.qss and icons from inside a theme folder, so
+    copy the shared stylesheet there and render the icon templates with
+    the theme's colours (files are rewritten only when they change)."""
+    write_if_changed(
+        theme_dir / "style.qss", SHARED_STYLE.read_text(encoding="utf-8")
+    )
+    variables = read_variables(theme_dir)
+    # Longest names first so e.g. @text never clobbers @text_bright.
+    names = sorted(variables, key=len, reverse=True)
+    icons_dir = theme_dir / "icons"
+    icons_dir.mkdir(exist_ok=True)
+    for template in SHARED_ICONS.glob("*.svg"):
+        svg = template.read_text(encoding="utf-8")
+        for name in names:
+            svg = svg.replace(name, variables[name])
+        write_if_changed(icons_dir / template.name, svg)
 
 class QgisStudioThemesPlugin:
     """
@@ -48,7 +76,7 @@ class QgisStudioThemesPlugin:
         """startup"""
         for name, folder in self.THEMES.items():
             theme_dir = THEMES_DIR / folder
-            install_shared_style(theme_dir)
+            build_theme(theme_dir)
             # Forward slashes: QGIS substitutes the folder for @theme_path
             # inside url(), where Windows backslashes would break parsing.
             QgsApplication.applicationThemeRegistry().addTheme(

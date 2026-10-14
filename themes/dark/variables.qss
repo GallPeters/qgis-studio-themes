@@ -57,18 +57,18 @@
 @text_placeholder:       #686868;
 @text_dark:              #0e0e0e;
 
-/* @checkmark, @arrow_normal and @arrow_disabled below are preserved from the
- * original colour palette but are NOT referenced in style.qss.  In the source
- * script they are used by QPainter inside ThemedProxyStyle (checkbox tick,
- * spin/branch arrow glyphs) — drawing operations that have no QSS analogue.
- * They are kept here so the palette stays complete and so an icon-shipping
- * variant of the theme can reference them without re-editing the palette.
+/* =========================================================================
+ * ICON COLOURS
+ * =========================================================================
+ *  Substituted into the shared SVG templates in themes/icons/ when the
+ *  plugin loads (checkbox ticks, radio dots, spin-box and tree arrows).
+ * =========================================================================
  */
 @checkmark:              #ffffff;
-
-/* ---- Arrow / icon colours (reserved, see note above) -------------------- */
-@arrow_normal:           #c8c8c8;
-@arrow_disabled:         #484848;
+@arrow_normal:           #d2dae3;
+@arrow_disabled:         #4a586c;
+@arrow_hover:            #79a52f;
+@branch_hover:           #ffffff;
 
 /* ---- Scrollbar ---------------------------------------------------------- */
 @scrollbar_handle_hover: #484848;

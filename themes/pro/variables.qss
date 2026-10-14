@@ -154,19 +154,17 @@
 
 
 /* =========================================================================
- * RESERVED PAINTER TOKENS
+ * ICON COLOURS
  * =========================================================================
- *  Not referenced in style.qss — used by QPainter in ThemedProxyStyle for
- *  checkbox ticks, spin-box arrows, and tree-branch glyphs.
- *  Kept here so icon-shipping variants can reference them without editing
- *  the palette, and so the palette remains self-documenting.
+ *  Substituted into the shared SVG templates in themes/icons/ when the
+ *  plugin loads (checkbox ticks, radio dots, spin-box and tree arrows).
  * =========================================================================
  */
-@checkmark:              #FFFFFF;
-
-/* ---- Arrow / icon glyph colours ---------------------------------------- */
-@arrow_normal:           #6E6E6E;
-@arrow_disabled:         #C0C0C0;
+@checkmark:              #ffffff;
+@arrow_normal:           #d2dae3;
+@arrow_disabled:         #4a586c;
+@arrow_hover:            #79a52f;
+@branch_hover:           #ffffff;
 
 
 /* =========================================================================
