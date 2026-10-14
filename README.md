@@ -3,8 +3,6 @@
 A QGIS plugin that adds six UI themes with a consistent, modern design:
 a redesigned stylesheet, a unified line-icon set and the Inter typeface.
 
-https://github.com/user-attachments/assets/0ab0ae2d-79b5-44c5-9a6e-c7969d54c6bf
-
 ## Requirements
 
 QGIS 4.0 or later.
@@ -62,29 +60,6 @@ Layer properties dialog in Studio Premium and Studio Pro Light:
 - **Performance** – base colours are set through the Qt palette rather than
   broad stylesheet rules, which keeps dialog opening and repainting faster
   than in previous versions.
-
-## How it works
-
-All themes share one stylesheet (`themes/style.qss`), one set of design
-tokens (`themes/base.qss`) and one icon map (`studio_icons.py`). Each theme
-only defines its colours in `themes/<theme>/variables.qss`.
-
-At startup the plugin builds every theme into the `themes` folder of the
-active QGIS profile. A theme is rebuilt only when the plugin files change.
-QGIS looks up theme icons in that folder, so dialogs opened later also use
-the new icons.
-
-## Development
-
-The `tools` folder contains two scripts that run inside QGIS:
-
-- `tools/screenshots.py` captures the main window, a menu, the attribute
-  table and the layer properties dialog for each theme.
-- `tools/benchmark.py` measures the CPU time of applying a theme, opening
-  dialogs, repainting and scrolling.
-
-Run them with `qgis --code tools/<script>.py`. Configuration options are
-described in each script's docstring.
 
 ## Contributing
 
