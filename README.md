@@ -33,9 +33,21 @@ stay consistent with the stylesheet regardless of the desktop's light or
 dark setting. The two light themes were checked against WCAG 2.2 AA
 contrast requirements.
 
-<kbd>
-<img width="638" height="341" alt="Studio theme screenshot" src="https://github.com/user-attachments/assets/3d196242-4d97-4356-a96f-548a18c2642a" />
-</kbd>
+## Screenshots
+
+| Studio Premium | Studio Web |
+|---|---|
+| ![Studio Premium](docs/screenshots/premium.png) | ![Studio Web](docs/screenshots/web.png) |
+| **Studio Dark** | **Studio Pro Light** |
+| ![Studio Dark](docs/screenshots/dark.png) | ![Studio Pro Light](docs/screenshots/pro-light.png) |
+| **Studio Light Orange** | **Studio QGIS Light** |
+| ![Studio Light Orange](docs/screenshots/light-orange.png) | ![Studio QGIS Light](docs/screenshots/qgis-light.png) |
+
+Layer properties dialog in Studio Premium and Studio Pro Light:
+
+| | |
+|---|---|
+| ![Layer properties, Studio Premium](docs/screenshots/premium_properties.png) | ![Layer properties, Studio Pro Light](docs/screenshots/pro-light_properties.png) |
 
 ## Features
 
