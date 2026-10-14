@@ -223,6 +223,9 @@ class IconSwapper(QObject):
         self._icons_dir = None
 
     def apply(self, theme, icons_dir, main_window):
+        if self._theme is not None:
+            self._retheme(theme, icons_dir)
+            return
         self.restore()
         self._theme = theme
         self._icons = {}
@@ -242,6 +245,36 @@ class IconSwapper(QObject):
             QTimer.singleShot(0, self._drain)
         self._filter(main_window)
         QGuiApplication.instance().focusWindowChanged.connect(self._on_focus_window)
+
+    def _retheme(self, theme, icons_dir):
+        """Switch from one Studio theme to another in place: every swapped
+        icon goes straight to the new theme's version. Restoring the
+        built-in icons first would update each action twice, and every
+        update relays out the toolbars and menus that show it. Hooks and
+        identified icons carry over unchanged."""
+        self._theme = theme
+        self._icons = {}
+        self._icons_dir = icons_dir
+        self._png = (icons_dir / "png" / ".done").exists()
+        for action in self._watched:
+            if not sip.isdeleted(action):
+                new = self._rethemed(action.icon())
+                if new is not None:
+                    action.setIcon(new)
+        for owner, kind, index, _icon in self._swapped:
+            if not sip.isdeleted(owner) and (kind is None or index < owner.count()):
+                new = self._rethemed(self._get(owner, kind, index))
+                if new is not None:
+                    self._set(owner, kind, index, new)
+        for root in self._scanned:
+            if not sip.isdeleted(root):
+                root.setProperty(self.PROPERTY, theme)
+
+    def _rethemed(self, icon):
+        """The current theme's version of one of our icons (None if `icon`
+        is not one of ours, e.g. the application replaced it since)."""
+        name = self._ours.get(icon.cacheKey())
+        return None if name is None else self._icon(name)
 
     def _filter(self, obj):
         obj.installEventFilter(self)
@@ -313,6 +346,10 @@ class IconSwapper(QObject):
             self._names[key] = name
         if name is None:
             return None
+        return self._icon(name)
+
+    def _icon(self, name):
+        """Our icon for a QGIS icon name, in the active theme."""
         if name not in self._icons:
             if self._png:
                 ours = QIcon()
@@ -639,7 +676,7 @@ class QgisStudioThemesPlugin:
     def _studio_themes(self):
         return {f"Studio {name}": (name, folder) for name, folder in self.THEMES.items()}
 
-    def _prepare(self, theme, window_sheet=None):
+    def _prepare(self, theme):
         """Everything that must be in place before the stylesheet is
         polished: Qt bakes the current palette and font into each styled
         widget during polish, so later changes would not reach them."""
@@ -657,11 +694,11 @@ class QgisStudioThemesPlugin:
             font.setFamily(self._tokens["@font_family"].strip("\"'"))
             QApplication.setFont(font)
         window = self.iface.mainWindow()
-        sheet = window.styleSheet() if window_sheet is None else window_sheet
+        sheet = window.styleSheet()
         cleaned = DEFAULT_THEME_RULES.sub("", sheet)
-        if cleaned != sheet and self._main_window_sheet is None:
-            self._main_window_sheet = sheet
-        if cleaned != sheet or window_sheet is not None:
+        if cleaned != sheet:
+            if self._main_window_sheet is None:
+                self._main_window_sheet = sheet
             window.setStyleSheet(cleaned)
         self._prepared = theme
 
@@ -674,20 +711,14 @@ class QgisStudioThemesPlugin:
         if theme == self._active:
             return
         if self._prepared != theme:
-            # Switched at runtime: QGIS applied the near-empty placeholder,
-            # so its pass was cheap. Qt keeps palette copies on widgets that
-            # were styled under the previous theme; clearing the stylesheet
-            # drops them, then the palette goes in before the real
-            # stylesheet so every widget is polished with the right colours.
-            # The main window's own stylesheet is cleared for the same reason.
-            app = QApplication.instance()
-            window = self.iface.mainWindow()
-            window_sheet = window.styleSheet()
-            window.setStyleSheet("")
-            app.setStyleSheet("")
-            self._prepare(theme, window_sheet)
+            # Switched at runtime: QGIS has just applied the near-empty
+            # placeholder, which already dropped the palette copies Qt kept
+            # on widgets styled under the previous theme. The palette goes
+            # in before the real stylesheet, so every widget is polished
+            # once, with the right colours.
+            self._prepare(theme)
             full = self.theme_target(studio[theme][0]) / FULL_STYLE
-            app.setStyleSheet(full.read_text(encoding="utf-8"))
+            QApplication.instance().setStyleSheet(full.read_text(encoding="utf-8"))
             self._select_style(theme)
         self._active = theme
         name = studio[theme][0]
