@@ -174,3 +174,8 @@
  * =========================================================================
  */
 @scrollbar_handle_hover: #ABABAB;
+
+/* ---- Tables (QTableView / QTableWidget) ------------------------------- */
+@table_alt_bg:           #0090DC;
+@table_sel_bg:           #0090DC;
+@table_sel_text:         #0090DC;

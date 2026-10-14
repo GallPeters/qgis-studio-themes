@@ -1,15 +1,21 @@
 from qgis.core import QgsApplication
-from qgis.PyQt.QtCore import QDir, Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QGuiApplication
 from pathlib import Path
-import os
 
 
-def init_theme_paths():
-    themes_dir = Path(__file__).parent / "themes"
+THEMES_DIR = Path(__file__).parent / "themes"
+# Single stylesheet shared by every theme; only variables.qss differs.
+SHARED_STYLE = THEMES_DIR / "style.qss"
 
-    # THIS is the key change
-    QDir.addSearchPath("theme", str(themes_dir))
+
+def install_shared_style(theme_dir):
+    """QGIS only loads style.qss from inside a theme folder, so copy the
+    shared stylesheet there (rewritten only when it has changed)."""
+    target = theme_dir / "style.qss"
+    style = SHARED_STYLE.read_text(encoding="utf-8")
+    if not target.exists() or target.read_text(encoding="utf-8") != style:
+        target.write_text(style, encoding="utf-8")
 
 class QgisStudioThemesPlugin:
     """
@@ -41,9 +47,12 @@ class QgisStudioThemesPlugin:
     def initGui(self):
         """startup"""
         for name, folder in self.THEMES.items():
+            theme_dir = THEMES_DIR / folder
+            install_shared_style(theme_dir)
+            # Forward slashes: QGIS substitutes the folder for @theme_path
+            # inside url(), where Windows backslashes would break parsing.
             QgsApplication.applicationThemeRegistry().addTheme(
-                f'Studio {name}',
-                os.path.join(os.path.dirname(__file__), 'themes', folder)
+                f'Studio {name}', theme_dir.as_posix()
             )
         app = QgsApplication.instance()
         if app is not None:

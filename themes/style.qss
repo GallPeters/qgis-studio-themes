@@ -151,7 +151,7 @@ margin: 4px 4px;
 QToolBar::extension-button,
 QToolButton#qt_toolbar_ext_button {
     qproperty-icon: url(); /* This explicitly clears the native Qt icon */
-    image: url(theme:premium/icons/arrow-down.svg);
+    image: url(@theme_path/icons/arrow-down.svg);
     min-width: 10px;
     min-height: 10px;
     padding: 1px;
@@ -161,7 +161,7 @@ QToolButton#qt_toolbar_ext_button {
 
 QToolBar::extension-button:hover,
 QToolButton#qt_toolbar_ext_button:hover {
-    image: url(theme:premium/icons/arrow-down-hover.svg);
+    image: url(@theme_path/icons/arrow-down-hover.svg);
     background-color: @bg_hover_raised;
 }
 
@@ -278,13 +278,13 @@ subcontrol-origin:   padding;
 subcontrol-position: bottom right;
 top:    0.2em;
 right: -0.2em;
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 QToolButton::menu-indicator:hover {
-image: url(theme:premium/icons/arrow-down-hover.svg);
+image: url(@theme_path/icons/arrow-down-hover.svg);
 }
 QToolButton::menu-indicator:disabled {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 QToolButton::menu-button {
 border-left: 1px solid @border;
@@ -408,35 +408,35 @@ Using QAbstractSpinBox
 QDateTimeEdit, QgsSpinBox and QgsDoubleSpinBox in a single selector.
 */
 QAbstractSpinBox::up-arrow {
-image: url(theme:premium/icons/arrow-up.svg);
+image: url(@theme_path/icons/arrow-up.svg);
 }
 QAbstractSpinBox::up-arrow:hover {
-image: url(theme:premium/icons/arrow-up.svg);
+image: url(@theme_path/icons/arrow-up.svg);
 }
 QAbstractSpinBox::up-arrow:disabled,
 QAbstractSpinBox::up-arrow:off {
-image: url(theme:premium/icons/arrow-up.svg);
+image: url(@theme_path/icons/arrow-up.svg);
 }
 
 QAbstractSpinBox::down-arrow {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 QAbstractSpinBox::down-arrow:hover {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 QAbstractSpinBox::down-arrow:disabled,
 QAbstractSpinBox::down-arrow:off {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 /* Header sort indicator (visible in QTableView / QTreeView / attribute tables
 when a column is sorted).
 Sized in em so it stays legible on HiDPI.
 */
 QHeaderView::up-arrow {
-image: url(theme:premium/icons/arrow-up.svg);
+image: url(@theme_path/icons/arrow-up.svg);
 }
 QHeaderView::down-arrow {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 
 /* =========================================================================
@@ -500,14 +500,14 @@ QComboBox::drop-down:hover {
 background-color: @bg_hover_raised;
 }
 QComboBox::down-arrow {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 QComboBox::down-arrow:hover,
 QComboBox::down-arrow:on {
-image: url(theme:premium/icons/arrow-down-hover.svg);
+image: url(@theme_path/icons/arrow-down-hover.svg);
 }
 QComboBox::down-arrow:disabled {
-image: url(theme:premium/icons/arrow-down.svg);
+image: url(@theme_path/icons/arrow-down.svg);
 }
 /* =========================================================================
 
@@ -557,10 +557,10 @@ background-color: @bg_base;
 color: @text;
 border: 1px solid @border_dim;
 border-radius: 4px;
-alternate-background-color: @accent_hover;
+alternate-background-color: @table_alt_bg;
 gridline-color: @bg_btn_status_hover;
-selection-background-color: @accent_hover;
-selection-color: @accent_hover;
+selection-background-color: @table_sel_bg;
+selection-color: @table_sel_text;
 outline: none;
 }
 QTableView::item, QTableWidget::item {
@@ -799,7 +799,7 @@ border-color: @accent_pressed;
 QCheckBox::indicator:checked {
 background-color: @accent;
  border-color: @accent;
-image: url(theme:premium/icons/checkbox-check.svg);
+image: url(@theme_path/icons/checkbox-check.svg);
 }
 QCheckBox::indicator:checked:hover {
 background-color: @accent_hover;
@@ -808,7 +808,7 @@ border-color: @accent;
 QCheckBox::indicator:indeterminate {
 background-color: @accent_indeterminate;
 border-color: @accent_pressed;
-image: url(theme:premium/icons/checkbox-indeterminate.svg);
+image: url(@theme_path/icons/checkbox-indeterminate.svg);
 }
 QCheckBox::indicator:indeterminate:hover {
 border-color: @accent;
@@ -841,7 +841,7 @@ background-color: @border_list_item;
 QRadioButton::indicator:checked {
 background-color: @accent;
 border: 1px solid @accent_checked_border;
-image: url(theme:premium/icons/radio-dot.svg);
+image: url(@theme_path/icons/radio-dot.svg);
 }
 QRadioButton::indicator:checked:hover {
 background-color: @accent_hover;
@@ -883,7 +883,7 @@ QgsCollapsibleGroupBox::indicator:checked,
 QgsCollapsibleGroupBoxBasic::indicator:checked {
 background-color: @accent;
 border: 1px solid @accent_checked_border;
-image: url(theme:premium/icons/checkbox-check.svg);
+image: url(@theme_path/icons/checkbox-check.svg);
 }
 QGroupBox::indicator:checked:hover,
 QgsCollapsibleGroupBox::indicator:checked:hover,
@@ -896,7 +896,7 @@ QgsCollapsibleGroupBox::indicator:indeterminate,
 QgsCollapsibleGroupBoxBasic::indicator:indeterminate {
 background-color: @accent_indeterminate;
 border: 1px solid @accent_pressed;
-image: url(theme:premium/icons/checkbox-indeterminate.svg);
+image: url(@theme_path/icons/checkbox-indeterminate.svg);
 }
 QGroupBox::indicator:disabled,
 QgsCollapsibleGroupBox::indicator:disabled,
@@ -964,7 +964,7 @@ QgsProcessingToolboxTreeView::indicator:checked,
 QgsCheckableComboBox::indicator:checked {
 background-color: @accent;
 border: 1px solid @accent_checked_border;
-image: url(theme:premium/icons/checkbox-check.svg);
+image: url(@theme_path/icons/checkbox-check.svg);
 }
 QTreeView::indicator:checked:hover,
 QTreeWidget::indicator:checked:hover,
@@ -992,7 +992,7 @@ QgsBrowserTreeView::indicator:indeterminate,
 QgsProcessingToolboxTreeView::indicator:indeterminate {
 background-color: @accent_indeterminate;
 border: 1px solid @accent_pressed;
-image: url(theme:premium/icons/checkbox-indeterminate.svg);
+image: url(@theme_path/icons/checkbox-indeterminate.svg);
 }
 QTreeView::indicator:disabled,
 QTreeWidget::indicator:disabled,
@@ -1044,7 +1044,7 @@ QListView#mListPlugins::indicator:checked, QListWidget#mListPlugins::indicator:c
 QListView#mPluginsList::indicator:checked, QListWidget#mPluginsList::indicator:checked {
 background-color: @accent;
 border: 1px solid @accent_checked_border;
-image: url(theme:premium/icons/checkbox-check.svg);
+image: url(@theme_path/icons/checkbox-check.svg);
 }
 QListView#vwPlugins::indicator:checked:hover,    QListWidget#vwPlugins::indicator:checked:hover,
 QListView#mListPlugins::indicator:checked:hover, QListWidget#mListPlugins::indicator:checked:hover,
@@ -1057,7 +1057,7 @@ QListView#mListPlugins::indicator:indeterminate, QListWidget#mListPlugins::indic
 QListView#mPluginsList::indicator:indeterminate, QListWidget#mPluginsList::indicator:indeterminate {
 background-color: @accent_indeterminate;
 border: 1px solid @accent_pressed;
-image: url(theme:premium/icons/checkbox-indeterminate.svg);
+image: url(@theme_path/icons/checkbox-indeterminate.svg);
 }
 QListView#vwPlugins::indicator:disabled,    QListWidget#vwPlugins::indicator:disabled,
 QListView#mListPlugins::indicator:disabled, QListWidget#mListPlugins::indicator:disabled,
@@ -1526,14 +1526,14 @@ QTreeWidget::branch:closed:has-children:has-siblings,
 QTreeView::branch:has-children:!has-siblings:closed,
 QTreeView::branch:closed:has-children:has-siblings {
 border-image: none;
-image: url(theme:premium/icons/branch-closed.svg);
+image: url(@theme_path/icons/branch-closed.svg);
 }
 QTreeWidget::branch:has-children:!has-siblings:closed:hover,
 QTreeWidget::branch:closed:has-children:has-siblings:hover,
 QTreeView::branch:has-children:!has-siblings:closed:hover,
 QTreeView::branch:closed:has-children:has-siblings:hover {
 border-image: none;
-image: url(theme:premium/icons/branch-closed-hover.svg);
+image: url(@theme_path/icons/branch-closed-hover.svg);
 }
 /* Open (expanded) - down-pointing triangle */
 QTreeWidget::branch:open:has-children:!has-siblings,
@@ -1541,14 +1541,14 @@ QTreeWidget::branch:open:has-children:has-siblings,
 QTreeView::branch:open:has-children:!has-siblings,
 QTreeView::branch:open:has-children:has-siblings {
 border-image: none;
-image: url(theme:premium/icons/branch-open.svg);
+image: url(@theme_path/icons/branch-open.svg);
 }
 QTreeWidget::branch:open:has-children:!has-siblings:hover,
 QTreeWidget::branch:open:has-children:has-siblings:hover,
 QTreeView::branch:open:has-children:!has-siblings:hover,
 QTreeView::branch:open:has-children:has-siblings:hover {
 border-image: none;
-image: url(theme:premium/icons/branch-open-hover.svg);
+image: url(@theme_path/icons/branch-open-hover.svg);
 }
 
 /* =========================================================================

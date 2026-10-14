@@ -72,3 +72,8 @@
 
 /* ---- Scrollbar ---------------------------------------------------------- */
 @scrollbar_handle_hover: #525252;
+
+/* ---- Tables (QTableView / QTableWidget) ------------------------------- */
+@table_alt_bg:           #7a9e4c;
+@table_sel_bg:           #7a9e4c;
+@table_sel_text:         #7a9e4c;
