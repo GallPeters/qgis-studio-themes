@@ -17,6 +17,18 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
+     ** Unreleased:
+          - Modern icon set: 350+ QGIS icons redrawn as consistent line icons
+            (Tabler Icons, MIT) coloured per theme, with accent badges.
+          - Bundled Inter typeface (used unless a custom font is set in Options).
+          - Redesigned stylesheet: hairline dividers, rounded controls, underline
+            tabs, slim scrollbars, accent-tinted selection, themed message bar.
+          - Faster: base colours come from the Qt palette, leaner selectors.
+          - Fixed: unreadable selected table cells in the dark themes, Studio Pro
+            treated as a dark theme, dark options sidebar in light themes.
+          - Themes are built into the profile's themes folder; the plugin folder
+            is no longer written to.
+
      ** v0.7 (26.07.2026):
           - New Studio Light Orange theme (Kartoza brand colours, WCAG-checked contrast).
           - New Studio QGIS Light theme (QGIS brand style guide colours).

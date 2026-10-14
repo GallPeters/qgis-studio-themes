@@ -1,0 +1,81 @@
+/* =========================================================================
+ * QGIS Studio Themes — shared design tokens
+ * -------------------------------------------------------------------------
+ * Loaded before each theme's variables.qss; a theme may override any token
+ * by defining the same name. Values may reference other tokens and use:
+ *   mix(a, b, t)   blend colour a towards b by t (0..1)
+ *   alpha(c, a)    colour c with opacity a (0..1)
+ * The plugin resolves everything before QGIS loads the stylesheet.
+ * =========================================================================
+ */
+
+/* ---- Typography --------------------------------------------------------- */
+@font_family:            Inter;
+
+/* ---- Geometry ----------------------------------------------------------- */
+@radius_sm:              4px;
+@radius:                 6px;
+@radius_lg:              8px;
+
+/* ---- Status colours (tinted against each theme's surfaces below) -------- */
+@info:                   #3b82f6;
+@success:                #2fa36b;
+@warning:                #e0a030;
+@danger:                 #e5484d;
+
+/* ---- Hairlines ---------------------------------------------------------- */
+@divider:                mix(@bg_window, @text, 0.09);
+@divider_strong:         mix(@bg_window, @text, 0.16);
+@field_border:           mix(@bg_base, @text, 0.20);
+@field_border_hover:     mix(@bg_base, @text, 0.34);
+
+/* ---- Controls ----------------------------------------------------------- */
+@control_bg:             mix(@bg_window, @text, 0.07);
+@control_hover:          mix(@bg_window, @text, 0.12);
+@control_pressed:        mix(@bg_window, @text, 0.04);
+@tool_hover:             mix(@bg_window, @text, 0.09);
+@tool_pressed:           mix(@bg_window, @text, 0.05);
+@tool_checked:           mix(@bg_window, @accent, 0.22);
+@tool_checked_hover:     mix(@bg_window, @accent, 0.30);
+@on_accent:              @text_dark;
+
+/* ---- Item views --------------------------------------------------------- */
+@row_hover:              mix(@bg_base, @text, 0.05);
+@row_selected:           mix(@bg_base, @accent, 0.24);
+@row_selected_inactive:  mix(@bg_base, @text, 0.09);
+@header_bg:              mix(@bg_base, @text, 0.03);
+@grid:                   mix(@bg_base, @text, 0.07);
+
+/* ---- Popups ------------------------------------------------------------- */
+@menu_border:            mix(@bg_menu, @text, 0.14);
+@menu_hover:             mix(@bg_menu, @text, 0.09);
+
+/* ---- Scrollbars --------------------------------------------------------- */
+@scroll_handle:          mix(@bg_base, @text, 0.20);
+@scroll_handle_hover:    mix(@bg_base, @text, 0.36);
+
+/* ---- Icons (QGIS icon set and widget glyphs) ---------------------------- */
+@icon:                   mix(@text, @bg_window, 0.08);
+@icon_accent:            @accent;
+
+/* ---- Message bar -------------------------------------------------------- */
+@info_bg:                mix(@bg_window, @info, 0.14);
+@info_border:            mix(@bg_window, @info, 0.45);
+@success_bg:             mix(@bg_window, @success, 0.14);
+@success_border:         mix(@bg_window, @success, 0.45);
+@warning_bg:             mix(@bg_window, @warning, 0.16);
+@warning_border:         mix(@bg_window, @warning, 0.50);
+@danger_bg:              mix(@bg_window, @danger, 0.14);
+@danger_border:          mix(@bg_window, @danger, 0.45);
+
+/* ---- Tables ------------------------------------------------------------- */
+@table_alt_bg:           @header_bg;
+@table_sel_bg:           @row_selected;
+@table_sel_text:         @text_bright;
+
+/* ---- Widget glyph colours (themes/icons templates) ---------------------- */
+@arrow_normal:           mix(@text, @bg_window, 0.25);
+@arrow_disabled:         @text_disabled;
+@arrow_hover:            @accent;
+@branch_hover:           @text_bright;
+@checkmark:              @on_accent;

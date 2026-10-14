@@ -145,19 +145,6 @@
 @text_dark:              #10140B;
 
 
-/* =========================================================================
- * ICON COLOURS
- * =========================================================================
- *  Substituted into the shared SVG templates in themes/icons/ when the
- *  plugin loads (checkbox ticks, radio dots, spin-box and tree arrows).
- *  @checkmark is drawn on the checked @accent fill — dark ink for ~5:1.
- * =========================================================================
- */
-@checkmark:              #0D1108;
-@arrow_normal:           #575D4C;
-@arrow_disabled:         #AEB4A1;
-@arrow_hover:            #467828;
-@branch_hover:           #467828;
 
 
 /* =========================================================================
@@ -167,8 +154,3 @@
  * =========================================================================
  */
 @scrollbar_handle_hover: #589632;
-
-/* ---- Tables (QTableView / QTableWidget) ------------------------------- */
-@table_alt_bg:           #F4F7F0;
-@table_sel_bg:           #E2EFD5;
-@table_sel_text:         #171A13;

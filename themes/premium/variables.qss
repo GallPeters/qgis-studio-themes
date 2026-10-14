@@ -57,23 +57,6 @@
 @text_placeholder:       #787878;
 @text_dark:              #1a1a1a;
 
-/* =========================================================================
- * ICON COLOURS
- * =========================================================================
- *  Substituted into the shared SVG templates in themes/icons/ when the
- *  plugin loads (checkbox ticks, radio dots, spin-box and tree arrows).
- * =========================================================================
- */
-@checkmark:              #ffffff;
-@arrow_normal:           #d2dae3;
-@arrow_disabled:         #4a586c;
-@arrow_hover:            #79a52f;
-@branch_hover:           #ffffff;
 
 /* ---- Scrollbar ---------------------------------------------------------- */
 @scrollbar_handle_hover: #525252;
-
-/* ---- Tables (QTableView / QTableWidget) ------------------------------- */
-@table_alt_bg:           #7a9e4c;
-@table_sel_bg:           #7a9e4c;
-@table_sel_text:         #7a9e4c;
