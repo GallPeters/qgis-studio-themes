@@ -14,11 +14,16 @@ from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QFile, Qt, QTimer, qVersion
-from qgis.PyQt.QtGui import (
-    QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPalette,
+from qgis.PyQt.QtCore import (
+    QByteArray, QDataStream, QEvent, QFile, QIODevice, QObject, Qt, QTimer, qVersion,
 )
-from qgis.PyQt.QtWidgets import QAbstractButton, QApplication, QListWidget, QTabBar
+from qgis.PyQt.QtGui import (
+    QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QPalette,
+)
+from qgis.PyQt.QtWidgets import (
+    QAbstractButton, QApplication, QComboBox, QListWidget, QMenu, QMenuBar, QStackedWidget,
+    QTabBar, QToolBar, QToolButton, QWidget,
+)
 
 from . import studio_icons
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
@@ -144,37 +149,49 @@ def make_palette(tokens):
     return palette
 
 
-class IconSwapper:
-    """Replaces QGIS icons that were already created before the theme was
-    active (main window toolbars, menus, panels). Icons created later come
-    from the theme folder through QGIS's own lookup.
+class IconSwapper(QObject):
+    """Replaces QGIS icons that QGIS created from its built-in set.
+
+    Existing widgets are swapped once when the theme becomes active. New
+    windows and pages are swapped when Qt polishes them, right before they
+    are first shown, so they never appear with the old icons: dialogs are
+    caught through the main window's ChildPolished events, pages that
+    panels build later (Labels, renderer and symbol panels) through the
+    ChildPolished events of the stacked widgets that host them. Each new
+    window or page is scanned once, and only a handful of objects carry an
+    event filter, so nothing runs per event across the application.
+    Popups and windows without a parent are caught when they get focus.
 
     Icons are identified by QIcon.cacheKey() first: getThemeIcon() caches
     one QIcon per name and every widget shares that instance. Icons loaded
-    straight from Qt Designer .ui files are separate instances, so those
-    fall back to comparing a 16px rendering against the built-in icon.
-    Results are memoised per cacheKey. In the main window the rendering
-    pass runs in small batches when the event loop is idle, so it never
-    delays startup; the reference renderings are cached on disk."""
+    straight from Qt Designer .ui files are separate instances; those are
+    identified by their serialized SVG data, compared with the built-in
+    icon. That reference table is cached on disk per QGIS build."""
 
     PROPERTY = "_studioIconsTheme"
     RESOURCES = ":/images/themes/default/"
-    BATCH = 40
+    BATCH = 60
     _UNKNOWN = object()
+    _CHILD_POLISHED = QEvent.Type.ChildPolished
 
     def __init__(self, cache_file=None):
+        super().__init__()
         self._cache_file = cache_file
         self._swapped = []
         self._watched = {}
+        self._models = {}
+        self._filtered = []
+        self._stacks = {}
+        self._scanned = []
         self._names = {}
         self._ours = {}
-        self._pixels = None
+        self._reference_table = None
         self._icons = {}
         self._pending = []
         self._theme = None
         self._icons_dir = None
 
-    def apply(self, theme, icons_dir):
+    def apply(self, theme, icons_dir, main_window):
         self.restore()
         self._theme = theme
         self._icons = {}
@@ -183,66 +200,81 @@ class IconSwapper:
         self._icons_dir = icons_dir
         for name in studio_icons.ICON_MAP:
             self._names[QgsApplication.getThemeIcon(name).cacheKey()] = name
-        for widget in QApplication.topLevelWidgets():
-            self.apply_to(widget, deferred=True)
+        # Existing widgets: identify cheap matches now, the rest in idle time.
+        for window in QApplication.topLevelWidgets():
+            self._scan(window, deferred=True)
         if self._pending:
             QTimer.singleShot(0, self._drain)
+        self._filter(main_window)
+        QGuiApplication.instance().focusWindowChanged.connect(self._on_focus_window)
+
+    def _filter(self, obj):
+        obj.installEventFilter(self)
+        self._filtered.append(obj)
+
+    def eventFilter(self, watched, event):  # pylint: disable=invalid-name
+        if event.type() == self._CHILD_POLISHED:
+            child = event.child()
+            if child is not None and child.isWidgetType() and (
+                not isinstance(watched, QStackedWidget) or watched.currentWidget() is child
+            ):
+                self._scan(child, deferred=False)
+        return False
+
+    def _on_focus_window(self, _window):
+        widget = QApplication.activePopupWidget() or QApplication.activeWindow()
+        if widget is not None:
+            self._scan(widget, deferred=False)
 
     # ---- Identification ---------------------------------------------------
 
     @staticmethod
-    def _fingerprint(icon):
-        image = icon.pixmap(16, 16).toImage().convertToFormat(QImage.Format.Format_ARGB32)
-        if image.isNull():
-            return None
-        bits = image.constBits()
-        bits.setsize(image.sizeInBytes())
-        return hashlib.sha1(bytes(bits)).hexdigest()
+    def _digest(icon):
+        data = QByteArray()
+        stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+        stream << icon  # pylint: disable=pointless-statement
+        return hashlib.sha1(bytes(data)).hexdigest()
 
     def _reference(self):
-        """Fingerprints of the built-in icons, cached on disk per QGIS/Qt
-        build and screen scale (renderings depend on all three)."""
-        if self._pixels is not None:
-            return self._pixels
-        key = f"{Qgis.version()}|{qVersion()}|{QApplication.instance().devicePixelRatio()}|" \
-              f"{len(studio_icons.ICON_MAP)}"
+        """Digests of the built-in icons, cached on disk per QGIS/Qt build."""
+        if self._reference_table is not None:
+            return self._reference_table
+        names = "|".join(studio_icons.ICON_MAP)
+        key = f"{Qgis.version()}|{qVersion()}|{hashlib.sha1(names.encode()).hexdigest()}"
         if self._cache_file is not None and self._cache_file.exists():
             try:
                 cached = json.loads(self._cache_file.read_text(encoding="utf-8"))
                 if cached.get("key") == key:
-                    self._pixels = cached["fingerprints"]
-                    return self._pixels
+                    self._reference_table = cached["digests"]
+                    return self._reference_table
             except (OSError, ValueError):
                 pass
-        self._pixels = {}
+        self._reference_table = {}
         for name in studio_icons.ICON_MAP:
             # Check first: QIcon on a missing resource logs a Qt warning,
             # which QGIS surfaces in the message bar.
             if QFile.exists(self.RESOURCES + name):
-                fingerprint = self._fingerprint(QIcon(self.RESOURCES + name))
-                if fingerprint:
-                    self._pixels.setdefault(fingerprint, name)
+                self._reference_table.setdefault(self._digest(QIcon(self.RESOURCES + name)), name)
         if self._cache_file is not None:
             try:
                 self._cache_file.write_text(
-                    json.dumps({"key": key, "fingerprints": self._pixels}), encoding="utf-8"
+                    json.dumps({"key": key, "digests": self._reference_table}), encoding="utf-8"
                 )
             except OSError:
                 pass
-        return self._pixels
+        return self._reference_table
 
-    def _replacement(self, icon, render=True):
-        """Our icon for `icon`, None if it has none, or _UNKNOWN when
-        identifying it needs a rendering and `render` is False."""
+    def _replacement(self, icon, deferred=False):
+        """Our icon for `icon`, None if it has none, or _UNKNOWN when it
+        needs the (slower) data comparison and `deferred` is set."""
         if icon.isNull():
             return None
         key = icon.cacheKey()
         name = self._names.get(key, self._UNKNOWN)
         if name is self._UNKNOWN:
-            if not render:
+            if deferred:
                 return self._UNKNOWN
-            fingerprint = self._fingerprint(icon)
-            name = self._reference().get(fingerprint) if fingerprint else None
+            name = self._reference().get(self._digest(icon))
             self._names[key] = name
         if name is None:
             return None
@@ -263,41 +295,38 @@ class IconSwapper:
 
     # ---- Applying ---------------------------------------------------------
 
+    # Icon slots: (None, None) is the owner's own icon, ("row", i) a list
+    # row, ("tab", i) a tab, ("item", i) a combo box item.
     @staticmethod
-    def _targets(root):
-        """(owner, slot) for every icon in a widget tree: slot None is the
-        owner's own icon, >= 0 a list row, < 0 a tab (-1 - index)."""
-        widgets = [root] + root.findChildren(QAbstractButton) + root.findChildren(QListWidget) \
-            + root.findChildren(QTabBar)
-        actions = set(root.findChildren(QAction))
-        for widget in widgets:
-            actions.update(widget.actions())
-        targets = [(action, None) for action in actions]
-        for widget in widgets:
-            if isinstance(widget, QAbstractButton):
-                targets.append((widget, None))
-            elif isinstance(widget, QListWidget):
-                targets.extend((widget, row) for row in range(widget.count()))
-            elif isinstance(widget, QTabBar):
-                targets.extend((widget, -1 - index) for index in range(widget.count()))
-        return targets
-
-    @staticmethod
-    def _icon_of(owner, slot):
-        if slot is None:
+    def _get(owner, kind, index):
+        if kind is None:
             return owner.icon()
-        if slot >= 0:
-            return owner.item(slot).icon() if slot < owner.count() else QIcon()
-        index = -1 - slot
-        return owner.tabIcon(index) if index < owner.count() else QIcon()
+        if index >= owner.count():
+            return QIcon()
+        if kind == "row":
+            return owner.item(index).icon()
+        if kind == "tab":
+            return owner.tabIcon(index)
+        return owner.itemIcon(index)
 
-    def _swap(self, owner, slot, render):
-        if sip.isdeleted(owner):
+    @staticmethod
+    def _set(owner, kind, index, icon):
+        if kind is None:
+            owner.setIcon(icon)
+        elif kind == "row":
+            owner.item(index).setIcon(icon)
+        elif kind == "tab":
+            owner.setTabIcon(index, icon)
+        else:
+            owner.setItemIcon(index, icon)
+
+    def _swap(self, owner, kind, index, deferred):
+        if self._theme is None or sip.isdeleted(owner):
             return
-        icon = self._icon_of(owner, slot)
-        new = self._replacement(icon, render)
+        icon = self._get(owner, kind, index)
+        new = self._replacement(icon, deferred)
         if new is self._UNKNOWN:
-            self._pending.append((owner, slot))
+            self._pending.append((owner, kind, index))
             return
         if new is None:
             return
@@ -305,13 +334,87 @@ class IconSwapper:
             owner.setIcon(new)
             self._watch(owner)
             return
-        self._swapped.append((owner, slot, icon))
-        if slot is None:
-            owner.setIcon(new)
-        elif slot >= 0:
-            owner.item(slot).setIcon(new)
-        else:
-            owner.setTabIcon(-1 - slot, new)
+        self._swapped.append((owner, kind, index, icon))
+        self._set(owner, kind, index, new)
+
+    def _scan(self, root, deferred):
+        """Swap every icon in a widget tree; each tree is scanned once.
+
+        Only the current page of each stacked widget is entered (dialogs
+        and panels keep most pages hidden); other pages are scanned when
+        they become current."""
+        if self._theme is None or sip.isdeleted(root) or root.property(self.PROPERTY) == self._theme:
+            return
+        self._mark(root)
+        stack = [root]
+        while stack:
+            widget = stack.pop()
+            self._visit(widget, deferred)
+            if isinstance(widget, QStackedWidget):
+                self._hook_stack(widget)
+                page = widget.currentWidget()
+                if page is not None and page.property(self.PROPERTY) != self._theme:
+                    self._mark(page)
+                    stack.append(page)
+            else:
+                stack.extend(widget.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly))
+
+    def _mark(self, widget):
+        widget.setProperty(self.PROPERTY, self._theme)
+        self._scanned.append(widget)
+
+    def _hook_stack(self, stacked):
+        """Scan pages when they are shown, and pages added later (panels
+        build them on demand) before they are first shown."""
+        if id(stacked) in self._stacks:
+            return
+
+        def current_changed(index, stacked=stacked):
+            if self._theme is not None and not sip.isdeleted(stacked):
+                page = stacked.widget(index)
+                if page is not None:
+                    self._scan(page, deferred=False)
+
+        stacked.currentChanged.connect(current_changed)
+        self._stacks[id(stacked)] = (stacked, current_changed)
+        self._filter(stacked)
+
+    def _visit(self, widget, deferred):
+        """Swap the icons one widget shows itself (not its children)."""
+        if isinstance(widget, QToolButton):
+            action = widget.defaultAction()
+            if action is not None:
+                self._swap(action, None, None, deferred)
+            else:
+                self._swap(widget, None, None, deferred)
+        elif isinstance(widget, (QMenu, QToolBar, QMenuBar)):
+            for action in widget.actions():
+                self._swap(action, None, None, deferred)
+        elif isinstance(widget, QAbstractButton):
+            self._swap(widget, None, None, deferred)
+        elif isinstance(widget, QListWidget):
+            self._rows(widget, "row", deferred)
+        elif isinstance(widget, QComboBox):
+            self._rows(widget, "item", deferred)
+        elif isinstance(widget, QTabBar):
+            for index in range(widget.count()):
+                self._swap(widget, "tab", index, deferred)
+
+    def _rows(self, widget, kind, deferred):
+        for index in range(widget.count()):
+            self._swap(widget, kind, index, deferred)
+        model = widget.model()
+        if id(model) in self._models:
+            return
+
+        def inserted(_parent, first, last, widget=widget, kind=kind):
+            if self._theme is None or sip.isdeleted(widget):
+                return
+            for index in range(first, last + 1):
+                self._swap(widget, kind, index, False)
+
+        model.rowsInserted.connect(inserted)
+        self._models[id(model)] = (model, inserted)
 
     def _drain(self):
         """Identify queued icons a batch at a time between events."""
@@ -319,14 +422,13 @@ class IconSwapper:
             self._pending = []
             return
         batch, self._pending = self._pending[:self.BATCH], self._pending[self.BATCH:]
-        for owner, slot in batch:
-            self._swap(owner, slot, render=True)
+        for owner, kind, index in batch:
+            self._swap(owner, kind, index, False)
         if self._pending:
             QTimer.singleShot(0, self._drain)
 
     def _watch(self, action):
-        """QGIS re-sets some action icons from its cache later (for example
-        Add Feature follows the active layer's geometry type); swap again
+        """QGIS re-sets some action icons from its cache later; swap again
         whenever that happens."""
         if action in self._watched:
             return
@@ -341,19 +443,23 @@ class IconSwapper:
         action.changed.connect(recheck)
         self._watched[action] = recheck
 
-    def apply_to(self, root, deferred=False):
-        """Swap icons in one widget tree; runs once per window."""
-        if self._theme is None or sip.isdeleted(root):
-            return
-        if root.property(self.PROPERTY) == self._theme:
-            return
-        root.setProperty(self.PROPERTY, self._theme)
-        for owner, slot in self._targets(root):
-            self._swap(owner, slot, render=not deferred)
-
     def restore(self):
+        if self._theme is not None:
+            QGuiApplication.instance().focusWindowChanged.disconnect(self._on_focus_window)
         self._theme = None
         self._pending = []
+        for obj in self._filtered:
+            if not sip.isdeleted(obj):
+                obj.removeEventFilter(self)
+        self._filtered = []
+        for stacked, current_changed in self._stacks.values():
+            if not sip.isdeleted(stacked):
+                stacked.currentChanged.disconnect(current_changed)
+        self._stacks = {}
+        for model, inserted in self._models.values():
+            if not sip.isdeleted(model):
+                model.rowsInserted.disconnect(inserted)
+        self._models = {}
         for action, recheck in self._watched.items():
             if sip.isdeleted(action):
                 continue
@@ -362,18 +468,14 @@ class IconSwapper:
             if builtin is not None:
                 action.setIcon(builtin)
         self._watched = {}
-        for owner, slot, icon in reversed(self._swapped):
-            if sip.isdeleted(owner):
-                continue
-            if slot is None:
-                owner.setIcon(icon)
-            elif slot >= 0 and slot < owner.count():
-                owner.item(slot).setIcon(icon)
-            elif slot < 0 and -1 - slot < owner.count():
-                owner.setTabIcon(-1 - slot, icon)
+        for owner, kind, index, icon in reversed(self._swapped):
+            if not sip.isdeleted(owner) and (kind is None or index < owner.count()):
+                self._set(owner, kind, index, icon)
         self._swapped = []
-        for widget in QApplication.topLevelWidgets():
-            widget.setProperty(self.PROPERTY, None)
+        for root in self._scanned:
+            if not sip.isdeleted(root):
+                root.setProperty(self.PROPERTY, None)
+        self._scanned = []
 
 
 class QgisStudioThemesPlugin:
@@ -398,7 +500,7 @@ class QgisStudioThemesPlugin:
         self._original_palette = QPalette(QApplication.palette())
         self._original_font = QFont(QApplication.font())
         self._icons = IconSwapper(
-            Path(QgsApplication.userThemesFolder()) / ".studio-icon-fingerprints.json"
+            Path(QgsApplication.userThemesFolder()) / ".studio-icon-digests.json"
         )
         self._message_bar_items = []
         self._main_window_sheet = None
@@ -417,7 +519,6 @@ class QgisStudioThemesPlugin:
         if configured in self._studio_themes():
             self._prepare(configured)
         QgsApplication.instance().themeChanged.connect(self._sync)
-        QGuiApplication.instance().focusWindowChanged.connect(self._on_focus_window)
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self._connected = True
         for name, folder in self.THEMES.items():
@@ -438,7 +539,6 @@ class QgisStudioThemesPlugin:
     def unload(self):
         if self._connected:
             QgsApplication.instance().themeChanged.disconnect(self._sync)
-            QGuiApplication.instance().focusWindowChanged.disconnect(self._on_focus_window)
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self._connected = False
         self._deactivate()
@@ -500,7 +600,7 @@ class QgisStudioThemesPlugin:
             app.setStyleSheet(sheet)
         self._active = theme
         name = studio[theme][0]
-        self._icons.apply(theme, self.theme_target(name) / "icons")
+        self._icons.apply(theme, self.theme_target(name) / "icons", self.iface.mainWindow())
         self._style_message_bar()
 
     def _deactivate(self):
@@ -519,13 +619,6 @@ class QgisStudioThemesPlugin:
         item = bar.currentItem()
         if item is not None and hasattr(item, "getStyleSheet"):
             bar.setStyleSheet(item.getStyleSheet())
-
-    def _on_focus_window(self, window):
-        if self._active is None or window is None:
-            return
-        widget = QApplication.activeWindow() or QApplication.activePopupWidget()
-        if widget is not None:
-            self._icons.apply_to(widget)
 
     # ---- Message bar ------------------------------------------------------
 

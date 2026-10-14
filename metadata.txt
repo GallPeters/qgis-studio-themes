@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=0.8
+version=0.8.1
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,10 @@ tracker=https://github.com/GallPeters/qgis-studio-themes
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v0.8.1 (14.10.2026):
+          - Icons in dialogs and panels are replaced before they appear (no freeze or flicker).
+          - Labels pages in the Layer Styling panel now use the new icons.
 
      ** v0.8 (14.10.2026):
           - New modern icon set and Inter font.

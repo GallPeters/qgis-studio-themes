@@ -340,6 +340,11 @@ ICON_MAP = {
     "mShadingRenderer.svg": "sun",
     "mIconPaintEffects.svg": "sparkles",
     "mSourceFields.svg": "list-details",
+    "mActionArrowUp.svg": "arrow-up",
+    "mActionArrowDown.svg": "arrow-down",
+    "mActionIconView.svg": "layout-grid",
+    "mIconAutoPlacementSettings.svg": "adjustments",
+    "mIconLabelingRules.svg": "list-tree",
     # ---- Renderers --------------------------------------------------------
     "rendererSingleSymbol.svg": "square-rounded",
     "rendererCategorizedSymbol.svg": "category",
