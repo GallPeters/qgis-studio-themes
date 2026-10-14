@@ -1,86 +1,89 @@
 # QGIS Studio Themes
 
-🎨 A plugin that adds **modern UI** themes to QGIS.
-
-🗺️ A professional look that reflects **QGIS’s true power**.
-
-❤️‍🔥 Download, rate, and share to spread the word — **QGIS can look as great as it really is**.
-
-🔥 Go **FOSS!**
+A QGIS plugin that adds six UI themes with a consistent, modern design:
+a redesigned stylesheet, a unified line-icon set and the Inter typeface.
 
 https://github.com/user-attachments/assets/0ab0ae2d-79b5-44c5-9a6e-c7969d54c6bf
 
 ## Requirements
 
-- QGIS **4.0** or later.
+QGIS 4.0 or later.
 
-## Installation & Usage
+## Installation
 
-1. Download the plugin using the  **Plugin mannager** or from the [**plugins website.**](https://plugins.qgis.org/plugins/qgis_studio_themes/)
-2. Go to **Settings → Options → General**
-3. Under **UI Theme**, select one of the themes
-4. Restart QGIS to apply
+1. Install **QGIS Studio Themes** from **Plugins → Manage and Install Plugins**,
+   or download it from the [QGIS plugin repository](https://plugins.qgis.org/plugins/qgis_studio_themes/).
+2. Open **Settings → Options → General**.
+3. Select a Studio theme under **UI Theme**.
+4. Restart QGIS.
 
 ## Themes
 
 | Theme | Mode | Palette |
 |---|---|---|
-| Studio Premium | Dark | Deep navy with QGIS green accents |
-| Studio Web | Dark | qgis.org website palette |
-| Studio Pro | Light | Professional light grey with blue accents |
-| Studio Dark | Dark | Classic dark |
-| Studio Light Orange | Light | Warm paper with [Kartoza](https://kartoza.com) brand orange, blue and teal accents |
-| Studio QGIS Light | Light | Fresh paper with the official [QGIS brand](https://qgis.org/styleguide/) greens and orange |
+| Studio Premium | Dark | Neutral grey with QGIS green accents |
+| Studio Web | Dark | Navy, based on the qgis.org website |
+| Studio Dark | Dark | Near-black with orange accents |
+| Studio Pro | Light | Light grey with blue accents |
+| Studio Light Orange | Light | Warm paper with [Kartoza](https://kartoza.com) brand colours |
+| Studio QGIS Light | Light | Light paper with the [QGIS brand](https://qgis.org/styleguide/) colours |
 
-The light themes force a light Qt colour scheme even when your desktop is
-in dark mode (and the dark themes force dark), so native widgets and
-palette-drawn elements always match the stylesheet. Both light themes are
-WCAG 2.2 AA contrast-audited — no light-on-light or dark-on-dark pairings.
+Each theme sets the Qt colour scheme to match its mode, so native widgets
+stay consistent with the stylesheet regardless of the desktop's light or
+dark setting. The two light themes were checked against WCAG 2.2 AA
+contrast requirements.
 
-## What the themes change
+<kbd>
+<img width="638" height="341" alt="Studio theme screenshot" src="https://github.com/user-attachments/assets/3d196242-4d97-4356-a96f-548a18c2642a" />
+</kbd>
 
-- **Modern icon set** — 350+ QGIS toolbar, menu, panel and dialog icons are
-  redrawn as consistent line icons (based on [Tabler Icons](https://tabler.io/icons)),
-  coloured for each theme, with accent badges for add / remove / new actions.
-- **Inter typeface** — bundled and used whenever you have not chosen a custom
-  font in QGIS options; your font size is always respected.
-- **Clean layout language** — hairline dividers, rounded controls, underline
-  tabs, slim scrollbars, accent-tinted selection, themed message bar.
-- **Fast** — base colours come from the Qt palette instead of broad
-  stylesheet rules, keeping theme switching, dialog opening and repainting
-  close to stock QGIS speed (see `tools/benchmark.py`).
+## Features
+
+- **Icons** – over 350 QGIS toolbar, menu, panel and dialog icons are
+  replaced with a consistent line-icon set based on
+  [Tabler Icons](https://tabler.io/icons), coloured for each theme.
+- **Typography** – the bundled Inter typeface is used unless a custom font
+  is set in QGIS options. The configured font size is always kept.
+- **Layout** – thin dividers, rounded controls, underlined tabs, slim
+  scrollbars, accent-coloured selection and a message bar that follows
+  the theme.
+- **Performance** – base colours are set through the Qt palette rather than
+  broad stylesheet rules, which keeps dialog opening and repainting faster
+  than in previous versions.
 
 ## How it works
 
-Every theme shares one stylesheet (`themes/style.qss`), one set of design
-tokens (`themes/base.qss`) and one icon set (`studio_icons.py`); a theme only
-defines its palette in `themes/<theme>/variables.qss`. On startup the plugin
-builds each theme into your QGIS profile's `themes` folder (rebuilt only when
-the plugin changes). QGIS looks for theme icons in that folder, so dialogs
-opened later get the modern icons natively.
+All themes share one stylesheet (`themes/style.qss`), one set of design
+tokens (`themes/base.qss`) and one icon map (`studio_icons.py`). Each theme
+only defines its colours in `themes/<theme>/variables.qss`.
 
-### Developer tools
+At startup the plugin builds every theme into the `themes` folder of the
+active QGIS profile. A theme is rebuilt only when the plugin files change.
+QGIS looks up theme icons in that folder, so dialogs opened later also use
+the new icons.
 
-- `tools/screenshots.py` — capture every theme (main window, menu, attribute
-  table, layer properties) for review.
-- `tools/benchmark.py` — measure theme switching, dialog opening, repaint and
-  scrolling cost per theme.
+## Development
 
-Both run inside QGIS: `qgis --code tools/<script>.py` (see the docstrings).
-   
+The `tools` folder contains two scripts that run inside QGIS:
 
-<kbd>
-<img width="638" height="341" alt="image" src="https://github.com/user-attachments/assets/3d196242-4d97-4356-a96f-548a18c2642a" />
-</kbd>
+- `tools/screenshots.py` captures the main window, a menu, the attribute
+  table and the layer properties dialog for each theme.
+- `tools/benchmark.py` measures the CPU time of applying a theme, opening
+  dialogs, repainting and scrolling.
+
+Run them with `qgis --code tools/<script>.py`. Configuration options are
+described in each script's docstring.
 
 ## Contributing
 
-Pull requests are welcome. Please open an issue first to discuss major changes.
+Pull requests are welcome. For larger changes, please open an issue first.
+Bug reports can be filed on the [issue tracker](https://github.com/GallPeters/qgis-studio-themes/issues).
 
 ## License
 
-[**GNU GPL v2**](LICENSE)
+[GNU GPL v2](LICENSE)
 
 Bundled third-party assets:
-- [Tabler Icons](https://github.com/tabler/tabler-icons) — MIT, see `icons/tabler/LICENSE`
-- [Inter](https://rsms.me/inter/) typeface — SIL Open Font License 1.1, see `fonts/OFL.txt`
+
+- [Tabler Icons](https://github.com/tabler/tabler-icons) – MIT License, see `icons/tabler/LICENSE`
+- [Inter](https://rsms.me/inter/) – SIL Open Font License 1.1, see `fonts/OFL.txt`
