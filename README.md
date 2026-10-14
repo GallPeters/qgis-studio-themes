@@ -24,7 +24,7 @@ QGIS 4.0 or later.
 | Studio Premium | Dark | Neutral grey with QGIS green accents |
 | Studio Web | Dark | Navy, based on the qgis.org website |
 | Studio Dark | Dark | Near-black with orange accents |
-| Studio Pro | Light | Light grey with blue accents |
+| Studio Pro Light | Light | Light grey with blue accents |
 | Studio Light Orange | Light | Warm paper with [Kartoza](https://kartoza.com) brand colours |
 | Studio QGIS Light | Light | Light paper with the [QGIS brand](https://qgis.org/styleguide/) colours |
 

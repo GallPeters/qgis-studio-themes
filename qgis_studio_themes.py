@@ -486,11 +486,13 @@ class QgisStudioThemesPlugin:
     THEMES = {
         "Premium": "premium",
         "Web": "web",
-        "Pro": "pro",
+        "Pro Light": "pro",
         "Dark": "dark",
         "Light Orange": "light_orange",
         "QGIS Light": "qgis_light",
     }
+    # Former display names -> current ones (kept so saved settings follow).
+    RENAMED = {"Studio Pro": "Studio Pro Light"}
 
     def __init__(self, iface):
         self.iface = iface
@@ -515,7 +517,15 @@ class QgisStudioThemesPlugin:
         # QGIS applies the configured theme as soon as it is registered.
         # Install palette and font first so that single stylesheet pass
         # already sees them (no second, full repolish at startup).
-        configured = QgsSettings().value("UI/UITheme", "", type=str)
+        settings = QgsSettings()
+        configured = settings.value("UI/UITheme", "", type=str)
+        for old_name, new_name in self.RENAMED.items():
+            old_target = Path(QgsApplication.userThemesFolder()) / old_name
+            if (old_target / STAMP).exists():
+                shutil.rmtree(old_target, ignore_errors=True)
+            if configured == old_name:
+                configured = new_name
+                settings.setValue("UI/UITheme", configured)
         if configured in self._studio_themes():
             self._prepare(configured)
         QgsApplication.instance().themeChanged.connect(self._sync)

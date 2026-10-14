@@ -2,7 +2,7 @@
 
 Run inside QGIS (the plugin must be installed and enabled in the profile):
 
-    STUDIO_THEMES="Studio Premium,Studio Pro" STUDIO_OUT=shots \
+    STUDIO_THEMES="Studio Premium,Studio Pro Light" STUDIO_OUT=shots \
         qgis --nologo --noversioncheck --code tools/screenshots.py
 
 For every theme it saves the main window with a layer loaded and the
