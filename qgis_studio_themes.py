@@ -132,7 +132,8 @@ def make_palette(tokens):
         (role.Base, "@bg_base"), (role.AlternateBase, "@header_bg"),
         (role.Text, "@text"), (role.Button, "@control_bg"),
         (role.ButtonText, "@text"), (role.BrightText, "@text_bright"),
-        (role.Highlight, "@accent"), (role.HighlightedText, "@on_accent"),
+        # Lists, trees and tables draw selection natively from these.
+        (role.Highlight, "@row_selected"), (role.HighlightedText, "@text_bright"),
         (role.ToolTipBase, "@bg_menu"), (role.ToolTipText, "@text"),
         (role.PlaceholderText, "@text_placeholder"), (role.Link, "@accent"),
         (role.LinkVisited, "@accent_pressed"), (role.Light, "@divider_strong"),

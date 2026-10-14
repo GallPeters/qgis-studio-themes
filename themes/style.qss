@@ -24,10 +24,6 @@
  * 1. WINDOWS & DOCKS
  * ========================================================================= */
 
-QMainWindow,
-QDialog {
-    background-color: @bg_window;
-}
 QMainWindow::separator {
     background-color: @bg_window;
     width: 5px;
@@ -89,7 +85,6 @@ QSizeGrip {
 
 QMenuBar {
     background-color: @bg_window;
-    color: @text;
     border-bottom: 1px solid @divider;
     padding: 3px 6px;
 }
@@ -109,7 +104,6 @@ QMenuBar::item:pressed {
 
 QMenu {
     background-color: @bg_menu;
-    color: @text;
     border: 1px solid @menu_border;
     padding: 5px;
 }
@@ -198,8 +192,7 @@ QToolButton#qt_toolbar_ext_button:hover {
 
 QToolButton {
     background: transparent;
-    color: @text;
-    border: 1px solid transparent;
+    border: none;
     border-radius: @radius;
     padding: 3px;
 }
@@ -249,7 +242,6 @@ QToolButton::menu-arrow:disabled {
 
 QPushButton {
     background-color: @control_bg;
-    color: @text;
     border: 1px solid @divider_strong;
     border-radius: @radius;
     padding: 4px 14px;
@@ -311,7 +303,6 @@ QPlainTextEdit,
 QAbstractSpinBox,
 QComboBox {
     background-color: @bg_base;
-    color: @text;
     border: 1px solid @field_border;
     border-radius: @radius;
     selection-background-color: @accent;
@@ -445,61 +436,12 @@ QComboBox QAbstractItemView::item:selected {
  * ========================================================================= */
 
 QAbstractItemView {
-    background-color: @bg_base;
-    color: @text;
     border: 1px solid @divider;
     border-radius: @radius;
-    alternate-background-color: @header_bg;
-    selection-background-color: @row_selected;
-    selection-color: @text_bright;
     outline: none;
 }
-QAbstractItemView::item {
-    padding: 3px 4px;
-    border: none;
-}
-QAbstractItemView::item:hover {
-    background-color: @row_hover;
-}
-QAbstractItemView::item:selected {
-    background-color: @row_selected;
-    color: @text_bright;
-}
-QAbstractItemView::item:selected:!active {
-    background-color: @row_selected_inactive;
-    color: @text;
-}
-
-QTreeView::branch {
-    background: transparent;
-}
-QTreeView::branch:selected {
-    background-color: @row_selected;
-}
-QTreeView::branch:has-children:!has-siblings:closed,
-QTreeView::branch:closed:has-children:has-siblings {
-    border-image: none;
-    image: url(@theme_path/icons/studio/branch-closed.svg);
-}
-QTreeView::branch:has-children:!has-siblings:closed:hover,
-QTreeView::branch:closed:has-children:has-siblings:hover {
-    image: url(@theme_path/icons/studio/branch-closed-hover.svg);
-}
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings {
-    border-image: none;
-    image: url(@theme_path/icons/studio/branch-open.svg);
-}
-QTreeView::branch:open:has-children:!has-siblings:hover,
-QTreeView::branch:open:has-children:has-siblings:hover {
-    image: url(@theme_path/icons/studio/branch-open-hover.svg);
-}
-
 QTableView {
     gridline-color: @grid;
-    selection-background-color: @table_sel_bg;
-    selection-color: @table_sel_text;
-    alternate-background-color: @table_alt_bg;
 }
 QTableView QTableCornerButton::section {
     background-color: @header_bg;
@@ -658,8 +600,7 @@ QRadioButton {
     spacing: 8px;
 }
 QCheckBox::indicator,
-QGroupBox::indicator,
-QAbstractItemView::indicator {
+QGroupBox::indicator {
     width: 14px;
     height: 14px;
     border: 1px solid @field_border_hover;
@@ -675,13 +616,11 @@ QRadioButton::indicator {
 }
 QCheckBox::indicator:hover,
 QRadioButton::indicator:hover,
-QGroupBox::indicator:hover,
-QAbstractItemView::indicator:hover {
+QGroupBox::indicator:hover {
     border-color: @accent;
 }
 QCheckBox::indicator:checked,
-QGroupBox::indicator:checked,
-QAbstractItemView::indicator:checked {
+QGroupBox::indicator:checked {
     background-color: @accent;
     border-color: @accent;
     image: url(@theme_path/icons/studio/checkbox-check.svg);
@@ -693,29 +632,25 @@ QRadioButton::indicator:checked {
 }
 QCheckBox::indicator:checked:hover,
 QRadioButton::indicator:checked:hover,
-QGroupBox::indicator:checked:hover,
-QAbstractItemView::indicator:checked:hover {
+QGroupBox::indicator:checked:hover {
     background-color: @accent_hover;
     border-color: @accent_hover;
 }
 QCheckBox::indicator:indeterminate,
-QGroupBox::indicator:indeterminate,
-QAbstractItemView::indicator:indeterminate {
+QGroupBox::indicator:indeterminate {
     background-color: @accent_indeterminate;
     border-color: @accent_indeterminate;
     image: url(@theme_path/icons/studio/checkbox-indeterminate.svg);
 }
 QCheckBox::indicator:disabled,
 QRadioButton::indicator:disabled,
-QGroupBox::indicator:disabled,
-QAbstractItemView::indicator:disabled {
+QGroupBox::indicator:disabled {
     background-color: @bg_window;
     border-color: @divider_strong;
 }
 QCheckBox::indicator:checked:disabled,
 QRadioButton::indicator:checked:disabled,
-QGroupBox::indicator:checked:disabled,
-QAbstractItemView::indicator:checked:disabled {
+QGroupBox::indicator:checked:disabled {
     background-color: @accent_disabled;
     border-color: @accent_disabled;
 }
@@ -828,11 +763,6 @@ QgsDockWidget QListView {
     background-color: @bg_dock;
     border: none;
     border-radius: 0;
-}
-QgsLayerTreeView::item,
-QgsBrowserTreeView::item,
-QgsProcessingToolboxTreeView::item {
-    padding: 3px 2px;
 }
 
 QgsColorButton,
