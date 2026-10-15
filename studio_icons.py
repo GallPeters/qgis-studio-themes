@@ -9,6 +9,7 @@ consistent visual language instead of QGIS's mixed per-icon decorations.
 Icons are rendered per theme into the profile theme folder, where QGIS's
 own icon lookup (QgsApplication.iconPath) finds them.
 """
+import functools
 import re
 from pathlib import Path
 
@@ -415,6 +416,15 @@ def glyph_names():
     return sorted({spec.split("+")[0] for spec in ICON_MAP.values()})
 
 
+def unique_icons():
+    """One icon name per distinct spec (several names share a drawing)."""
+    first = {}
+    for name, spec in ICON_MAP.items():
+        first.setdefault(spec, name)
+    return list(first.values())
+
+
+@functools.lru_cache(maxsize=None)
 def _glyph_body(name):
     svg = (GLYPHS_DIR / f"{name}.svg").read_text(encoding="utf-8")
     return _FRAME.sub("", _BODY.search(svg).group(1)).strip()

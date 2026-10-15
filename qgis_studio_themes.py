@@ -10,12 +10,14 @@ import hashlib
 import json
 import re
 import shutil
+import threading
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
-    QByteArray, QDataStream, QEvent, QFile, QIODevice, QObject, QSize, Qt, QTimer, qVersion,
+    QByteArray, QDataStream, QEvent, QFile, QIODevice, QObject, QSize, Qt, QTimer, pyqtSignal,
+    qVersion,
 )
 from qgis.PyQt.QtGui import (
     QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
@@ -23,7 +25,7 @@ from qgis.PyQt.QtGui import (
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QApplication, QComboBox, QListWidget, QMenu, QMenuBar, QStackedWidget,
-    QTabBar, QToolBar, QToolButton, QWidget,
+    QTabBar, QToolBar, QToolButton,
 )
 
 from . import studio_icons
@@ -35,13 +37,16 @@ SHARED_STYLE = THEMES_DIR / "style.qss"
 SHARED_TOKENS = THEMES_DIR / "base.qss"
 WIDGET_GLYPHS = THEMES_DIR / "icons"
 FONTS_DIR = PLUGIN_DIR / "fonts"
+METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
+# Bump when the layout of a built theme changes, so old builds are redone.
+BUILD_FORMAT = "2"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
 # a near-empty pass, and the plugin applies the real stylesheet once,
 # after installing the palette.
-STUB_STYLE = "/* Studio theme: the plugin applies the stylesheet. */\n"
+STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
 
 # QGIS adds these rules to the main window's own stylesheet when it starts
@@ -55,8 +60,12 @@ DEFAULT_THEME_RULES = re.compile(
 
 
 def shared_sources():
-    """Files every built theme depends on (one stat() each per startup)."""
-    sources = [SHARED_STYLE, SHARED_TOKENS, Path(studio_icons.__file__), Path(__file__)]
+    """Files every built theme depends on. An installed release changes
+    them only together with metadata.txt, so that one stat() is enough; a
+    git checkout (development) tracks every source file."""
+    if not (PLUGIN_DIR / ".git").exists():
+        return [METADATA]
+    sources = [METADATA, SHARED_STYLE, SHARED_TOKENS, Path(studio_icons.__file__), Path(__file__)]
     sources += sorted(WIDGET_GLYPHS.glob("*.svg"))
     sources += sorted(studio_icons.GLYPHS_DIR.glob("*.svg"))
     return sources
@@ -73,12 +82,14 @@ PNG_SIZES = (16, 24, 32, 48)
 
 
 def png_path(icons_dir, name, size):
-    return icons_dir / "png" / Path(name).with_suffix("") / f"{size}.png"
+    """Shared by every icon name with the same drawing (spec)."""
+    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}.png"
 
 
 def render_pngs(icons_dir, name):
     """Pre-render one icon at the common sizes: decoding a small PNG is
-    about 2.5x cheaper than drawing the SVG the first time it is shown."""
+    about 2.5x cheaper than drawing the SVG the first time it is shown.
+    Safe in a worker thread (QImage painting needs no GUI thread)."""
     renderer = QSvgRenderer(str(icons_dir / icon_file(name)))
     for size in PNG_SIZES:
         image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
@@ -106,10 +117,25 @@ def load_tokens(folder):
     ))
 
 
-def build_theme(folder, target, shared_stamp):
+def prerender_pngs(icons_dir, stop):
+    """Pre-render every distinct icon of a built theme (worker thread).
+    Returns True once all are written, False if stopped or failed."""
+    try:
+        for name in studio_icons.unique_icons():
+            if stop.is_set():
+                return False
+            render_pngs(icons_dir, name)
+        (icons_dir / "png" / ".done").write_bytes(b"")
+    except OSError:
+        return False
+    return True
+
+
+def build_theme(folder, target, shared_stamp, active):
     """Write the resolved stylesheet and all icons for one theme into
-    `target`. Skipped when nothing changed since the last build, so
-    startup costs only a few stat() calls."""
+    `target`; style.qss gets the real stylesheet only when `active` (see
+    STUB_STYLE). Skipped when nothing changed since the last build, so
+    startup costs only a few stat() calls. Thread-safe (no Qt calls)."""
     stamp = build_stamp([THEMES_DIR / folder / "variables.qss"]) + shared_stamp
     stamp_file = target / STAMP
     if stamp_file.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
@@ -136,12 +162,21 @@ def build_theme(folder, target, shared_stamp):
         "on_accent": tokens["@on_accent"],
         "danger": tokens["@danger"],
     }
+    folders = set()
+    svgs = {}
     for name, spec in studio_icons.ICON_MAP.items():
         path = target / "icons" / icon_file(name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(studio_icons.render_icon(spec, colors), encoding="utf-8")
+        if path.parent not in folders:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            folders.add(path.parent)
+        if spec not in svgs:
+            svgs[spec] = studio_icons.render_icon(spec, colors)
+        path.write_text(svgs[spec], encoding="utf-8")
     (target / FULL_STYLE).write_text(style, encoding="utf-8")
-    (target / "style.qss").write_text(style, encoding="utf-8")
+    if active:
+        shutil.copyfile(target / FULL_STYLE, target / "style.qss")
+    else:
+        (target / "style.qss").write_bytes(STUB_STYLE)
     stamp_file.write_text(stamp, encoding="utf-8")
 
 
@@ -200,6 +235,13 @@ class IconSwapper(QObject):
     PROPERTY = "_studioIconsTheme"
     RESOURCES = ":/images/themes/default/"
     BATCH = 60
+    # Bookkeeping is pruned of deleted objects once it doubles (see _compact).
+    COMPACT_MIN = 500
+    # The only widgets _visit acts on: a scan asks Qt for these in one call
+    # instead of walking every widget of a window from Python.
+    ICON_TYPES = (
+        QAbstractButton, QToolBar, QMenuBar, QListWidget, QComboBox, QTabBar, QMenu, QStackedWidget,
+    )
     _UNKNOWN = object()
     _CHILD_POLISHED = QEvent.Type.ChildPolished
 
@@ -215,6 +257,8 @@ class IconSwapper(QObject):
         self._png = False
         self._scanned = []
         self._names = {}
+        self._base_names = {}
+        self._compact_at = self.COMPACT_MIN
         self._ours = {}
         self._reference_table = None
         self._icons = {}
@@ -233,8 +277,10 @@ class IconSwapper(QObject):
         self._names = {}
         self._icons_dir = icons_dir
         self._png = (icons_dir / "png" / ".done").exists()
-        for name in studio_icons.ICON_MAP:
-            self._names[QgsApplication.getThemeIcon(name).cacheKey()] = name
+        self._base_names = {
+            QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
+        }
+        self._names = dict(self._base_names)
         # Existing widgets: identify cheap matches now, the rest in idle
         # time. Hidden windows are left to the focus fallback and menus are
         # swapped when they are about to open.
@@ -252,6 +298,7 @@ class IconSwapper(QObject):
         built-in icons first would update each action twice, and every
         update relays out the toolbars and menus that show it. Hooks and
         identified icons carry over unchanged."""
+        self._compact()
         self._theme = theme
         self._icons = {}
         self._icons_dir = icons_dir
@@ -275,6 +322,31 @@ class IconSwapper(QObject):
         is not one of ours, e.g. the application replaced it since)."""
         name = self._ours.get(icon.cacheKey())
         return None if name is None else self._icon(name)
+
+    def use_pngs(self, icons_dir):
+        """The active theme's PNGs are ready: icons handed out from now on
+        use them. Icons already shown keep their (rendered) SVG versions."""
+        if self._theme is not None and icons_dir == self._icons_dir and not self._png:
+            self._png = True
+            self._icons = {}
+
+    def _compact(self):
+        """Forget deleted widgets, actions and the icons of closed dialogs,
+        so bookkeeping, re-theming and restoring stay proportional to what
+        is alive rather than to every dialog opened this session."""
+        def alive(obj):
+            return not sip.isdeleted(obj)
+
+        self._swapped = [entry for entry in self._swapped if alive(entry[0])]
+        self._scanned = [widget for widget in self._scanned if alive(widget)]
+        self._filtered = [obj for obj in self._filtered if alive(obj)]
+        self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
+        for table in (self._stacks, self._menus, self._models):
+            for key in [key for key, (obj, _slot) in table.items() if not alive(obj)]:
+                del table[key]
+        self._names = dict(self._base_names)
+        self._names.update(dict.fromkeys(self._ours))
+        self._compact_at = max(self.COMPACT_MIN, 2 * (len(self._scanned) + len(self._swapped)))
 
     def _filter(self, obj):
         obj.installEventFilter(self)
@@ -419,22 +491,31 @@ class IconSwapper(QObject):
 
         Only the current page of each stacked widget is entered (dialogs
         and panels keep most pages hidden); other pages are scanned when
-        they become current."""
+        they become current. Qt returns the candidates parents first, so a
+        stacked widget is always seen before the pages it excludes."""
         if self._theme is None or sip.isdeleted(root) or root.property(self.PROPERTY) == self._theme:
             return
+        if len(self._scanned) + len(self._swapped) >= self._compact_at:
+            self._compact()
         self._mark(root)
-        stack = [root]
-        while stack:
-            widget = stack.pop()
+        widgets = root.findChildren(self.ICON_TYPES)
+        if isinstance(root, self.ICON_TYPES):
+            widgets.insert(0, root)
+        skipped = set()
+        for widget in widgets:
+            if widget in skipped:
+                continue
             self._visit(widget, deferred)
             if isinstance(widget, QStackedWidget):
                 self._hook_stack(widget)
-                page = widget.currentWidget()
-                if page is not None and page.property(self.PROPERTY) != self._theme:
-                    self._mark(page)
-                    stack.append(page)
-            else:
-                stack.extend(widget.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly))
+                current = widget.currentWidget()
+                for index in range(widget.count()):
+                    page = widget.widget(index)
+                    if page is current and page.property(self.PROPERTY) != self._theme:
+                        self._mark(page)
+                    else:
+                        skipped.add(page)
+                        skipped.update(page.findChildren(self.ICON_TYPES))
 
     def _mark(self, widget):
         widget.setProperty(self.PROPERTY, self._theme)
@@ -572,6 +653,12 @@ class IconSwapper(QObject):
             if not sip.isdeleted(root):
                 root.setProperty(self.PROPERTY, None)
         self._scanned = []
+        self._compact_at = self.COMPACT_MIN
+
+
+class _Relay(QObject):
+    """Carries worker-thread results to the GUI thread (queued signal)."""
+    pngs_ready = pyqtSignal(object)
 
 
 class QgisStudioThemesPlugin:
@@ -604,6 +691,15 @@ class QgisStudioThemesPlugin:
         self._main_window_sheet = None
         self._prepared = None
         self._fonts_loaded = False
+        self._shared_stamp = None
+        # One lock per theme serialises its build (background builder vs.
+        # a runtime switch) and its style.qss.
+        self._locks = {name: threading.Lock() for name in self.THEMES}
+        self._stop = threading.Event()
+        self._threads = []
+        self._rendering = set()
+        self._relay = _Relay()
+        self._relay.pngs_ready.connect(self._icons.use_pngs)
 
     @staticmethod
     def theme_target(name):
@@ -627,20 +723,27 @@ class QgisStudioThemesPlugin:
         QgsApplication.instance().themeChanged.connect(self._sync)
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self._connected = True
-        shared_stamp = build_stamp(shared_sources())
-        built = []
-        for name, folder in self.THEMES.items():
-            try:
-                build_theme(folder, self.theme_target(name), shared_stamp)
-                built.append(name)
-            except Exception as error:  # pylint: disable=broad-except
-                QgsMessageLog.logMessage(
-                    f"Could not build Studio {name}: {error}", LOG_TAG, Qgis.MessageLevel.Critical
-                )
+        self._shared_stamp = BUILD_FORMAT + build_stamp(shared_sources())
+        # Only the configured theme is built now; the others only need a
+        # placeholder style.qss to be registered and are built in the
+        # background (or on demand, if selected first).
+        registered = []
+        pending = []
+        for name in self.THEMES:
+            if f"Studio {name}" == configured:
+                if self._build(name, active=True):
+                    registered.append(name)
+                continue
+            style = self.theme_target(name) / "style.qss"
+            if not style.exists():
+                style.parent.mkdir(parents=True, exist_ok=True)
+                style.write_bytes(STUB_STYLE)
+            registered.append(name)
+            pending.append(name)
         # Before registering: QGIS loads the configured theme's style.qss
         # as soon as that theme is registered.
         self._select_style(configured)
-        for name in built:
+        for name in registered:
             QgsApplication.applicationThemeRegistry().addTheme(
                 f"Studio {name}", self.theme_target(name).as_posix()
             )
@@ -648,8 +751,40 @@ class QgisStudioThemesPlugin:
         # syncing now would undo the preparation above.
         if QgsApplication.themeName() in self._studio_themes():
             self._sync()
+        QTimer.singleShot(2000, lambda: self._start(self._build_pending, pending))
+
+    def _build(self, name, active=False):
+        """Build one theme (no-op when up to date); False if it failed."""
+        with self._locks[name]:
+            try:
+                build_theme(self.THEMES[name], self.theme_target(name), self._shared_stamp, active)
+            except Exception as error:  # pylint: disable=broad-except
+                QgsMessageLog.logMessage(
+                    f"Could not build Studio {name}: {error}", LOG_TAG, Qgis.MessageLevel.Critical
+                )
+                return False
+        return True
+
+    def _build_pending(self, names):
+        for name in names:
+            if self._stop.is_set():
+                return
+            self._build(name)
+
+    def _start(self, target, *args):
+        """Run `target` in a worker thread that unload() waits for."""
+        if self._stop.is_set():
+            return
+        self._threads = [thread for thread in self._threads if thread.is_alive()]
+        thread = threading.Thread(target=target, args=args, daemon=True)
+        self._threads.append(thread)
+        thread.start()
 
     def unload(self):
+        self._stop.set()
+        for thread in self._threads:
+            thread.join()
+        self._threads = []
         if self._connected:
             QgsApplication.instance().themeChanged.disconnect(self._sync)
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
@@ -662,16 +797,30 @@ class QgisStudioThemesPlugin:
 
     def _select_style(self, active):
         """Give QGIS the real stylesheet only for `active` (the theme it
-        will load at startup) and the placeholder for the others."""
+        will load at startup) and the placeholder for the others. Sizes
+        tell them apart (style.qss is only ever one of the two), so this
+        costs a few stat() calls instead of reading every stylesheet."""
         for name in self.THEMES:
-            target = self.theme_target(name)
-            full = target / FULL_STYLE
-            if not full.exists():
+            is_active = f"Studio {name}" == active
+            lock = self._locks[name]
+            # A theme being built in the background gets the placeholder
+            # from its build; the active one must not be skipped.
+            if not lock.acquire(blocking=is_active):
                 continue
-            wanted = full.read_text(encoding="utf-8") if f"Studio {name}" == active else STUB_STYLE
-            current = target / "style.qss"
-            if not current.exists() or current.read_text(encoding="utf-8") != wanted:
-                current.write_text(wanted, encoding="utf-8")
+            try:
+                target = self.theme_target(name)
+                full = target / FULL_STYLE
+                current = target / "style.qss"
+                if not full.exists():
+                    continue
+                size = current.stat().st_size if current.exists() else -1
+                if is_active:
+                    if size != full.stat().st_size:
+                        shutil.copyfile(full, current)
+                elif size != len(STUB_STYLE):
+                    current.write_bytes(STUB_STYLE)
+            finally:
+                lock.release()
 
     def _studio_themes(self):
         return {f"Studio {name}": (name, folder) for name, folder in self.THEMES.items()}
@@ -710,6 +859,9 @@ class QgisStudioThemesPlugin:
             return
         if theme == self._active:
             return
+        if not self._build(studio[theme][0]):
+            self._deactivate()
+            return
         if self._prepared != theme:
             # Switched at runtime: QGIS has just applied the near-empty
             # placeholder, which already dropped the palette copies Qt kept
@@ -725,31 +877,20 @@ class QgisStudioThemesPlugin:
         icons_dir = self.theme_target(name) / "icons"
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
         self._style_message_bar()
-        self._prerender(theme, icons_dir)
+        self._prerender(icons_dir)
 
-    def _prerender(self, theme, icons_dir):
-        """Pre-render the theme's icons as PNGs in idle time, a few per
-        event-loop pass; used from the next start (or theme switch) on."""
-        done = icons_dir / "png" / ".done"
-        if done.exists():
+    def _prerender(self, icons_dir):
+        """Pre-render the theme's icons as PNGs in a worker thread, off
+        startup's critical path; icons requested afterwards use them."""
+        if icons_dir in self._rendering or (icons_dir / "png" / ".done").exists():
             return
-        queue = list(studio_icons.ICON_MAP)
+        self._rendering.add(icons_dir)
 
-        def step():
-            if self._active != theme:
-                return
-            for name in queue[:6]:
-                try:
-                    render_pngs(icons_dir, name)
-                except OSError:
-                    return
-            del queue[:6]
-            if queue:
-                QTimer.singleShot(0, step)
-            else:
-                done.write_text("", encoding="utf-8")
+        def work():
+            if prerender_pngs(icons_dir, self._stop):
+                self._relay.pngs_ready.emit(icons_dir)
 
-        QTimer.singleShot(3000, step)
+        QTimer.singleShot(3000, lambda: self._start(work))
 
     def _deactivate(self):
         if self._active is None and self._prepared is None:
