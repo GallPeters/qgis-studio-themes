@@ -657,9 +657,9 @@ BADGE_GAP = 1.1
 
 # Badge marks, drawn in a 24x24 icon inside a circle centred at (18, 18).
 BADGES = {
-    "plus": "M18 15.05v5.9M15.05 18h5.9",
-    "minus": "M15.05 18h5.9",
-    "x": "M15.93 15.93l4.14 4.14M20.07 15.93l-4.14 4.14",
+    "plus": "M18 14.5v7M14.5 18h7",
+    "minus": "M14.5 18h7",
+    "x": "M15.55 15.55l4.9 4.9M20.45 15.55l-4.9 4.9",
     "check": "M15.27 18.11l1.85 1.85l3.49 -3.71",
     "star": "M18 14.84l0.93 2.23l2.23 0.93l-2.23 0.93l-0.93 2.23l-0.93 -2.23l-2.23 -0.93l2.23 -0.93z",
     "dot": "",
@@ -667,9 +667,9 @@ BADGES = {
 # Straight marks get square-cut ends: round caps on such short strokes blur
 # into a blob at 16 px.
 BADGE_MARK = {
-    "plus": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
-    "minus": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
-    "x": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
+    "plus": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
+    "minus": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
+    "x": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
     "check": 'stroke-width="1.45" fill="none"',
     "star": 'stroke-width="0.5" fill="{on_accent}"',
 }
