@@ -651,25 +651,30 @@ SCALE = 1.15
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
 BADGE_RADIUS = 5.9
+# Centre of the badge: on a pixel centre at 24 px (and close at 16/32 px),
+# so the 1.3-wide strokes of its mark cover one pixel column instead of
+# being smeared across two.
+BADGE_CENTER = 17.5
 # Transparent ring cut out of the glyph around the badge, so the two never
 # touch (needs Qt >= 6.7 for SVG masks; older Qt just draws them overlapping).
 BADGE_GAP = 1.1
 
-# Badge marks, drawn in a 24x24 icon inside a circle centred at (18, 18).
+# Badge marks, drawn in a 24x24 icon inside a circle centred at
+# (BADGE_CENTER, BADGE_CENTER).
 BADGES = {
-    "plus": "M18 14.5v7M14.5 18h7",
-    "minus": "M14.5 18h7",
-    "x": "M15.55 15.55l4.9 4.9M20.45 15.55l-4.9 4.9",
-    "check": "M15.27 18.11l1.85 1.85l3.49 -3.71",
-    "star": "M18 14.84l0.93 2.23l2.23 0.93l-2.23 0.93l-0.93 2.23l-0.93 -2.23l-2.23 -0.93l2.23 -0.93z",
+    "plus": "M17.5 14v7M14 17.5h7",
+    "minus": "M14 17.5h7",
+    "x": "M15.05 15.05l4.9 4.9M19.95 15.05l-4.9 4.9",
+    "check": "M14.77 17.61l1.85 1.85l3.49 -3.71",
+    "star": "M17.5 14.34l0.93 2.23l2.23 0.93l-2.23 0.93l-0.93 2.23l-0.93 -2.23l-2.23 -0.93l2.23 -0.93z",
     "dot": "",
 }
 # Straight marks get square-cut ends: round caps on such short strokes blur
 # into a blob at 16 px.
 BADGE_MARK = {
-    "plus": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
-    "minus": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
-    "x": 'stroke-width="1.2" stroke-linecap="butt" fill="none"',
+    "plus": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
+    "minus": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
+    "x": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
     "check": 'stroke-width="1.45" fill="none"',
     "star": 'stroke-width="0.5" fill="{on_accent}"',
 }
@@ -722,7 +727,8 @@ def render_icon(spec, colors):
         parts.append(
             '<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">'
             '<rect width="24" height="24" fill="#fff"/>'
-            f'<circle cx="18" cy="18" r="{radius + BADGE_GAP}" fill="#000"/></mask></defs>'
+            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{radius + BADGE_GAP}" fill="#000"/>'
+            '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
     parts.append(
@@ -731,7 +737,7 @@ def render_icon(spec, colors):
     )
     if badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
-        parts.append(f'<circle cx="18" cy="18" r="{radius}" fill="{fill}"/>')
+        parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{radius}" fill="{fill}"/>')
         if BADGES[badge]:
             style = BADGE_MARK[badge].format(on_accent=colors["on_accent"])
             parts.append(f'<path d="{BADGES[badge]}" stroke="{colors["on_accent"]}" {style}/>')
