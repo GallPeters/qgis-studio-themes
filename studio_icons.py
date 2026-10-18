@@ -645,32 +645,32 @@ EXTERNAL = {
 
 # Visible stroke width (in 24x24 icon units) of every glyph, and how much a
 # glyph is enlarged around the centre: Tabler glyphs leave a ~3 unit margin,
-# so 1.1 makes icons read bigger without changing any widget's icon size.
+# so 1.15 makes icons read bigger without changing any widget's icon size.
 STROKE = 1.5
-SCALE = 1.1
+SCALE = 1.15
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
-BADGE_RADIUS = 5.4
+BADGE_RADIUS = 5.9
 # Transparent ring cut out of the glyph around the badge, so the two never
 # touch (needs Qt >= 6.7 for SVG masks; older Qt just draws them overlapping).
-BADGE_GAP = 1.2
+BADGE_GAP = 1.1
 
 # Badge marks, drawn in a 24x24 icon inside a circle centred at (18, 18).
 BADGES = {
-    "plus": "M18 15.3v5.4M15.3 18h5.4",
-    "minus": "M15.3 18h5.4",
-    "x": "M16.1 16.1l3.8 3.8M19.9 16.1l-3.8 3.8",
-    "check": "M15.5 18.1l1.7 1.7l3.2 -3.4",
-    "star": "M18 15.1l0.85 2.05l2.05 0.85l-2.05 0.85l-0.85 2.05l-0.85 -2.05l-2.05 -0.85l2.05 -0.85z",
+    "plus": "M18 15.05v5.9M15.05 18h5.9",
+    "minus": "M15.05 18h5.9",
+    "x": "M15.93 15.93l4.14 4.14M20.07 15.93l-4.14 4.14",
+    "check": "M15.27 18.11l1.85 1.85l3.49 -3.71",
+    "star": "M18 14.84l0.93 2.23l2.23 0.93l-2.23 0.93l-0.93 2.23l-0.93 -2.23l-2.23 -0.93l2.23 -0.93z",
     "dot": "",
 }
 # Straight marks get square-cut ends: round caps on such short strokes blur
 # into a blob at 16 px.
 BADGE_MARK = {
-    "plus": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
-    "minus": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
-    "x": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
-    "check": 'stroke-width="1.35" fill="none"',
+    "plus": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
+    "minus": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
+    "x": 'stroke-width="1.45" stroke-linecap="butt" fill="none"',
+    "check": 'stroke-width="1.45" fill="none"',
     "star": 'stroke-width="0.5" fill="{on_accent}"',
 }
 

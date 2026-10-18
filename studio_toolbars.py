@@ -7,16 +7,22 @@ action, so QGIS, plugins and Interface Customization never see it. The
 handle is widened through the stylesheet only while a label is attached
 (QToolBar[studioLabel="true"]).
 
-Horizontal toolbars get upright letters stacked top to bottom (rotated
-text loses Windows' font hinting and looks blurry at this size), so names
-are at most four letters; vertical toolbars get the name across the top.
+Horizontal toolbars get the name rotated to read top to bottom. Text drawn
+rotated loses Windows' font hinting and looks blurry at this size, so it is
+drawn upright into an image that is then turned by exactly 90 degrees
+(lossless). Vertical toolbars get the name across the top.
 """
 from qgis.PyQt import sip
+import math
+
 from qgis.PyQt.QtCore import QEvent, QObject, QRect, Qt
-from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QPainter
+from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QTransform
 from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWidget
 
 PROPERTY = "studioLabel"
+# Largest first; the first size at which the name fits the handle wins.
+FONT_SIZES = (10, 9, 8)
+LETTER_SPACING = 1.0
 
 # QGIS's own toolbars (main window and layout designer). Others, such as
 # plugin toolbars, get an abbreviation of their title.
@@ -68,35 +74,58 @@ class _Label(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.color = color
         self.text = ""
-        font = QFont(QApplication.font())
-        font.setPixelSize(9)
-        font.setWeight(QFont.Weight.Bold)
-        self.setFont(font)
+        self.setFont(label_font(FONT_SIZES[0]))
 
     def paintEvent(self, _event):  # pylint: disable=invalid-name
         if not self.text:
             return
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-        painter.setPen(self.color)
         rect = self.rect()
-        if rect.height() >= rect.width():
-            # Horizontal toolbar: upright letters stacked top to bottom,
-            # centred as a block. Capitals only, so a cap-height step
-            # (rather than the full line height) keeps them compact.
-            step = letter_step(self.fontMetrics())
-            top = rect.top() + (rect.height() - step * len(self.text)) // 2
-            for i, letter in enumerate(self.text):
-                cell = QRect(rect.left(), top + i * step, rect.width(), step)
-                painter.drawText(cell, Qt.AlignmentFlag.AlignCenter, letter)
-        else:
+        if rect.height() < rect.width():
+            # Vertical toolbar: the name runs across the top.
+            painter.setPen(self.color)
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text)
+            painter.end()
+            return
+        # Horizontal toolbar: draw upright (hinted, sharp), then turn the
+        # image clockwise by exactly 90 degrees so it reads top to bottom.
+        ratio = self.devicePixelRatioF()
+        image = QImage(
+            math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio),
+            QImage.Format.Format_ARGB32_Premultiplied,
+        )
+        image.setDevicePixelRatio(ratio)
+        image.fill(Qt.GlobalColor.transparent)
+        upright = QPainter(image)
+        upright.setFont(self.font())
+        upright.setPen(self.color)
+        upright.drawText(QRect(0, 0, rect.height(), rect.width()), Qt.AlignmentFlag.AlignCenter, self.text)
+        upright.end()
+        image = image.transformed(QTransform().rotate(90))
+        image.setDevicePixelRatio(ratio)
+        painter.drawImage(rect.topLeft(), image)
         painter.end()
 
 
-def letter_step(metrics):
-    """Vertical distance between stacked capital letters."""
-    return metrics.capHeight() + 1
+def label_font(size):
+    font = QFont(QApplication.font())
+    font.setPixelSize(size)
+    font.setWeight(QFont.Weight.Bold)
+    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, LETTER_SPACING)
+    return font
+
+
+def fit(text, length):
+    """The largest label font at which `text` fits `length` pixels, and the
+    text (shortened only if it does not fit even at the smallest size)."""
+    for size in FONT_SIZES:
+        font = label_font(size)
+        if QFontMetrics(font).horizontalAdvance(text) <= length:
+            return font, text
+    metrics = QFontMetrics(font)
+    while text and metrics.horizontalAdvance(text) > length:
+        text = text[:-1]
+    return font, text
 
 
 class ToolbarLabels(QObject):
@@ -179,18 +208,16 @@ class ToolbarLabels(QObject):
         style = toolbar.style()
         frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
         extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
-        text = abbreviation(toolbar)
-        metrics = QFontMetrics(label.font())
         if toolbar.orientation() == Qt.Orientation.Horizontal:
             rect = QRect(frame, frame, extent, toolbar.height() - 2 * frame)
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
                 rect.moveRight(toolbar.width() - frame - 1)
-            while text and letter_step(metrics) * len(text) > rect.height():
-                text = text[:-1]
+            length = rect.height()
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
-            while text and metrics.horizontalAdvance(text) > rect.width() - 4:
-                text = text[:-1]
+            length = rect.width()
+        font, text = fit(abbreviation(toolbar), length - 4)
+        label.setFont(font)
         label.text = text
         label.setGeometry(rect)
         # The label ignores the mouse; the toolbar shows the full name when
