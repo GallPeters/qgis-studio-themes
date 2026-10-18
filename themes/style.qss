@@ -841,14 +841,17 @@ QgsOptionsTreeView {
     background-color: @bg_window;
     border: none;
     border-radius: 0;
-    padding: 4px;
+    padding: 4px 2px;
 }
+/* Narrow horizontal padding: when a dialog is too narrow, QGIS collapses
+ * this list to an icon-only column, which wider padding pushed the icons
+ * out of. */
 QListWidget#mOptionsListWidget::item,
 QListWidget#mOptListWidget::item,
 QListView#mOptionsListWidget::item,
 QTreeView#mOptionsTreeView::item,
 QgsOptionsTreeView::item {
-    padding: 6px 8px;
+    padding: 6px 6px 6px 4px;
     margin: 1px 0;
     border-radius: @radius;
     border-left: 3px solid transparent;

@@ -363,7 +363,7 @@ class IconSwapper(QObject):
         self._ours = {}
         self._names = {}
         self._icons_dir = icons_dir
-        self._png = (icons_dir / "png" / ".done").exists()
+        self._png = self._pngs_usable(icons_dir)
         self._base_names = {
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
         }
@@ -390,7 +390,7 @@ class IconSwapper(QObject):
         self._theme = theme
         self._icons = {}
         self._icons_dir = icons_dir
-        self._png = (icons_dir / "png" / ".done").exists()
+        self._png = self._pngs_usable(icons_dir)
         # Each setIcon repaints its toolbar or menu: suspend painting and
         # repaint every window once at the end.
         windows = [w for w in QApplication.topLevelWidgets() if w.isVisible() and w.updatesEnabled()]
@@ -431,8 +431,18 @@ class IconSwapper(QObject):
         """The active theme's PNGs are ready: icons handed out from now on
         use them. Icons already shown keep their (rendered) SVG versions."""
         if self._theme is not None and icons_dir == self._icons_dir and not self._png:
-            self._png = True
-            self._icons = {}
+            self._png = self._pngs_usable(icons_dir)
+            if self._png:
+                self._icons = {}
+
+    @staticmethod
+    def _pngs_usable(icons_dir):
+        """Pre-rendered PNGs only on 100% scaled screens: at 125-200% Qt
+        would stretch the fixed 16/24/32/48 px images (soft, chunky icons),
+        while the SVG renders sharp at the exact device size."""
+        if not (icons_dir / "png" / ".done").exists():
+            return False
+        return all(screen.devicePixelRatio() == 1 for screen in QGuiApplication.screens())
 
     def _compact(self):
         """Forget deleted widgets, actions and the icons of closed dialogs,
@@ -1352,6 +1362,8 @@ class QgisStudioThemesPlugin:
         startup's critical path; icons requested afterwards use them."""
         if icons_dir in self._rendering or (icons_dir / "png" / ".done").exists():
             return
+        if any(screen.devicePixelRatio() != 1 for screen in QGuiApplication.screens()):
+            return  # scaled screens use the SVGs (see IconSwapper._pngs_usable)
         self._rendering.add(icons_dir)
 
         def work():

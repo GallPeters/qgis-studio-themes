@@ -43,6 +43,8 @@ changelog=
             single repaint.
           - Icons stay modern when plugins (e.g. Processing) are turned on at
             runtime, and in mode buttons such as snapping overlap.
+          - Sharp icons on scaled (HiDPI) screens; DB Manager, Oracle and more
+            provider icons modernised; dialog page lists fit when collapsed.
           - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 
