@@ -51,6 +51,7 @@ FULL_STYLE = "style.full.qss"
 STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
 LABELS_SETTING = "studio_themes/toolbarLabels"
+MENU_BAR_EXTRA_PT = 1
 
 # QGIS adds these rules to the main window's own stylesheet when it starts
 # with a theme that is not registered yet (ours register a moment later).
@@ -792,6 +793,8 @@ class QgisStudioThemesPlugin:
         self._relay.pngs_ready.connect(self._icons.use_pngs)
         self._labels = ToolbarLabels()
         self._labels_action = None
+        self._menu_bar_sheet = None
+        self._menu_bar_size = None
 
     @staticmethod
     def theme_target(name):
@@ -983,7 +986,22 @@ class QgisStudioThemesPlugin:
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
         self._style_message_bar()
         self._apply_labels()
+        self._style_menu_bar()
         self._prerender(icons_dir)
+
+    def _style_menu_bar(self):
+        """Main menu text one point larger than the UI font, so it reads as
+        the top level. QGIS sets the UI font through its application
+        stylesheet, which overrides QWidget.setFont, so the bar gets a small
+        stylesheet of its own, sized from the font it would otherwise use
+        (so it still follows the size chosen in QGIS's options)."""
+        bar = self.iface.mainWindow().menuBar()
+        if self._menu_bar_sheet is None:
+            self._menu_bar_sheet = bar.styleSheet()
+            self._menu_bar_size = bar.font().pointSizeF()
+        bar.setStyleSheet(
+            f"QMenuBar {{ font-size: {self._menu_bar_size + MENU_BAR_EXTRA_PT:g}pt; }}"
+        )
 
     # ---- Toolbar labels ---------------------------------------------------
 
@@ -1032,6 +1050,9 @@ class QgisStudioThemesPlugin:
         self._active = None
         self._prepared = None
         self._labels.detach()
+        if self._menu_bar_sheet is not None:
+            self.iface.mainWindow().menuBar().setStyleSheet(self._menu_bar_sheet)
+            self._menu_bar_sheet = None
         self._icons.restore()
         QApplication.setPalette(self._original_palette)
         QApplication.setFont(self._original_font)
