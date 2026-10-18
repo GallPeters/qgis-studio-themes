@@ -46,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "7"
+BUILD_FORMAT = "8"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -98,25 +98,29 @@ def disabled_path(icons_dir, name):
     return icons_dir / "disabled" / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
-def png_path(icons_dir, name, size):
+def png_path(icons_dir, name, size, disabled=False):
     """Shared by every icon name with the same drawing (spec)."""
-    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}.png"
+    suffix = "-disabled" if disabled else ""
+    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}{suffix}.png"
 
 
 def render_pngs(icons_dir, name):
     """Pre-render one icon at the common sizes: decoding a small PNG is
     about 2.5x cheaper than drawing the SVG the first time it is shown.
     Safe in a worker thread (QImage painting needs no GUI thread)."""
-    renderer = QSvgRenderer(str(icons_dir / icon_file(name)))
-    for size in PNG_SIZES:
-        image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
-        image.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(image)
-        renderer.render(painter)
-        painter.end()
-        path = png_path(icons_dir, name, size)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        image.save(str(path))
+    for disabled, source in (
+        (False, icons_dir / icon_file(name)), (True, disabled_path(icons_dir, name)),
+    ):
+        renderer = QSvgRenderer(str(source))
+        for size in PNG_SIZES:
+            image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+            image.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(image)
+            renderer.render(painter)
+            painter.end()
+            path = png_path(icons_dir, name, size, disabled)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            image.save(str(path))
 
 
 def build_stamp(sources):
@@ -330,6 +334,8 @@ class IconSwapper(QObject):
         self._compact_at = self.COMPACT_MIN
         self._ours = {}
         self._reference_table = None
+        # The disk cache is read once; a stale or missing one is recomputed.
+        self._cache_checked = False
         # Built incrementally in idle time (see _warm_reference).
         self._reference_partial = None
         self._reference_queue = None
@@ -479,6 +485,9 @@ class IconSwapper(QObject):
         icon map), or False when it has to be computed."""
         if self._reference_table is not None:
             return True
+        if self._cache_checked:
+            return False
+        self._cache_checked = True
         if self._cache_file is None or not self._cache_file.exists():
             return False
         try:
@@ -576,6 +585,7 @@ class IconSwapper(QObject):
         get a folder, so groups and tools are told apart at a glance."""
         if self._theme is None:
             return None
+        row = (row, group)
         name = self._view_names.get(row, self._UNKNOWN)
         if name is self._UNKNOWN:
             name = self._names.get(icon.cacheKey(), self._UNKNOWN)
@@ -608,7 +618,10 @@ class IconSwapper(QObject):
                 ours = QIcon()
                 for size in PNG_SIZES:
                     ours.addFile(str(png_path(self._icons_dir, name, size)), QSize(size, size))
-                    ours.addFile(disabled, QSize(size, size), QIcon.Mode.Disabled)
+                    ours.addFile(
+                        str(png_path(self._icons_dir, name, size, True)), QSize(size, size),
+                        QIcon.Mode.Disabled,
+                    )
             else:
                 ours = QIcon(str(self._icons_dir / icon_file(name)))
                 ours.addFile(disabled, QSize(), QIcon.Mode.Disabled)
@@ -997,6 +1010,8 @@ class QgisStudioThemesPlugin:
         self._stop = threading.Event()
         self._threads = []
         self._jobs = queue.Queue()
+        self._worker_lock = threading.Lock()
+        self._worker_running = False
         self._rendering = set()
         self._relay = _Relay()
         self._relay.pngs_ready.connect(self._icons.use_pngs)
@@ -1040,7 +1055,12 @@ class QgisStudioThemesPlugin:
         # stylesheet on the bar would give every menu, all children of the
         # bar, a slower style chain of its own) and into the build stamp, so
         # a changed QGIS font size rebuilds the themes.
-        base_size = self.iface.mainWindow().menuBar().font().pointSizeF()
+        # From QGIS's font-size option (or the font QGIS started with), not
+        # from the menu bar, which already carries this theme's larger size
+        # when the plugin is reloaded while a Studio theme is active.
+        base_size = QgsSettings().value(
+            "qgis/stylesheet/fontPointSize", self._original_font.pointSizeF(), type=float
+        )
         menu_size = base_size + MENU_BAR_EXTRA_PT
         self._extra_tokens = {
             "@menu_font_size": f"{menu_size:g}pt",
@@ -1106,19 +1126,29 @@ class QgisStudioThemesPlugin:
         they compete less with the GUI thread for Python's lock."""
         if self._stop.is_set():
             return
-        self._jobs.put((target, args))
-        if not any(thread.is_alive() for thread in self._threads):
-            thread = threading.Thread(target=self._work, daemon=True)
-            self._threads = [thread]
-            thread.start()
+        with self._worker_lock:
+            self._jobs.put((target, args))
+            if not self._worker_running:
+                self._worker_running = True
+                thread = threading.Thread(target=self._work, daemon=True)
+                self._threads = [thread]
+                thread.start()
 
     def _work(self):
         while not self._stop.is_set():
             try:
                 target, args = self._jobs.get(timeout=0.5)
             except queue.Empty:
-                return
+                # Exit only if nothing was queued meanwhile; _start checks
+                # the same flag under the same lock, so no job is dropped.
+                with self._worker_lock:
+                    if self._jobs.empty():
+                        self._worker_running = False
+                        return
+                continue
             target(*args)
+        with self._worker_lock:
+            self._worker_running = False
 
     def unload(self):
         self._stop.set()
@@ -1259,6 +1289,8 @@ class QgisStudioThemesPlugin:
             return
         self._labels.set_color(self._label_color())
         self._labels.attach(self.iface.mainWindow(), self._label_color())
+        for designer in self.iface.openLayoutDesigners():
+            self._labels.attach(designer.window(), self._label_color())
 
     def _toggle_labels(self, checked):
         QgsSettings().setValue(LABELS_SETTING, checked)

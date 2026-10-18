@@ -160,6 +160,8 @@ class ToolbarLabels(QObject):
         self._windows = []
         self._labels = {}
         self._tooltips = {}
+        # Signal connections per toolbar, undone on detach.
+        self._slots = {}
 
     def attach(self, window, color):
         """Label every toolbar of `window` (a QMainWindow)."""
@@ -187,6 +189,8 @@ class ToolbarLabels(QObject):
             if sip.isdeleted(toolbar):
                 continue
             toolbar.removeEventFilter(self)
+            for signal, slot in self._slots.pop(toolbar, ()):
+                signal.disconnect(slot)
             toolbar.setProperty(PROPERTY, None)
             if toolbar in self._tooltips:
                 toolbar.setToolTip(self._tooltips[toolbar])
@@ -195,6 +199,7 @@ class ToolbarLabels(QObject):
                 label.deleteLater()
         self._labels = {}
         self._tooltips = {}
+        self._slots = {}
 
     def _add(self, toolbar):
         if toolbar in self._labels:
@@ -205,11 +210,20 @@ class ToolbarLabels(QObject):
         self._repolish(toolbar)
         toolbar.installEventFilter(self)
         place = lambda *_args, toolbar=toolbar: self._place(toolbar)  # noqa: E731
-        for signal in (toolbar.windowTitleChanged, toolbar.topLevelChanged,
-                       toolbar.movableChanged, toolbar.orientationChanged):
-            signal.connect(place)
-        toolbar.destroyed.connect(lambda _obj=None, toolbar=toolbar: self._labels.pop(toolbar, None))
+        forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
+        slots = [(signal, place) for signal in (
+            toolbar.windowTitleChanged, toolbar.topLevelChanged,
+            toolbar.movableChanged, toolbar.orientationChanged,
+        )] + [(toolbar.destroyed, forget)]
+        for signal, slot in slots:
+            signal.connect(slot)
+        self._slots[toolbar] = slots
         self._place(toolbar)
+
+    def _forget(self, toolbar):
+        self._labels.pop(toolbar, None)
+        self._tooltips.pop(toolbar, None)
+        self._slots.pop(toolbar, None)
 
     @staticmethod
     def _repolish(toolbar):
