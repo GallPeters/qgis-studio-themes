@@ -19,11 +19,11 @@ QGIS 4.0 or later.
 
 | Theme | Mode | Palette |
 |---|---|---|
-| Studio Premium | Dark | Neutral grey with QGIS green accents |
-| Studio Web | Dark | Navy, based on the qgis.org website |
-| Studio Dark | Dark | Near-black with orange accents |
+| Studio Premium Dark | Dark | Neutral grey with QGIS green accents |
+| Studio Web Dark | Dark | Navy, based on the qgis.org website |
+| Studio Orange Dark | Dark | Near-black with orange accents |
 | Studio Pro Light | Light | Light grey with blue accents |
-| Studio Light Orange | Light | Warm paper with [Kartoza](https://kartoza.com) brand colours |
+| Studio Orange Light | Light | Warm paper with [Kartoza](https://kartoza.com) brand colours |
 | Studio QGIS Light | Light | Light paper with the [QGIS brand](https://qgis.org/styleguide/) colours |
 
 Each theme sets the Qt colour scheme to match its mode, so native widgets
@@ -33,23 +33,23 @@ contrast requirements.
 
 ## Screenshots
 
-| Studio Premium | Studio Web |
+| Studio Premium Dark | Studio Web Dark |
 |---|---|
-| ![Studio Premium](docs/screenshots/premium.png) | ![Studio Web](docs/screenshots/web.png) |
-| **Studio Dark** | **Studio Pro Light** |
-| ![Studio Dark](docs/screenshots/dark.png) | ![Studio Pro Light](docs/screenshots/pro-light.png) |
-| **Studio Light Orange** | **Studio QGIS Light** |
-| ![Studio Light Orange](docs/screenshots/light-orange.png) | ![Studio QGIS Light](docs/screenshots/qgis-light.png) |
+| ![Studio Premium Dark](docs/screenshots/premium-dark.png) | ![Studio Web Dark](docs/screenshots/web-dark.png) |
+| **Studio Orange Dark** | **Studio Pro Light** |
+| ![Studio Orange Dark](docs/screenshots/orange-dark.png) | ![Studio Pro Light](docs/screenshots/pro-light.png) |
+| **Studio Orange Light** | **Studio QGIS Light** |
+| ![Studio Orange Light](docs/screenshots/orange-light.png) | ![Studio QGIS Light](docs/screenshots/qgis-light.png) |
 
-Layer properties dialog in Studio Premium and Studio Pro Light:
+Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 
 | | |
 |---|---|
-| ![Layer properties, Studio Premium](docs/screenshots/premium_properties.png) | ![Layer properties, Studio Pro Light](docs/screenshots/pro-light_properties.png) |
+| ![Layer properties, Studio Premium Dark](docs/screenshots/premium-dark_properties.png) | ![Layer properties, Studio Pro Light](docs/screenshots/pro-light_properties.png) |
 
 ## Features
 
-- **Icons** – over 350 QGIS toolbar, menu, panel and dialog icons are
+- **Icons** – over 600 QGIS toolbar, menu, panel and dialog icons are
   replaced with a consistent line-icon set based on
   [Tabler Icons](https://tabler.io/icons), coloured for each theme.
 - **Typography** – the bundled Inter typeface is used unless a custom font

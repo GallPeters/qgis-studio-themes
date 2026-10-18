@@ -157,6 +157,7 @@ ICON_MAP = {
     "mActionMapTips.svg": "message-dots",
     "mAction.svg": "bolt",
     "mActionShowRasterCalculator.png": "math",
+    "mActionShowMeshCalculator.svg": "calculator",
     # ---- Selection --------------------------------------------------------
     "mActionSelectRectangle.svg": "marquee-2",
     "mActionSelectPolygon.svg": "lasso-polygon",

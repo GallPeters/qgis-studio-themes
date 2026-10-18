@@ -8,9 +8,9 @@
  */
 
 /* ---- Accent (brand green) ----------------------------------------------- */
-@accent:                 #6b8c42;
-@accent_hover:           #7a9e4c;
-@accent_pressed:         #5c7a38;
+@accent:                 #789d4a;
+@accent_hover:           #85ae53;
+@accent_pressed:         #688840;
 @accent_checked_border:  #5a7a3a;
 @accent_disabled:        #4a5a3a;
 @accent_indeterminate:   #4a6635;

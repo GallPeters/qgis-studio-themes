@@ -308,6 +308,8 @@ class IconSwapper(QObject):
     # row is; on group rows they are replaced by a folder.
     GENERIC_ICONS = frozenset({"providerQgis.svg", "processingAlgorithm.svg"})
     GROUP_ICON = "mIconFolder.svg"
+    # Options > General > UI Theme: QGIS fills it in hash order.
+    THEME_COMBO = "cmbUITheme"
     WARM_BATCH = 25
     _DECORATION = Qt.ItemDataRole.DecorationRole
     _UNKNOWN = object()
@@ -786,6 +788,11 @@ class IconSwapper(QObject):
             menu = widget.menu() or (action.menu() if action is not None else None)
             if menu is not None:
                 self._hook_menu(menu)
+                # Mode buttons (snapping type, overlap...): QGIS later makes
+                # one of these choices the button's default action, so swap
+                # them now rather than only when the menu first opens.
+                for choice in menu.actions():
+                    self._swap(choice, None, None, deferred)
         elif isinstance(widget, QMenu):
             self._hook_menu(widget)
         elif isinstance(widget, (QToolBar, QMenuBar)):
@@ -799,6 +806,8 @@ class IconSwapper(QObject):
         elif isinstance(widget, QListWidget):
             self._rows(widget, "row", deferred)
         elif isinstance(widget, QComboBox):
+            if widget.objectName() == self.THEME_COMBO:
+                self._sort_themes(widget)
             self._rows(widget, "item", deferred)
         elif isinstance(widget, QTabBar):
             for index in range(widget.count()):
@@ -837,6 +846,23 @@ class IconSwapper(QObject):
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
+
+    @staticmethod
+    def _sort_themes(combo):
+        """Alphabetical theme list, so the Studio themes sit together. The
+        selection is kept and no change signal is sent (QGIS would treat it
+        as a theme choice)."""
+        current = combo.currentText()
+        names = sorted((combo.itemText(i) for i in range(combo.count())), key=str.casefold)
+        if names == [combo.itemText(i) for i in range(combo.count())]:
+            return
+        blocked = combo.blockSignals(True)
+        try:
+            combo.clear()
+            combo.addItems(names)
+            combo.setCurrentIndex(max(0, combo.findText(current)))
+        finally:
+            combo.blockSignals(blocked)
 
     def _hook_menu(self, menu):
         """Swap a menu's icons right before it opens, not at startup. The
@@ -994,15 +1020,21 @@ class QgisStudioThemesPlugin:
 
     # Display name (registered as "Studio <name>") -> folder under themes/
     THEMES = {
-        "Premium": "premium",
-        "Web": "web",
+        "Premium Dark": "premium",
+        "Web Dark": "web",
+        "Orange Dark": "dark",
         "Pro Light": "pro",
-        "Dark": "dark",
-        "Light Orange": "light_orange",
+        "Orange Light": "light_orange",
         "QGIS Light": "qgis_light",
     }
     # Former display names -> current ones (kept so saved settings follow).
-    RENAMED = {"Studio Pro": "Studio Pro Light"}
+    RENAMED = {
+        "Studio Pro": "Studio Pro Light",
+        "Studio Premium": "Studio Premium Dark",
+        "Studio Web": "Studio Web Dark",
+        "Studio Dark": "Studio Orange Dark",
+        "Studio Light Orange": "Studio Orange Light",
+    }
 
     def __init__(self, iface):
         self.iface = iface

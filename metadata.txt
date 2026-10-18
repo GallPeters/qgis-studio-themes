@@ -17,7 +17,11 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v0.9 (18.10.2026):
+     ** v0.9 (19.10.2026):
+          - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,
+            Orange Dark, Orange Light (saved choices follow automatically).
+          - Brighter Premium green; stronger accents and text where contrast
+            was low; theme list in Options sorted alphabetically.
           - About 260 more QGIS icons modernised (Options, Project Properties,
             Advanced Digitizing, Data Source Manager, Browser, layout designer,
             styling panel, Processing Toolbox incl. GDAL tools, Python console,
@@ -37,6 +41,8 @@ changelog=
             fingerprinting of symbol previews, cached toolbar labels).
           - Smoother Processing Toolbox and Browser, and theme switching with a
             single repaint.
+          - Icons stay modern when plugins (e.g. Processing) are turned on at
+            runtime, and in mode buttons such as snapping overlap.
           - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 

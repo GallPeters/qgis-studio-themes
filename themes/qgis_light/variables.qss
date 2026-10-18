@@ -45,6 +45,8 @@
 @accent:                 #589632;
 @accent_hover:           #93B023;
 @accent_pressed:         #467828;
+/* Small marks (badge dots): a deeper shade of the QGIS green, ~4.3:1. */
+@icon_accent:            #487B29;
 @accent_checked_border:  #4C8030;
 @accent_disabled:        #C9DCB9;
 @accent_indeterminate:   #77A24B;

@@ -45,6 +45,8 @@
 @accent:                 #B87812;
 @accent_hover:           #DF9E2F;
 @accent_pressed:         #A96E10;
+/* Small marks (badge dots): a deeper shade of the brand orange, ~4.3:1. */
+@icon_accent:            #95610F;
 @accent_checked_border:  #9E640E;
 @accent_disabled:        #E8D2A6;
 @accent_indeterminate:   #CB8F35;

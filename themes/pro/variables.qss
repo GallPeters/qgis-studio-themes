@@ -135,7 +135,7 @@
  *
  *  @text            body / general UI copy       #323232
  *  @text_bright     headings, active labels       #1A1A1A  (near-black)
- *  @text_dim        secondary / metadata          #6E6E6E
+ *  @text_dim        secondary / metadata          #696969
  *  @text_disabled   greyed-out labels             #ABABAB
  *  @text_light      slightly muted body           #4A4A4A
  *  @text_header     panel / dock titles           #3C3C3C
@@ -145,7 +145,7 @@
  */
 @text:                   #323232;
 @text_bright:            #1A1A1A;
-@text_dim:               #6E6E6E;
+@text_dim:               #696969;
 @text_disabled:          #7E7E7E;
 @text_light:             #4A4A4A;
 @text_header:            #3C3C3C;
