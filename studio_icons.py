@@ -666,7 +666,8 @@ BADGES = {
     "minus": "M14 17.5h7",
     "x": "M15.05 15.05l4.9 4.9M19.95 15.05l-4.9 4.9",
     "check": "M14.77 17.61l1.85 1.85l3.49 -3.71",
-    "star": "M17.5 14.34l0.93 2.23l2.23 0.93l-2.23 0.93l-0.93 2.23l-0.93 -2.23l-2.23 -0.93l2.23 -0.93z",
+    # "New" uses the plus too: a filled star read as a heavier plus at 24 px.
+    "star": "M17.5 14v7M14 17.5h7",
     "dot": "",
 }
 # Straight marks get square-cut ends: round caps on such short strokes blur
@@ -676,7 +677,7 @@ BADGE_MARK = {
     "minus": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
     "x": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
     "check": 'stroke-width="1.45" fill="none"',
-    "star": 'stroke-width="0.5" fill="{on_accent}"',
+    "star": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
 }
 
 _BODY = re.compile(r"<svg[^>]*>(.*)</svg>", re.S)
