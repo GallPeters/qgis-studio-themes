@@ -991,8 +991,11 @@ class QgisStudioThemesPlugin:
         return self._labels_action is not None and self._labels_action.isChecked()
 
     def _label_color(self):
-        r, g, b, a = parse_color(self._tokens["@text_dim"])
-        return QColor(r, g, b, round(a * 255))
+        """A third of the way from the dimmed to the normal text colour:
+        readable at 9 px, still quieter than the icons."""
+        dim, text = parse_color(self._tokens["@text_dim"]), parse_color(self._tokens["@text"])
+        r, g, b, a = (x + (y - x) / 3 for x, y in zip(dim, text))
+        return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _apply_labels(self):
         """Attach (or update) the toolbar labels for the active theme."""

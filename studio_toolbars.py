@@ -1,4 +1,4 @@
-"""Small rotated labels on toolbar handles, naming each toolbar.
+"""Small labels on toolbar handles, naming each toolbar.
 
 A transparent overlay is laid over the drag handle on the left (or top,
 for vertical toolbars) of every toolbar of a main window. It ignores the
@@ -6,6 +6,10 @@ mouse, so dragging the toolbar works as before, and it is not a toolbar
 action, so QGIS, plugins and Interface Customization never see it. The
 handle is widened through the stylesheet only while a label is attached
 (QToolBar[studioLabel="true"]).
+
+Horizontal toolbars get upright letters stacked top to bottom (rotated
+text loses Windows' font hinting and looks blurry at this size), so names
+are at most four letters; vertical toolbars get the name across the top.
 """
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QEvent, QObject, QRect, Qt
@@ -28,7 +32,7 @@ ABBREVIATIONS = {
     "mMapNavToolBar": "NAV",
     "mAttributesToolBar": "ATTR",
     "mSelectionToolBar": "SEL",
-    "mLabelToolBar": "LABEL",
+    "mLabelToolBar": "LBL",
     "mAnnotationsToolBar": "ANNO",
     "mPluginToolBar": "PLUG",
     "mHelpToolBar": "HELP",
@@ -38,10 +42,10 @@ ABBREVIATIONS = {
     "mWebToolBar": "WEB",
     "mGpsToolBar": "GPS",
     "mLayoutToolbar": "LYT",
-    "mToolsToolbar": "TOOLS",
+    "mToolsToolbar": "TOOL",
     "mNavigationToolbar": "NAV",
     "mActionsToolbar": "ARNG",
-    "mAtlasToolbar": "ATLAS",
+    "mAtlasToolbar": "ATLS",
     "mReportToolbar": "RPT",
 }
 
@@ -51,7 +55,7 @@ def abbreviation(toolbar):
     if known:
         return known
     words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
-    return words[0][:5].upper() if words else ""
+    return words[0][:4].upper() if words else ""
 
 
 class _Label(QWidget):
@@ -65,9 +69,8 @@ class _Label(QWidget):
         self.color = color
         self.text = ""
         font = QFont(QApplication.font())
-        font.setPixelSize(8)
-        font.setWeight(QFont.Weight.DemiBold)
-        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.6)
+        font.setPixelSize(9)
+        font.setWeight(QFont.Weight.Bold)
         self.setFont(font)
 
     def paintEvent(self, _event):  # pylint: disable=invalid-name
@@ -78,12 +81,22 @@ class _Label(QWidget):
         painter.setPen(self.color)
         rect = self.rect()
         if rect.height() >= rect.width():
-            # Horizontal toolbar: vertical text reading bottom to top.
-            painter.translate(0, rect.height())
-            painter.rotate(-90)
-            rect = QRect(0, 0, rect.height(), rect.width())
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text)
+            # Horizontal toolbar: upright letters stacked top to bottom,
+            # centred as a block. Capitals only, so a cap-height step
+            # (rather than the full line height) keeps them compact.
+            step = letter_step(self.fontMetrics())
+            top = rect.top() + (rect.height() - step * len(self.text)) // 2
+            for i, letter in enumerate(self.text):
+                cell = QRect(rect.left(), top + i * step, rect.width(), step)
+                painter.drawText(cell, Qt.AlignmentFlag.AlignCenter, letter)
+        else:
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text)
         painter.end()
+
+
+def letter_step(metrics):
+    """Vertical distance between stacked capital letters."""
+    return metrics.capHeight() + 1
 
 
 class ToolbarLabels(QObject):
@@ -166,18 +179,18 @@ class ToolbarLabels(QObject):
         style = toolbar.style()
         frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
         extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
+        text = abbreviation(toolbar)
+        metrics = QFontMetrics(label.font())
         if toolbar.orientation() == Qt.Orientation.Horizontal:
             rect = QRect(frame, frame, extent, toolbar.height() - 2 * frame)
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
                 rect.moveRight(toolbar.width() - frame - 1)
-            length = rect.height()
+            while text and letter_step(metrics) * len(text) > rect.height():
+                text = text[:-1]
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
-            length = rect.width()
-        text = abbreviation(toolbar)
-        metrics = QFontMetrics(label.font())
-        while text and metrics.horizontalAdvance(text) > length - 4:
-            text = text[:-1]
+            while text and metrics.horizontalAdvance(text) > rect.width() - 4:
+                text = text[:-1]
         label.text = text
         label.setGeometry(rect)
         # The label ignores the mouse; the toolbar shows the full name when
