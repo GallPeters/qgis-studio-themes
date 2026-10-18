@@ -313,6 +313,7 @@ class IconSwapper(QObject):
     _UNKNOWN = object()
     _CHILD_POLISHED = QEvent.Type.ChildPolished
     _SHOW = QEvent.Type.Show
+    _ACTION_ADDED = QEvent.Type.ActionAdded
 
     def __init__(self, cache_file=None):
         super().__init__()
@@ -324,6 +325,9 @@ class IconSwapper(QObject):
         self._stacks = {}
         self._menus = {}
         self._docks = set()
+        # Toolbars and menu bars watched for actions added later (a plugin
+        # turned on, Processing re-enabled...).
+        self._bars = set()
         self._delegates = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
@@ -439,6 +443,7 @@ class IconSwapper(QObject):
         self._scanned = [widget for widget in self._scanned if alive(widget)]
         self._filtered = [obj for obj in self._filtered if alive(obj)]
         self._docks = {id(obj) for obj in self._filtered if isinstance(obj, QDockWidget)}
+        self._bars = {id(obj) for obj in self._filtered if isinstance(obj, (QToolBar, QMenuBar))}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         for table in (self._stacks, self._menus, self._models, self._delegates):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
@@ -452,9 +457,15 @@ class IconSwapper(QObject):
         self._filtered.append(obj)
 
     def eventFilter(self, watched, event):  # pylint: disable=invalid-name
-        if event.type() == self._SHOW and isinstance(watched, QMenu):
+        kind = event.type()
+        if kind == self._SHOW and isinstance(watched, QMenu):
             self._menu_shown(watched)
-        elif event.type() == self._CHILD_POLISHED:
+        elif kind == self._ACTION_ADDED and isinstance(watched, (QToolBar, QMenuBar)):
+            # Swap once the code adding the action has finished setting it
+            # up (some set the icon after addAction).
+            action = event.action()
+            QTimer.singleShot(0, lambda action=action: self._swap(action, None, None, False))
+        elif kind == self._CHILD_POLISHED:
             child = event.child()
             if child is not None and child.isWidgetType() and (
                 not isinstance(watched, QStackedWidget) or watched.currentWidget() is child
@@ -780,6 +791,9 @@ class IconSwapper(QObject):
         elif isinstance(widget, (QToolBar, QMenuBar)):
             for action in widget.actions():
                 self._swap(action, None, None, deferred)
+            if id(widget) not in self._bars:
+                self._bars.add(id(widget))
+                self._filter(widget)
         elif isinstance(widget, QAbstractButton):
             self._swap(widget, None, None, deferred)
         elif isinstance(widget, QListWidget):
@@ -928,6 +942,7 @@ class IconSwapper(QObject):
                 obj.removeEventFilter(self)
         self._filtered = []
         self._docks = set()
+        self._bars = set()
         for stacked, current_changed in self._stacks.values():
             if not sip.isdeleted(stacked):
                 stacked.currentChanged.disconnect(current_changed)
