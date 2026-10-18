@@ -138,7 +138,7 @@
 @text:                   #2B2E27;
 @text_bright:            #171A13;
 @text_dim:               #5D6354;
-@text_disabled:          #A3A996;
+@text_disabled:          #7C8174;
 @text_light:             #414639;
 @text_header:            #3F4534;
 @text_placeholder:       #6D7360;

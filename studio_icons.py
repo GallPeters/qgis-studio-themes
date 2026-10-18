@@ -101,7 +101,7 @@ ICON_MAP = {
     "processingResult.svg": "list-check",
     "processingModel.svg": "hierarchy-2",
     "processingScript.svg": "file-code",
-    "processingAlgorithm.svg": "settings-2",
+    "processingAlgorithm.svg": "tool",
     "mIconLayerTree.svg": "stack-2",
     # ---- Layer types (layer tree, browser, combo boxes) -------------------
     "mIconPointLayer.svg": "point",

@@ -136,7 +136,7 @@
 @text:                   #dce6f0;
 @text_bright:            #f0f6ff;
 @text_dim:               #7a9ab8;
-@text_disabled:          #445e78;
+@text_disabled:          #577089;
 @text_light:             #c8d8e8;
 @text_header:            #b8cede;
 @text_placeholder:       #506c88;

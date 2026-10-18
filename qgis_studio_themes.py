@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
-from qgis.gui import QgsBrowserTreeView, QgsFilterLineEdit, QgsProcessingToolboxTreeView
+from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
@@ -46,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "6"
+BUILD_FORMAT = "7"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -89,6 +89,13 @@ def icon_file(name):
 
 
 PNG_SIZES = (16, 24, 32, 48)
+
+
+def disabled_path(icons_dir, name):
+    """Disabled-state drawing of an icon, shared by every name with the same
+    spec. Qt's own disabled rendering fades icons almost into the
+    background; these use the theme's @text_disabled instead."""
+    return icons_dir / "disabled" / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
 def png_path(icons_dir, name, size):
@@ -174,6 +181,8 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
     }
+    # Disabled state: glyph and badge both in the theme's disabled colour.
+    disabled_colors = dict.fromkeys(colors, tokens["@text_disabled"])
     folders = set()
     svgs = {}
     for name, spec in studio_icons.ICON_MAP.items():
@@ -183,6 +192,11 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
             folders.add(path.parent)
         if spec not in svgs:
             svgs[spec] = studio_icons.render_icon(spec, colors)
+            disabled = target / "icons" / "disabled" / f"{spec}.svg"
+            if disabled.parent not in folders:
+                disabled.parent.mkdir(parents=True, exist_ok=True)
+                folders.add(disabled.parent)
+            disabled.write_text(studio_icons.render_icon(spec, disabled_colors), encoding="utf-8")
         path.write_text(svgs[spec], encoding="utf-8")
     (target / FULL_STYLE).write_text(style, encoding="utf-8")
     if active:
@@ -243,7 +257,8 @@ class _IconDelegate(QStyledItemDelegate):
         # Processing plugin tools create a new QIcon on every paint.
         parent = index.parent()
         row = (index.data(), parent.data(), parent.parent().data())
-        icon = self._swapper.row_icon(row, option.icon)
+        group = index.model().hasChildren(index)
+        icon = self._swapper.row_icon(row, option.icon, group)
         if icon is not None:
             option.icon = icon
 
@@ -285,6 +300,10 @@ class IconSwapper(QObject):
     # is applied, WARM_BATCH icons per event-loop pass, so the first dialog
     # opened never pays for all of them at once.
     WARM_DELAY = 4000
+    # Processing Toolbox: icons that say "QGIS tool" rather than what the
+    # row is; on group rows they are replaced by a folder.
+    GENERIC_ICONS = frozenset({"providerQgis.svg", "processingAlgorithm.svg"})
+    GROUP_ICON = "mIconFolder.svg"
     WARM_BATCH = 25
     _DECORATION = Qt.ItemDataRole.DecorationRole
     _UNKNOWN = object()
@@ -550,9 +569,11 @@ class IconSwapper(QObject):
             return None
         return table.get(self._digest(icon))
 
-    def row_icon(self, row, icon):
+    def row_icon(self, row, icon, group=False):
         """Our version of the icon a delegated view draws for `row` (a
-        hashable row identity), or None to keep it. Identified once per row."""
+        hashable row identity), or None to keep it. Identified once per row.
+        Group rows that only repeat the provider's or the generic tool icon
+        get a folder, so groups and tools are told apart at a glance."""
         if self._theme is None:
             return None
         name = self._view_names.get(row, self._UNKNOWN)
@@ -560,6 +581,8 @@ class IconSwapper(QObject):
             name = self._names.get(icon.cacheKey(), self._UNKNOWN)
             if name is self._UNKNOWN:
                 name = self._identify(icon)
+            if group and name in self.GENERIC_ICONS:
+                name = self.GROUP_ICON
             if len(self._view_names) > 8192:
                 self._view_names.clear()
             self._view_names[row] = name
@@ -580,12 +603,15 @@ class IconSwapper(QObject):
     def _icon(self, name):
         """Our icon for a QGIS icon name, in the active theme."""
         if name not in self._icons:
+            disabled = str(disabled_path(self._icons_dir, name))
             if self._png:
                 ours = QIcon()
                 for size in PNG_SIZES:
                     ours.addFile(str(png_path(self._icons_dir, name, size)), QSize(size, size))
+                    ours.addFile(disabled, QSize(size, size), QIcon.Mode.Disabled)
             else:
                 ours = QIcon(str(self._icons_dir / icon_file(name)))
+                ours.addFile(disabled, QSize(), QIcon.Mode.Disabled)
             self._icons[name] = ours
             # Never examine our own icons again.
             self._names[ours.cacheKey()] = None
@@ -765,9 +791,11 @@ class IconSwapper(QObject):
         elif isinstance(widget, QAbstractItemView):
             if isinstance(widget, QgsProcessingToolboxTreeView):
                 self._delegate_view(widget)
-            if isinstance(widget, (QgsBrowserTreeView, QgsProcessingToolboxTreeView)):
+            if isinstance(widget, QgsProcessingToolboxTreeView):
                 # Every row has the same height (theme rule): let Qt measure
-                # one row instead of each, when expanding and scrolling.
+                # one row instead of each, when expanding and scrolling. (Not
+                # the Browser: it is filled lazily, and a row measured while
+                # it is still empty collapses every row to nothing.)
                 widget.setUniformRowHeights(True)
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
@@ -1012,8 +1040,13 @@ class QgisStudioThemesPlugin:
         # stylesheet on the bar would give every menu, all children of the
         # bar, a slower style chain of its own) and into the build stamp, so
         # a changed QGIS font size rebuilds the themes.
-        menu_size = self.iface.mainWindow().menuBar().font().pointSizeF() + MENU_BAR_EXTRA_PT
-        self._extra_tokens = {"@menu_font_size": f"{menu_size:g}pt"}
+        base_size = self.iface.mainWindow().menuBar().font().pointSizeF()
+        menu_size = base_size + MENU_BAR_EXTRA_PT
+        self._extra_tokens = {
+            "@menu_font_size": f"{menu_size:g}pt",
+            "@panel_title_font_size": f"{base_size + 1:g}pt",
+            "@ui_font_size": f"{base_size:g}pt",
+        }
         self._shared_stamp = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
         )

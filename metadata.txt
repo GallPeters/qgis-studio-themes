@@ -26,8 +26,11 @@ changelog=
           - Lighter, slightly larger icons; simple accent-dot badges.
           - Toolbar name labels on each toolbar handle (View > Studio Toolbar
             Labels to turn off).
-          - Larger, more spaced main menu; larger panel toolbar icons; roomier
-            Browser panel.
+          - Larger, more spaced main menu; larger panel toolbar icons; clearer
+            panel titles; Browser, Layers and Processing panels share roomier
+            rows.
+          - Processing Toolbox: folder icons for groups, distinct tool icon.
+          - Clearer disabled text and icons in every theme.
           - Faster startup: only the active theme is prepared up front; icons
             are pre-rendered and identified in the background.
           - Faster dialogs, menus and tab switching (lighter icon scan, no

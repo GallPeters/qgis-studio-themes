@@ -34,9 +34,20 @@ QMainWindow::separator:hover {
 }
 
 QDockWidget {
-    color: @text_dim;
+    color: @text;
     titlebar-close-icon: url(@theme_path/icons/studio/close.svg);
     titlebar-normal-icon: url(@theme_path/icons/studio/float.svg);
+}
+/* Panel titles: one point larger and semibold, so panels are easy to find
+ * and tell apart. The (title-less) font goes on the dock, the contents get
+ * the normal UI font back (sizes filled in by the plugin). */
+QMainWindow > QDockWidget {
+    font-size: @panel_title_font_size;
+    font-weight: 600;
+}
+QMainWindow > QDockWidget > QWidget {
+    font-size: @ui_font_size;
+    font-weight: normal;
 }
 QDockWidget > QWidget {
     background-color: @bg_dock;
@@ -44,7 +55,7 @@ QDockWidget > QWidget {
 }
 QDockWidget::title {
     background-color: @bg_window;
-    padding: 7px 10px 6px 10px;
+    padding: 8px 10px 7px 10px;
     text-align: left;
 }
 QDockWidget::close-button,
@@ -52,8 +63,8 @@ QDockWidget::float-button {
     background: transparent;
     border: none;
     border-radius: @radius_sm;
-    padding: 2px;
-    icon-size: 14px;
+    padding: 3px;
+    icon-size: 16px;
 }
 QDockWidget::close-button:hover,
 QDockWidget::float-button:hover {
@@ -176,14 +187,20 @@ QToolBar::handle {
 QDockWidget QToolBar {
     qproperty-iconSize: 20px 20px;
 }
-/* Browser panel: 20 px provider/folder icons and taller rows for breathing
- * room. The item rule sets only a height (nothing drawable), so Qt keeps
- * drawing the rows natively. */
-QgsBrowserTreeView {
+/* The main panels share one rhythm: 20 px icons and roomy rows. Padding
+ * (not a fixed height) keeps taller legend entries in the Layers panel
+ * intact; the item rule holds nothing drawable, so Qt keeps drawing the
+ * rows natively. */
+QgsBrowserTreeView,
+QgsLayerTreeView,
+QgsProcessingToolboxTreeView {
     qproperty-iconSize: 20px 20px;
 }
-QgsBrowserTreeView::item {
-    height: 26px;
+QgsBrowserTreeView::item,
+QgsLayerTreeView::item,
+QgsProcessingToolboxTreeView::item {
+    padding-top: 2px;
+    padding-bottom: 2px;
 }
 /* Room for the toolbar name label the plugin paints over the handle. */
 QToolBar[studioLabel="true"]::handle {

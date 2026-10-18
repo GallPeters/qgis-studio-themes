@@ -26,36 +26,36 @@ PROPERTY = "studioLabel"
 FONT_SIZES = (10, 9, 8)
 LETTER_SPACING = 1.0
 
-# QGIS's own toolbars (main window and layout designer), three letters
-# each. Others, such as plugin toolbars, get the first three letters of
-# their title.
+# QGIS's own toolbars (main window and layout designer): short, plain words
+# (shrunk to fit if needed). Others, such as plugin toolbars, get the first
+# four letters of their title.
 ABBREVIATIONS = {
-    "mFileToolBar": "PRJ",
-    "mLayerToolBar": "LYR",
-    "mDataSourceManagerToolBar": "DAT",
-    "mDigitizeToolBar": "EDT",
+    "mFileToolBar": "PROJ",
+    "mLayerToolBar": "LAYER",
+    "mDataSourceManagerToolBar": "DATA",
+    "mDigitizeToolBar": "EDIT",
     "mAdvancedDigitizeToolBar": "ADV",
-    "mShapeDigitizeToolBar": "SHP",
-    "mMeshToolBar": "MSH",
-    "mSnappingToolBar": "SNP",
+    "mShapeDigitizeToolBar": "SHAPE",
+    "mMeshToolBar": "MESH",
+    "mSnappingToolBar": "SNAP",
     "mMapNavToolBar": "NAV",
-    "mAttributesToolBar": "ATR",
+    "mAttributesToolBar": "ATTR",
     "mSelectionToolBar": "SEL",
-    "mLabelToolBar": "LBL",
-    "mAnnotationsToolBar": "ANN",
-    "mPluginToolBar": "PLG",
-    "mHelpToolBar": "HLP",
-    "mRasterToolBar": "RST",
-    "mVectorToolBar": "VEC",
+    "mLabelToolBar": "LABEL",
+    "mAnnotationsToolBar": "NOTE",
+    "mPluginToolBar": "PLUG",
+    "mHelpToolBar": "HELP",
+    "mRasterToolBar": "RAST",
+    "mVectorToolBar": "VECT",
     "mDatabaseToolBar": "DB",
     "mWebToolBar": "WEB",
     "mGpsToolBar": "GPS",
-    "mLayoutToolbar": "LYT",
-    "mToolsToolbar": "TLS",
+    "mLayoutToolbar": "PAGE",
+    "mToolsToolbar": "TOOL",
     "mNavigationToolbar": "NAV",
-    "mActionsToolbar": "ARR",
-    "mAtlasToolbar": "ATL",
-    "mReportToolbar": "RPT",
+    "mActionsToolbar": "ALIGN",
+    "mAtlasToolbar": "ATLAS",
+    "mReportToolbar": "REPT",
 }
 
 
@@ -64,7 +64,7 @@ def abbreviation(toolbar):
     if known:
         return known
     words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
-    return words[0][:3].upper() if words else ""
+    return words[0][:4].upper() if words else ""
 
 
 class _Label(QWidget):
@@ -122,30 +122,32 @@ class _Label(QWidget):
         return image
 
 
-def label_font(size):
+def label_font(size, spacing=LETTER_SPACING):
     font = QFont(QApplication.font())
     font.setPixelSize(size)
     font.setWeight(QFont.Weight.Bold)
-    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, LETTER_SPACING)
+    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
     return font
 
 
 def fit(text, length):
     """The largest label font at which `text` fits `length` pixels, and the
     text (shortened only if it does not fit even at the smallest size)."""
-    size, text = _fit(text, length, QApplication.font().family())
-    return label_font(size), text
+    size, spacing, text = _fit(text, length, QApplication.font().family())
+    return label_font(size, spacing), text
 
 
 @functools.lru_cache(maxsize=256)
 def _fit(text, length, _family):
-    for size in FONT_SIZES:
-        if QFontMetrics(label_font(size)).horizontalAdvance(text) <= length:
-            return size, text
-    metrics = QFontMetrics(label_font(FONT_SIZES[-1]))
+    # Largest size first; tighter letter spacing before ever cutting a word.
+    for spacing in (LETTER_SPACING, 0):
+        for size in FONT_SIZES:
+            if QFontMetrics(label_font(size, spacing)).horizontalAdvance(text) <= length:
+                return size, spacing, text
+    metrics = QFontMetrics(label_font(FONT_SIZES[-1], 0))
     while text and metrics.horizontalAdvance(text) > length:
         text = text[:-1]
-    return FONT_SIZES[-1], text
+    return FONT_SIZES[-1], 0, text
 
 
 class ToolbarLabels(QObject):

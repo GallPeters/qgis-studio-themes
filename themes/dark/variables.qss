@@ -51,7 +51,7 @@
 @text:                   #e8e8e8;
 @text_bright:            #ffffff;
 @text_dim:               #a8a8a8;
-@text_disabled:          #585858;
+@text_disabled:          #6e6e6e;
 @text_light:             #d0d0d0;
 @text_header:            #c8c8c8;
 @text_placeholder:       #686868;
