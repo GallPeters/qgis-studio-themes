@@ -19,7 +19,8 @@ changelog=
 
      ** v0.9 (18.10.2026):
           - Lighter, slightly larger icons; crisper add/remove/check badges.
-          - Slightly larger main menu text.
+          - Slightly larger main menu text and larger icons in panel toolbars
+            (Browser, Layers, Processing Toolbox...).
           - About 230 more QGIS icons modernised: Options and Project Properties
             pages, Advanced Digitizing, Data Source Manager, Browser, annotation
             tools, layout designer, styling panel, Processing Toolbox and more.

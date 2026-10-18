@@ -166,6 +166,11 @@ QToolBar::handle {
     width: 6px;
     height: 6px;
 }
+/* Toolbars inside panels (Browser, Layers, Processing Toolbox...) get
+ * slightly larger icons than QGIS's small dock default. */
+QDockWidget QToolBar {
+    qproperty-iconSize: 20px 20px;
+}
 /* Room for the toolbar name label the plugin paints over the handle. */
 QToolBar[studioLabel="true"]::handle {
     width: 14px;

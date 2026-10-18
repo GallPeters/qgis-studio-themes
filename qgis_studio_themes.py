@@ -52,6 +52,8 @@ STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
 LABELS_SETTING = "studio_themes/toolbarLabels"
 MENU_BAR_EXTRA_PT = 1
+# Icon size of toolbars inside panels (QGIS uses 16 px there).
+DOCK_ICON_SIZE = 20
 
 # QGIS adds these rules to the main window's own stylesheet when it starts
 # with a theme that is not registered yet (ours register a moment later).
@@ -795,6 +797,7 @@ class QgisStudioThemesPlugin:
         self._labels_action = None
         self._menu_bar_sheet = None
         self._menu_bar_size = None
+        self._dock_icon_sizes = {}
 
     @staticmethod
     def theme_target(name):
@@ -987,7 +990,22 @@ class QgisStudioThemesPlugin:
         self._style_message_bar()
         self._apply_labels()
         self._style_menu_bar()
+        # After QGIS's own startup sizing, which would undo it.
+        QTimer.singleShot(0, self._size_dock_toolbars)
         self._prerender(icons_dir)
+
+    def _size_dock_toolbars(self):
+        """Panel toolbars (Browser, Layers, Processing Toolbox...) get
+        slightly larger icons. The stylesheet rule covers panels polished
+        later; existing ones are resized here and restored on leaving."""
+        if self._active is None:
+            return
+        size = QSize(DOCK_ICON_SIZE, DOCK_ICON_SIZE)
+        for dock in self.iface.mainWindow().findChildren(QDockWidget):
+            for toolbar in dock.findChildren(QToolBar):
+                if toolbar.iconSize().width() < DOCK_ICON_SIZE:
+                    self._dock_icon_sizes.setdefault(toolbar, toolbar.iconSize())
+                    toolbar.setIconSize(size)
 
     def _style_menu_bar(self):
         """Main menu text one point larger than the UI font, so it reads as
@@ -1053,6 +1071,10 @@ class QgisStudioThemesPlugin:
         if self._menu_bar_sheet is not None:
             self.iface.mainWindow().menuBar().setStyleSheet(self._menu_bar_sheet)
             self._menu_bar_sheet = None
+        for toolbar, size in self._dock_icon_sizes.items():
+            if not sip.isdeleted(toolbar):
+                toolbar.setIconSize(size)
+        self._dock_icon_sizes = {}
         self._icons.restore()
         QApplication.setPalette(self._original_palette)
         QApplication.setFont(self._original_font)

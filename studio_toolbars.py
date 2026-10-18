@@ -7,7 +7,8 @@ action, so QGIS, plugins and Interface Customization never see it. The
 handle is widened through the stylesheet only while a label is attached
 (QToolBar[studioLabel="true"]).
 
-Horizontal toolbars get the name rotated to read top to bottom. Text drawn
+Horizontal toolbars get the name rotated to read bottom to top, like a
+chart's y-axis title: the baseline faces the toolbar's icons. Text drawn
 rotated loses Windows' font hinting and looks blurry at this size, so it is
 drawn upright into an image that is then turned by exactly 90 degrees
 (lossless). Vertical toolbars get the name across the top.
@@ -24,34 +25,35 @@ PROPERTY = "studioLabel"
 FONT_SIZES = (10, 9, 8)
 LETTER_SPACING = 1.0
 
-# QGIS's own toolbars (main window and layout designer). Others, such as
-# plugin toolbars, get an abbreviation of their title.
+# QGIS's own toolbars (main window and layout designer), three letters
+# each. Others, such as plugin toolbars, get the first three letters of
+# their title.
 ABBREVIATIONS = {
-    "mFileToolBar": "PROJ",
-    "mLayerToolBar": "LAYER",
-    "mDataSourceManagerToolBar": "DATA",
-    "mDigitizeToolBar": "EDIT",
+    "mFileToolBar": "PRJ",
+    "mLayerToolBar": "LYR",
+    "mDataSourceManagerToolBar": "DAT",
+    "mDigitizeToolBar": "EDT",
     "mAdvancedDigitizeToolBar": "ADV",
     "mShapeDigitizeToolBar": "SHP",
-    "mMeshToolBar": "MESH",
-    "mSnappingToolBar": "SNAP",
+    "mMeshToolBar": "MSH",
+    "mSnappingToolBar": "SNP",
     "mMapNavToolBar": "NAV",
-    "mAttributesToolBar": "ATTR",
+    "mAttributesToolBar": "ATR",
     "mSelectionToolBar": "SEL",
     "mLabelToolBar": "LBL",
-    "mAnnotationsToolBar": "ANNO",
-    "mPluginToolBar": "PLUG",
-    "mHelpToolBar": "HELP",
-    "mRasterToolBar": "RAST",
-    "mVectorToolBar": "VECT",
+    "mAnnotationsToolBar": "ANN",
+    "mPluginToolBar": "PLG",
+    "mHelpToolBar": "HLP",
+    "mRasterToolBar": "RST",
+    "mVectorToolBar": "VEC",
     "mDatabaseToolBar": "DB",
     "mWebToolBar": "WEB",
     "mGpsToolBar": "GPS",
     "mLayoutToolbar": "LYT",
-    "mToolsToolbar": "TOOL",
+    "mToolsToolbar": "TLS",
     "mNavigationToolbar": "NAV",
-    "mActionsToolbar": "ARNG",
-    "mAtlasToolbar": "ATLS",
+    "mActionsToolbar": "ARR",
+    "mAtlasToolbar": "ATL",
     "mReportToolbar": "RPT",
 }
 
@@ -61,7 +63,7 @@ def abbreviation(toolbar):
     if known:
         return known
     words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
-    return words[0][:4].upper() if words else ""
+    return words[0][:3].upper() if words else ""
 
 
 class _Label(QWidget):
@@ -88,7 +90,7 @@ class _Label(QWidget):
             painter.end()
             return
         # Horizontal toolbar: draw upright (hinted, sharp), then turn the
-        # image clockwise by exactly 90 degrees so it reads top to bottom.
+        # image anticlockwise by exactly 90 degrees so it reads bottom to top.
         ratio = self.devicePixelRatioF()
         image = QImage(
             math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio),
@@ -101,7 +103,7 @@ class _Label(QWidget):
         upright.setPen(self.color)
         upright.drawText(QRect(0, 0, rect.height(), rect.width()), Qt.AlignmentFlag.AlignCenter, self.text)
         upright.end()
-        image = image.transformed(QTransform().rotate(90))
+        image = image.transformed(QTransform().rotate(-90))
         image.setDevicePixelRatio(ratio)
         painter.drawImage(rect.topLeft(), image)
         painter.end()
