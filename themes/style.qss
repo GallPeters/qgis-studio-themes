@@ -88,6 +88,11 @@ QMenuBar {
     border-bottom: 1px solid @divider;
     padding: 3px 6px;
 }
+/* Main menu one point above the UI font (size filled in by the plugin);
+ * the child selector outranks QGIS's own application-wide font rule. */
+QMainWindow > QMenuBar {
+    font-size: @menu_font_size;
+}
 QMenuBar::item {
     background: transparent;
     padding: 5px 10px;

@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
+from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
@@ -25,7 +26,7 @@ from qgis.PyQt.QtGui import (
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
-    QAbstractButton, QAbstractItemView, QApplication, QComboBox, QDockWidget, QLineEdit,
+    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QTabBar, QToolBar, QToolButton,
 )
 
@@ -42,7 +43,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "3"
+BUILD_FORMAT = "4"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -137,7 +138,7 @@ def prerender_pngs(icons_dir, stop):
     return True
 
 
-def build_theme(folder, target, shared_stamp, active):
+def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
     """Write the resolved stylesheet and all icons for one theme into
     `target`; style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
@@ -149,6 +150,8 @@ def build_theme(folder, target, shared_stamp, active):
     tokens = load_tokens(folder)
     # Forward slashes: Windows backslashes would break url() parsing.
     tokens["@theme_path"] = target.as_posix()
+    # Values that depend on the user's QGIS settings (part of shared_stamp).
+    tokens.update(extra_tokens or {})
     if (target / "icons").exists():
         shutil.rmtree(target / "icons")
     (target / "icons" / "studio").mkdir(parents=True)
@@ -247,11 +250,16 @@ class IconSwapper(QObject):
     # instead of walking every widget of a window from Python.
     ICON_TYPES = (
         QAbstractButton, QToolBar, QMenuBar, QListWidget, QComboBox, QTabBar, QMenu, QStackedWidget,
-        QAbstractItemView, QLineEdit, QDockWidget,
+        QAbstractItemView, QgsFilterLineEdit, QDockWidget,
     )
     # Item views on a QStandardItemModel (e.g. the Options page tree) are
     # swapped item by item; larger models hold data, not navigation icons.
     MODEL_LIMIT = 200
+    # The built-in icon fingerprints are computed this long after the theme
+    # is applied, WARM_BATCH icons per event-loop pass, so the first dialog
+    # opened never pays for all of them at once.
+    WARM_DELAY = 4000
+    WARM_BATCH = 25
     _DECORATION = Qt.ItemDataRole.DecorationRole
     _UNKNOWN = object()
     _CHILD_POLISHED = QEvent.Type.ChildPolished
@@ -266,6 +274,7 @@ class IconSwapper(QObject):
         self._filtered = []
         self._stacks = {}
         self._menus = {}
+        self._docks = set()
         self._png = False
         self._scanned = []
         self._names = {}
@@ -273,6 +282,12 @@ class IconSwapper(QObject):
         self._compact_at = self.COMPACT_MIN
         self._ours = {}
         self._reference_table = None
+        # Built incrementally in idle time (see _warm_reference).
+        self._reference_partial = None
+        self._reference_queue = None
+        # availableSizes() signatures of the built-in PNG icons: the only
+        # pixmap-based icons worth fingerprinting (see _replacement).
+        self._png_signatures = None
         self._icons = {}
         self._pending = []
         self._theme = None
@@ -293,6 +308,7 @@ class IconSwapper(QObject):
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
         }
         self._names = dict(self._base_names)
+        QTimer.singleShot(self.WARM_DELAY, self._warm_reference)
         # Existing widgets: identify cheap matches now, the rest in idle
         # time. Hidden windows are left to the focus fallback and menus are
         # swapped when they are about to open.
@@ -352,6 +368,7 @@ class IconSwapper(QObject):
         self._swapped = [entry for entry in self._swapped if alive(entry[0])]
         self._scanned = [widget for widget in self._scanned if alive(widget)]
         self._filtered = [obj for obj in self._filtered if alive(obj)]
+        self._docks = {id(obj) for obj in self._filtered if isinstance(obj, QDockWidget)}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         for table in (self._stacks, self._menus, self._models):
             for key in [key for key, (obj, _slot) in table.items() if not alive(obj)]:
@@ -389,35 +406,76 @@ class IconSwapper(QObject):
         stream << icon  # pylint: disable=pointless-statement
         return hashlib.sha1(bytes(data)).hexdigest()
 
-    def _reference(self):
-        """Digests of the built-in icons, cached on disk per QGIS/Qt build."""
-        if self._reference_table is not None:
-            return self._reference_table
+    def _reference_key(self):
         names = "|".join(studio_icons.ICON_MAP)
-        key = f"{Qgis.version()}|{qVersion()}|{hashlib.sha1(names.encode()).hexdigest()}"
-        if self._cache_file is not None and self._cache_file.exists():
-            try:
-                cached = json.loads(self._cache_file.read_text(encoding="utf-8"))
-                if cached.get("key") == key:
-                    self._reference_table = cached["digests"]
-                    return self._reference_table
-            except (OSError, ValueError):
-                pass
-        self._reference_table = {}
-        for name in studio_icons.ICON_MAP:
+        return f"{Qgis.version()}|{qVersion()}|{hashlib.sha1(names.encode()).hexdigest()}"
+
+    def _load_reference(self):
+        """The fingerprint table from the disk cache (per QGIS/Qt build and
+        icon map), or False when it has to be computed."""
+        if self._reference_table is not None:
+            return True
+        if self._cache_file is None or not self._cache_file.exists():
+            return False
+        try:
+            cached = json.loads(self._cache_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        if cached.get("key") != self._reference_key() or "png_sizes" not in cached:
+            return False
+        self._reference_table = cached["digests"]
+        self._png_signatures = {tuple(map(tuple, sig)) for sig in cached["png_sizes"]}
+        return True
+
+    def _reference_step(self, count):
+        """Fingerprint up to `count` more built-in icons; True when done."""
+        if self._reference_queue is None:
+            self._reference_queue = list(studio_icons.ICON_MAP)
+            self._reference_partial = {}
+            self._png_signatures = set()
+        for name in self._reference_queue[:count]:
             # Check first: QIcon on a missing resource logs a Qt warning,
             # which QGIS surfaces in the message bar.
             source = self._source(name)
-            if source is not None:
-                self._reference_table.setdefault(self._digest(QIcon(source)), name)
+            if source is None:
+                continue
+            icon = QIcon(source)
+            self._reference_partial.setdefault(self._digest(icon), name)
+            if not source.lower().endswith(".svg"):
+                self._png_signatures.add(self._signature(icon))
+        del self._reference_queue[:count]
+        if self._reference_queue:
+            return False
+        self._reference_table = self._reference_partial
+        self._reference_queue = self._reference_partial = None
         if self._cache_file is not None:
             try:
-                self._cache_file.write_text(
-                    json.dumps({"key": key, "digests": self._reference_table}), encoding="utf-8"
-                )
+                self._cache_file.write_text(json.dumps({
+                    "key": self._reference_key(),
+                    "digests": self._reference_table,
+                    "png_sizes": sorted(self._png_signatures),
+                }), encoding="utf-8")
             except OSError:
                 pass
+        return True
+
+    def _warm_reference(self):
+        """Compute the fingerprint table a batch at a time between events."""
+        if self._theme is None or self._load_reference():
+            return
+        if not self._reference_step(self.WARM_BATCH):
+            QTimer.singleShot(0, self._warm_reference)
+
+    def _reference(self):
+        """Fingerprints of the built-in icons (finishing them now if the
+        idle-time warm-up has not yet)."""
+        if not self._load_reference():
+            self._reference_step(len(studio_icons.ICON_MAP))
         return self._reference_table
+
+    @staticmethod
+    def _signature(icon):
+        return tuple(sorted((size.width(), size.height()) for size in icon.availableSizes()))
 
     def _replacement(self, icon, deferred=False):
         """Our icon for `icon`, None if it has none, or _UNKNOWN when it
@@ -429,7 +487,16 @@ class IconSwapper(QObject):
         if name is self._UNKNOWN:
             if deferred:
                 return self._UNKNOWN
-            name = self._reference().get(self._digest(icon))
+            table = self._reference()
+            # Pixmap-based icons (symbol previews, colour swatches, legend
+            # items) list their pixmap sizes; fingerprinting them would
+            # PNG-encode every pixmap. Only the few built-in PNG icons share
+            # such a signature, so anything else is not ours to replace.
+            signature = self._signature(icon)
+            if signature and signature not in self._png_signatures:
+                name = None
+            else:
+                name = table.get(self._digest(icon))
             self._names[key] = name
         if name is None:
             return None
@@ -608,21 +675,31 @@ class IconSwapper(QObject):
         elif isinstance(widget, QTabBar):
             for index in range(widget.count()):
                 self._swap(widget, "tab", index, deferred)
-        elif isinstance(widget, QLineEdit):
-            # Embedded actions: clear, search, show password...
-            for action in widget.actions():
-                self._swap(action, None, None, deferred)
+        elif isinstance(widget, QgsFilterLineEdit):
+            # Embedded actions (clear, search). Spin boxes' editors are
+            # skipped: big dialogs hold hundreds of them.
+            if not isinstance(widget.parent(), QAbstractSpinBox):
+                for action in widget.actions():
+                    self._swap(action, None, None, deferred)
         elif isinstance(widget, QDockWidget):
             # Panels may get (or replace) their contents after the window
             # was scanned.
-            if widget not in self._filtered:
+            if id(widget) not in self._docks:
+                self._docks.add(id(widget))
                 self._filter(widget)
         elif isinstance(widget, QAbstractItemView):
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
                 model = model.sourceModel()
-            # A combo box's popup view shares the model hooked by _rows.
-            if isinstance(model, QStandardItemModel) and id(model) not in self._models:
+            # Only navigation-style lists (one column, few rows, e.g. the
+            # Options page tree); data tables are skipped outright. A combo
+            # box's popup view shares the model already hooked by _rows.
+            if (
+                isinstance(model, QStandardItemModel)
+                and id(model) not in self._models
+                and model.columnCount() == 1
+                and model.rowCount() <= self.MODEL_LIMIT
+            ):
                 self._model_items(model, deferred)
 
     def _hook_menu(self, menu):
@@ -721,6 +798,7 @@ class IconSwapper(QObject):
             if not sip.isdeleted(obj):
                 obj.removeEventFilter(self)
         self._filtered = []
+        self._docks = set()
         for stacked, current_changed in self._stacks.values():
             if not sip.isdeleted(stacked):
                 stacked.currentChanged.disconnect(current_changed)
@@ -795,8 +873,7 @@ class QgisStudioThemesPlugin:
         self._relay.pngs_ready.connect(self._icons.use_pngs)
         self._labels = ToolbarLabels()
         self._labels_action = None
-        self._menu_bar_sheet = None
-        self._menu_bar_size = None
+        self._extra_tokens = {}
         self._dock_icon_sizes = {}
 
     @staticmethod
@@ -829,7 +906,16 @@ class QgisStudioThemesPlugin:
         self._labels_action.setToolTip("Show each toolbar's name on its handle (Studio themes)")
         self._labels_action.toggled.connect(self._toggle_labels)
         self.iface.viewMenu().addAction(self._labels_action)
-        self._shared_stamp = BUILD_FORMAT + build_stamp(shared_sources())
+        # The main menu is one point larger than the UI font, so it reads as
+        # the top level. The size goes into the theme stylesheet (a widget
+        # stylesheet on the bar would give every menu, all children of the
+        # bar, a slower style chain of its own) and into the build stamp, so
+        # a changed QGIS font size rebuilds the themes.
+        menu_size = self.iface.mainWindow().menuBar().font().pointSizeF() + MENU_BAR_EXTRA_PT
+        self._extra_tokens = {"@menu_font_size": f"{menu_size:g}pt"}
+        self._shared_stamp = (
+            BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
+        )
         # Only the configured theme is built now; the others only need a
         # placeholder style.qss to be registered and are built in the
         # background (or on demand, if selected first).
@@ -863,7 +949,10 @@ class QgisStudioThemesPlugin:
         """Build one theme (no-op when up to date); False if it failed."""
         with self._locks[name]:
             try:
-                build_theme(self.THEMES[name], self.theme_target(name), self._shared_stamp, active)
+                build_theme(
+                    self.THEMES[name], self.theme_target(name), self._shared_stamp, active,
+                    self._extra_tokens,
+                )
             except Exception as error:  # pylint: disable=broad-except
                 QgsMessageLog.logMessage(
                     f"Could not build Studio {name}: {error}", LOG_TAG, Qgis.MessageLevel.Critical
@@ -989,7 +1078,6 @@ class QgisStudioThemesPlugin:
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
         self._style_message_bar()
         self._apply_labels()
-        self._style_menu_bar()
         # After QGIS's own startup sizing, which would undo it.
         QTimer.singleShot(0, self._size_dock_toolbars)
         self._prerender(icons_dir)
@@ -1006,20 +1094,6 @@ class QgisStudioThemesPlugin:
                 if toolbar.iconSize().width() < DOCK_ICON_SIZE:
                     self._dock_icon_sizes.setdefault(toolbar, toolbar.iconSize())
                     toolbar.setIconSize(size)
-
-    def _style_menu_bar(self):
-        """Main menu text one point larger than the UI font, so it reads as
-        the top level. QGIS sets the UI font through its application
-        stylesheet, which overrides QWidget.setFont, so the bar gets a small
-        stylesheet of its own, sized from the font it would otherwise use
-        (so it still follows the size chosen in QGIS's options)."""
-        bar = self.iface.mainWindow().menuBar()
-        if self._menu_bar_sheet is None:
-            self._menu_bar_sheet = bar.styleSheet()
-            self._menu_bar_size = bar.font().pointSizeF()
-        bar.setStyleSheet(
-            f"QMenuBar {{ font-size: {self._menu_bar_size + MENU_BAR_EXTRA_PT:g}pt; }}"
-        )
 
     # ---- Toolbar labels ---------------------------------------------------
 
@@ -1068,9 +1142,6 @@ class QgisStudioThemesPlugin:
         self._active = None
         self._prepared = None
         self._labels.detach()
-        if self._menu_bar_sheet is not None:
-            self.iface.mainWindow().menuBar().setStyleSheet(self._menu_bar_sheet)
-            self._menu_bar_sheet = None
         for toolbar, size in self._dock_icon_sizes.items():
             if not sip.isdeleted(toolbar):
                 toolbar.setIconSize(size)

@@ -14,6 +14,7 @@ drawn upright into an image that is then turned by exactly 90 degrees
 (lossless). Vertical toolbars get the name across the top.
 """
 from qgis.PyQt import sip
+import functools
 import math
 
 from qgis.PyQt.QtCore import QEvent, QObject, QRect, Qt
@@ -77,6 +78,11 @@ class _Label(QWidget):
         self.color = color
         self.text = ""
         self.setFont(label_font(FONT_SIZES[0]))
+        # The rotated text image, rendered once per text/size/colour/scale.
+        self._image = None
+        self._image_key = None
+        # What _place last applied, so unchanged layout requests are free.
+        self.placed = None
 
     def paintEvent(self, _event):  # pylint: disable=invalid-name
         if not self.text:
@@ -89,9 +95,17 @@ class _Label(QWidget):
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text)
             painter.end()
             return
-        # Horizontal toolbar: draw upright (hinted, sharp), then turn the
-        # image anticlockwise by exactly 90 degrees so it reads bottom to top.
         ratio = self.devicePixelRatioF()
+        key = (self.text, self.font().pixelSize(), self.color.rgba(), rect.size(), ratio)
+        if key != self._image_key:
+            self._image = self._render(rect, ratio)
+            self._image_key = key
+        painter.drawImage(rect.topLeft(), self._image)
+        painter.end()
+
+    def _render(self, rect, ratio):
+        """Draw the text upright (hinted, sharp), then turn the image
+        anticlockwise by exactly 90 degrees so it reads bottom to top."""
         image = QImage(
             math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio),
             QImage.Format.Format_ARGB32_Premultiplied,
@@ -105,8 +119,7 @@ class _Label(QWidget):
         upright.end()
         image = image.transformed(QTransform().rotate(-90))
         image.setDevicePixelRatio(ratio)
-        painter.drawImage(rect.topLeft(), image)
-        painter.end()
+        return image
 
 
 def label_font(size):
@@ -120,14 +133,19 @@ def label_font(size):
 def fit(text, length):
     """The largest label font at which `text` fits `length` pixels, and the
     text (shortened only if it does not fit even at the smallest size)."""
+    size, text = _fit(text, length, QApplication.font().family())
+    return label_font(size), text
+
+
+@functools.lru_cache(maxsize=256)
+def _fit(text, length, _family):
     for size in FONT_SIZES:
-        font = label_font(size)
-        if QFontMetrics(font).horizontalAdvance(text) <= length:
-            return font, text
-    metrics = QFontMetrics(font)
+        if QFontMetrics(label_font(size)).horizontalAdvance(text) <= length:
+            return size, text
+    metrics = QFontMetrics(label_font(FONT_SIZES[-1]))
     while text and metrics.horizontalAdvance(text) > length:
         text = text[:-1]
-    return font, text
+    return FONT_SIZES[-1], text
 
 
 class ToolbarLabels(QObject):
@@ -218,6 +236,13 @@ class ToolbarLabels(QObject):
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
             length = rect.width()
+        title = toolbar.windowTitle()
+        placed = (rect, title, toolbar.objectName(), QApplication.font().family())
+        # Toolbars send layout requests often; only redo the work when the
+        # handle or the name actually changed.
+        if placed == label.placed and label.isVisible():
+            return
+        label.placed = placed
         font, text = fit(abbreviation(toolbar), length - 4)
         label.setFont(font)
         label.text = text
@@ -227,7 +252,7 @@ class ToolbarLabels(QObject):
         if toolbar not in self._tooltips:
             self._tooltips[toolbar] = toolbar.toolTip()
         if not self._tooltips[toolbar]:
-            toolbar.setToolTip(toolbar.windowTitle())
+            toolbar.setToolTip(title)
         label.show()
         label.raise_()
         label.update()

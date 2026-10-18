@@ -18,21 +18,19 @@ icon=icon.png
 changelog=
 
      ** v0.9 (18.10.2026):
-          - Lighter, slightly larger icons; crisper add/remove/check badges.
-          - Slightly larger main menu text and larger icons in panel toolbars
-            (Browser, Layers, Processing Toolbox...).
-          - About 230 more QGIS icons modernised: Options and Project Properties
-            pages, Advanced Digitizing, Data Source Manager, Browser, annotation
-            tools, layout designer, styling panel, Processing Toolbox and more.
-          - Toolbar names shown as small labels on each toolbar's handle
-            (View > Studio Toolbar Labels to turn them off).
-          - Icons in drop-down buttons, sub-menus and option trees now follow
-            the theme too.
-          - Faster startup: only the active theme is prepared at startup,
-            the others are built in the background.
-          - Faster opening of dialogs and windows (cheaper icon scan).
-          - Icons are pre-rendered in the background without slowing the UI.
-          - Stable memory use and theme-switch speed over long sessions.
+          - About 230 more QGIS icons modernised (Options, Project Properties,
+            Advanced Digitizing, Data Source Manager, Browser, layout designer,
+            styling panel, Processing and more), incl. drop-down buttons,
+            sub-menus and option trees.
+          - Lighter, slightly larger icons; crisp, uniform badges.
+          - Toolbar name labels on each toolbar handle (View > Studio Toolbar
+            Labels to turn off).
+          - Larger main menu text and panel toolbar icons.
+          - Faster startup: only the active theme is prepared up front; icons
+            are pre-rendered and identified in the background.
+          - Faster dialogs, menus and tab switching (lighter icon scan, no
+            fingerprinting of symbol previews, cached toolbar labels).
+          - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 
      ** v0.8 (15.10.2026):
