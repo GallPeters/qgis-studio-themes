@@ -22,7 +22,7 @@ changelog=
             Advanced Digitizing, Data Source Manager, Browser, layout designer,
             styling panel, Processing and more), incl. drop-down buttons,
             sub-menus and option trees.
-          - Lighter, slightly larger icons; crisp, uniform badges.
+          - Lighter, slightly larger icons; simple accent-dot badges.
           - Toolbar name labels on each toolbar handle (View > Studio Toolbar
             Labels to turn off).
           - Larger main menu text and panel toolbar icons.

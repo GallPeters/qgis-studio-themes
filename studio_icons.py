@@ -2,9 +2,10 @@
 
 Every entry maps a QGIS theme icon file name (as passed to
 QgsApplication.getThemeIcon) to a Tabler glyph, optionally followed by a
-badge: ``"glyph+badge"``. Badges are drawn bottom-right in the theme's
-accent colour so related actions (add / remove / new / accept) share one
-consistent visual language instead of QGIS's mixed per-icon decorations.
+badge: ``"glyph+badge"``. Badges are a small dot drawn bottom-right in the
+theme's accent colour (red for remove), so related actions (add / new /
+accept / remove) share one quiet visual cue instead of QGIS's mixed
+per-icon decorations.
 
 Icons are rendered per theme into the profile theme folder, where QGIS's
 own icon lookup (QgsApplication.iconPath) finds them.
@@ -650,35 +651,14 @@ STROKE = 1.5
 SCALE = 1.15
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
-BADGE_RADIUS = 5.9
-# Centre of the badge: on a pixel centre at 24 px (and close at 16/32 px),
-# so the 1.3-wide strokes of its mark cover one pixel column instead of
-# being smeared across two.
-BADGE_CENTER = 17.5
-# Transparent ring cut out of the glyph around the badge, so the two never
-# touch (needs Qt >= 6.7 for SVG masks; older Qt just draws them overlapping).
-BADGE_GAP = 1.1
-
-# Badge marks, drawn in a 24x24 icon inside a circle centred at
-# (BADGE_CENTER, BADGE_CENTER).
-BADGES = {
-    "plus": "M17.5 14v7M14 17.5h7",
-    "minus": "M14 17.5h7",
-    "x": "M15.05 15.05l4.9 4.9M19.95 15.05l-4.9 4.9",
-    "check": "M14.77 17.61l1.85 1.85l3.49 -3.71",
-    # "New" uses the plus too: a filled star read as a heavier plus at 24 px.
-    "star": "M17.5 14v7M14 17.5h7",
-    "dot": "",
-}
-# Straight marks get square-cut ends: round caps on such short strokes blur
-# into a blob at 16 px.
-BADGE_MARK = {
-    "plus": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
-    "minus": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
-    "x": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
-    "check": 'stroke-width="1.45" fill="none"',
-    "star": 'stroke-width="1.3" stroke-linecap="butt" fill="none"',
-}
+# Badges are a small plain dot in the accent colour (red for remove): it
+# marks the action without covering much of the glyph, and has no inner mark
+# to blur or lose contrast at 16 px. A transparent ring is cut out of the
+# glyph around it, so it reads cleanly on any button background, hovered or
+# checked (needs Qt >= 6.7 for SVG masks; older Qt draws them touching).
+BADGE_CENTER = 18.7
+BADGE_RADIUS = 3.05
+BADGE_GAP = 2.3
 
 _BODY = re.compile(r"<svg[^>]*>(.*)</svg>", re.S)
 _FRAME = re.compile(r'<path stroke="none" d="M0 0h24v24H0z" fill="none"\s*/>')
@@ -704,11 +684,10 @@ def _glyph_body(name):
 
 
 def render_icon(spec, colors):
-    """Compose one icon. ``colors`` provides icon, accent, on_accent and
-    danger (used for remove badges)."""
+    """Compose one icon. ``colors`` provides icon, accent and danger (used
+    for remove badges)."""
     glyph, _, badge = spec.partition("+")
     body = _glyph_body(glyph).replace("currentColor", colors["icon"])
-    radius = 3 if badge == "dot" else BADGE_RADIUS
     if badge:
         # Shrink the glyph towards the top-left to leave room for the badge.
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
@@ -728,7 +707,7 @@ def render_icon(spec, colors):
         parts.append(
             '<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">'
             '<rect width="24" height="24" fill="#fff"/>'
-            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{radius + BADGE_GAP}" fill="#000"/>'
+            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS + BADGE_GAP}" fill="#000"/>'
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
@@ -738,9 +717,8 @@ def render_icon(spec, colors):
     )
     if badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
-        parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{radius}" fill="{fill}"/>')
-        if BADGES[badge]:
-            style = BADGE_MARK[badge].format(on_accent=colors["on_accent"])
-            parts.append(f'<path d="{BADGES[badge]}" stroke="{colors["on_accent"]}" {style}/>')
+        parts.append(
+            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>'
+        )
     parts.append("</svg>")
     return "".join(parts)

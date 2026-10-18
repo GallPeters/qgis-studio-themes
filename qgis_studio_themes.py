@@ -43,7 +43,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "5"
+BUILD_FORMAT = "6"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -168,10 +168,6 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
     colors = {
         "icon": tokens["@icon"],
         "accent": tokens["@icon_accent"],
-        # Badge marks (+, -, x, check) are white in every theme: a dark mark
-        # on the badge read as a hole against dark toolbars. Buttons and
-        # other text on accent colours keep the theme's @on_accent.
-        "on_accent": "#ffffff",
         "danger": tokens["@danger"],
     }
     folders = set()
