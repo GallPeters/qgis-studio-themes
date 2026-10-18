@@ -95,7 +95,7 @@ QMainWindow > QMenuBar {
 }
 QMenuBar::item {
     background: transparent;
-    padding: 5px 10px;
+    padding: 5px 14px;
     border-radius: @radius_sm;
 }
 QMenuBar::item:selected {
@@ -175,6 +175,15 @@ QToolBar::handle {
  * slightly larger icons than QGIS's small dock default. */
 QDockWidget QToolBar {
     qproperty-iconSize: 20px 20px;
+}
+/* Browser panel: 20 px provider/folder icons and taller rows for breathing
+ * room. The item rule sets only a height (nothing drawable), so Qt keeps
+ * drawing the rows natively. */
+QgsBrowserTreeView {
+    qproperty-iconSize: 20px 20px;
+}
+QgsBrowserTreeView::item {
+    height: 26px;
 }
 /* Room for the toolbar name label the plugin paints over the handle. */
 QToolBar[studioLabel="true"]::handle {

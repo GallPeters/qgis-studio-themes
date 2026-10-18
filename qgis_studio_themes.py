@@ -10,11 +10,13 @@ import hashlib
 import json
 import re
 import shutil
+import queue
 import threading
+import time
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
-from qgis.gui import QgsFilterLineEdit
+from qgis.gui import QgsBrowserTreeView, QgsFilterLineEdit, QgsProcessingToolboxTreeView
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
@@ -27,7 +29,8 @@ from qgis.PyQt.QtGui import (
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDockWidget,
-    QListWidget, QMenu, QMenuBar, QStackedWidget, QTabBar, QToolBar, QToolButton,
+    QListWidget, QMenu, QMenuBar, QStackedWidget, QStyledItemDelegate, QTabBar, QToolBar,
+    QToolButton,
 )
 
 from . import studio_icons
@@ -52,7 +55,7 @@ FULL_STYLE = "style.full.qss"
 STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
 LABELS_SETTING = "studio_themes/toolbarLabels"
-MENU_BAR_EXTRA_PT = 1
+MENU_BAR_EXTRA_PT = 2
 # Icon size of toolbars inside panels (QGIS uses 16 px there).
 DOCK_ICON_SIZE = 20
 
@@ -132,6 +135,7 @@ def prerender_pngs(icons_dir, stop):
             if stop.is_set():
                 return False
             render_pngs(icons_dir, name)
+            time.sleep(0.002)  # yield Python's lock to the GUI thread
         (icons_dir / "png" / ".done").write_bytes(b"")
     except OSError:
         return False
@@ -221,6 +225,29 @@ def make_palette(tokens):
     return palette
 
 
+class _IconDelegate(QStyledItemDelegate):
+    """Draws a view's rows with the theme's icons, for views whose model
+    cannot be edited: the Processing Toolbox, whose icons come from QGIS's
+    icon cache (filled before the Studio themes were registered) or from
+    the Processing plugin's own image files."""
+
+    def __init__(self, swapper, parent):
+        super().__init__(parent)
+        self._swapper = swapper
+
+    def initStyleOption(self, option, index):  # pylint: disable=invalid-name
+        super().initStyleOption(option, index)
+        if option.icon.isNull():
+            return
+        # Keyed by the row (tool and its group), not by the icon object:
+        # Processing plugin tools create a new QIcon on every paint.
+        parent = index.parent()
+        row = (index.data(), parent.data(), parent.parent().data())
+        icon = self._swapper.row_icon(row, option.icon)
+        if icon is not None:
+            option.icon = icon
+
+
 class IconSwapper(QObject):
     """Replaces QGIS icons that QGIS created from its built-in set.
 
@@ -274,6 +301,9 @@ class IconSwapper(QObject):
         self._stacks = {}
         self._menus = {}
         self._docks = set()
+        self._delegates = {}
+        # Icon names of rows drawn by delegated views, per row identity.
+        self._view_names = {}
         self._png = False
         self._scanned = []
         self._names = {}
@@ -330,6 +360,19 @@ class IconSwapper(QObject):
         self._icons = {}
         self._icons_dir = icons_dir
         self._png = (icons_dir / "png" / ".done").exists()
+        # Each setIcon repaints its toolbar or menu: suspend painting and
+        # repaint every window once at the end.
+        windows = [w for w in QApplication.topLevelWidgets() if w.isVisible() and w.updatesEnabled()]
+        for window in windows:
+            window.setUpdatesEnabled(False)
+        try:
+            self._retheme_icons(theme)
+        finally:
+            for window in windows:
+                if not sip.isdeleted(window):
+                    window.setUpdatesEnabled(True)
+
+    def _retheme_icons(self, theme):
         for action in self._watched:
             if not sip.isdeleted(action):
                 new = self._rethemed(action.icon())
@@ -343,6 +386,9 @@ class IconSwapper(QObject):
         for root in self._scanned:
             if not sip.isdeleted(root):
                 root.setProperty(self.PROPERTY, theme)
+        for view, _original, _delegate in self._delegates.values():
+            if not sip.isdeleted(view):
+                view.viewport().update()
 
     def _rethemed(self, icon):
         """The current theme's version of one of our icons (None if `icon`
@@ -369,8 +415,8 @@ class IconSwapper(QObject):
         self._filtered = [obj for obj in self._filtered if alive(obj)]
         self._docks = {id(obj) for obj in self._filtered if isinstance(obj, QDockWidget)}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
-        for table in (self._stacks, self._menus, self._models):
-            for key in [key for key, (obj, _slot) in table.items() if not alive(obj)]:
+        for table in (self._stacks, self._menus, self._models, self._delegates):
+            for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
         self._names.update(dict.fromkeys(self._ours))
@@ -486,20 +532,50 @@ class IconSwapper(QObject):
         if name is self._UNKNOWN:
             if deferred:
                 return self._UNKNOWN
-            table = self._reference()
-            # Pixmap-based icons (symbol previews, colour swatches, legend
-            # items) list their pixmap sizes; fingerprinting them would
-            # PNG-encode every pixmap. Only the few built-in PNG icons share
-            # such a signature, so anything else is not ours to replace.
-            signature = self._signature(icon)
-            if signature and signature not in self._png_signatures:
-                name = None
-            else:
-                name = table.get(self._digest(icon))
+            name = self._identify(icon)
             self._names[key] = name
         if name is None:
             return None
         return self._icon(name)
+
+    def _identify(self, icon):
+        """The QGIS icon name of `icon` by its data (None if not ours)."""
+        table = self._reference()
+        # Pixmap-based icons (symbol previews, colour swatches, legend
+        # items) list their pixmap sizes; fingerprinting them would
+        # PNG-encode every pixmap. Only the few built-in PNG icons share
+        # such a signature, so anything else is not ours to replace.
+        signature = self._signature(icon)
+        if signature and signature not in self._png_signatures:
+            return None
+        return table.get(self._digest(icon))
+
+    def row_icon(self, row, icon):
+        """Our version of the icon a delegated view draws for `row` (a
+        hashable row identity), or None to keep it. Identified once per row."""
+        if self._theme is None:
+            return None
+        name = self._view_names.get(row, self._UNKNOWN)
+        if name is self._UNKNOWN:
+            name = self._names.get(icon.cacheKey(), self._UNKNOWN)
+            if name is self._UNKNOWN:
+                name = self._identify(icon)
+            if len(self._view_names) > 8192:
+                self._view_names.clear()
+            self._view_names[row] = name
+        return None if name is None else self._icon(name)
+
+    def _delegate_view(self, view):
+        """Draw `view`'s rows with our icons (only over Qt's plain
+        delegate, so no custom drawing is lost)."""
+        if id(view) in self._delegates:
+            return
+        original = view.itemDelegate()
+        if original is None or original.metaObject().className() != "QStyledItemDelegate":
+            return
+        delegate = _IconDelegate(self, view)
+        view.setItemDelegate(delegate)
+        self._delegates[id(view)] = (view, original, delegate)
 
     def _icon(self, name):
         """Our icon for a QGIS icon name, in the active theme."""
@@ -687,6 +763,12 @@ class IconSwapper(QObject):
                 self._docks.add(id(widget))
                 self._filter(widget)
         elif isinstance(widget, QAbstractItemView):
+            if isinstance(widget, QgsProcessingToolboxTreeView):
+                self._delegate_view(widget)
+            if isinstance(widget, (QgsBrowserTreeView, QgsProcessingToolboxTreeView)):
+                # Every row has the same height (theme rule): let Qt measure
+                # one row instead of each, when expanding and scrolling.
+                widget.setUniformRowHeights(True)
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
                 model = model.sourceModel()
@@ -703,14 +785,21 @@ class IconSwapper(QObject):
 
     def _hook_menu(self, menu):
         """Swap a menu's icons right before it opens, not at startup. The
-        Show event comes after every aboutToShow handler, so actions that
-        QGIS (re)creates there are covered too."""
+        swap happens on the Show event, after every aboutToShow handler, so
+        actions QGIS (re)creates there are covered too; the event filter is
+        installed only while the menu opens, not for every hover event."""
         if id(menu) in self._menus:
             return
-        self._filter(menu)
-        self._menus[id(menu)] = (menu, None)
+
+        def about_to_show(menu=menu):
+            if self._theme is not None and not sip.isdeleted(menu):
+                menu.installEventFilter(self)
+
+        menu.aboutToShow.connect(about_to_show)
+        self._menus[id(menu)] = (menu, about_to_show)
 
     def _menu_shown(self, menu):
+        menu.removeEventFilter(self)
         if self._theme is None:
             return
         for action in menu.actions():
@@ -802,7 +891,19 @@ class IconSwapper(QObject):
             if not sip.isdeleted(stacked):
                 stacked.currentChanged.disconnect(current_changed)
         self._stacks = {}
+        for menu, about_to_show in self._menus.values():
+            if not sip.isdeleted(menu):
+                menu.aboutToShow.disconnect(about_to_show)
+                menu.removeEventFilter(self)
         self._menus = {}
+        for view, original, delegate in self._delegates.values():
+            if not sip.isdeleted(view):
+                view.setItemDelegate(original)
+                view.viewport().update()
+            if not sip.isdeleted(delegate):
+                delegate.deleteLater()
+        self._delegates = {}
+        self._view_names = {}
         for model, inserted in self._models.values():
             if not sip.isdeleted(model):
                 model.rowsInserted.disconnect(inserted)
@@ -867,6 +968,7 @@ class QgisStudioThemesPlugin:
         self._locks = {name: threading.Lock() for name in self.THEMES}
         self._stop = threading.Event()
         self._threads = []
+        self._jobs = queue.Queue()
         self._rendering = set()
         self._relay = _Relay()
         self._relay.pngs_ready.connect(self._icons.use_pngs)
@@ -966,13 +1068,24 @@ class QgisStudioThemesPlugin:
             self._build(name)
 
     def _start(self, target, *args):
-        """Run `target` in a worker thread that unload() waits for."""
+        """Queue `target` for the single background worker: theme builds
+        and PNG pre-rendering run one after another, never in parallel, so
+        they compete less with the GUI thread for Python's lock."""
         if self._stop.is_set():
             return
-        self._threads = [thread for thread in self._threads if thread.is_alive()]
-        thread = threading.Thread(target=target, args=args, daemon=True)
-        self._threads.append(thread)
-        thread.start()
+        self._jobs.put((target, args))
+        if not any(thread.is_alive() for thread in self._threads):
+            thread = threading.Thread(target=self._work, daemon=True)
+            self._threads = [thread]
+            thread.start()
+
+    def _work(self):
+        while not self._stop.is_set():
+            try:
+                target, args = self._jobs.get(timeout=0.5)
+            except queue.Empty:
+                return
+            target(*args)
 
     def unload(self):
         self._stop.set()

@@ -18,18 +18,22 @@ icon=icon.png
 changelog=
 
      ** v0.9 (18.10.2026):
-          - About 230 more QGIS icons modernised (Options, Project Properties,
+          - About 260 more QGIS icons modernised (Options, Project Properties,
             Advanced Digitizing, Data Source Manager, Browser, layout designer,
-            styling panel, Processing and more), incl. drop-down buttons,
-            sub-menus and option trees.
+            styling panel, Processing Toolbox incl. GDAL tools, Python console,
+            script editor and more), incl. drop-down buttons, sub-menus and
+            option trees.
           - Lighter, slightly larger icons; simple accent-dot badges.
           - Toolbar name labels on each toolbar handle (View > Studio Toolbar
             Labels to turn off).
-          - Larger main menu text and panel toolbar icons.
+          - Larger, more spaced main menu; larger panel toolbar icons; roomier
+            Browser panel.
           - Faster startup: only the active theme is prepared up front; icons
             are pre-rendered and identified in the background.
           - Faster dialogs, menus and tab switching (lighter icon scan, no
             fingerprinting of symbol previews, cached toolbar labels).
+          - Smoother Processing Toolbox and Browser, and theme switching with a
+            single repaint.
           - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 
