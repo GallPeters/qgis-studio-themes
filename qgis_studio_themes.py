@@ -16,19 +16,21 @@ from pathlib import Path
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
-    QByteArray, QDataStream, QEvent, QFile, QIODevice, QObject, QSize, Qt, QTimer, pyqtSignal,
-    qVersion,
+    QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
+    QPersistentModelIndex, QSize, Qt, QTimer, pyqtSignal, qVersion,
 )
 from qgis.PyQt.QtGui import (
     QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
+    QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
-    QAbstractButton, QApplication, QComboBox, QListWidget, QMenu, QMenuBar, QStackedWidget,
-    QTabBar, QToolBar, QToolButton,
+    QAbstractButton, QAbstractItemView, QApplication, QComboBox, QDockWidget, QLineEdit,
+    QListWidget, QMenu, QMenuBar, QStackedWidget, QTabBar, QToolBar, QToolButton,
 )
 
 from . import studio_icons
+from .studio_toolbars import ToolbarLabels
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
 
 PLUGIN_DIR = Path(__file__).parent
@@ -40,7 +42,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "2"
+BUILD_FORMAT = "3"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -48,6 +50,7 @@ FULL_STYLE = "style.full.qss"
 # after installing the palette.
 STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
+LABELS_SETTING = "studio_themes/toolbarLabels"
 
 # QGIS adds these rules to the main window's own stylesheet when it starts
 # with a theme that is not registered yet (ours register a moment later).
@@ -241,9 +244,15 @@ class IconSwapper(QObject):
     # instead of walking every widget of a window from Python.
     ICON_TYPES = (
         QAbstractButton, QToolBar, QMenuBar, QListWidget, QComboBox, QTabBar, QMenu, QStackedWidget,
+        QAbstractItemView, QLineEdit, QDockWidget,
     )
+    # Item views on a QStandardItemModel (e.g. the Options page tree) are
+    # swapped item by item; larger models hold data, not navigation icons.
+    MODEL_LIMIT = 200
+    _DECORATION = Qt.ItemDataRole.DecorationRole
     _UNKNOWN = object()
     _CHILD_POLISHED = QEvent.Type.ChildPolished
+    _SHOW = QEvent.Type.Show
 
     def __init__(self, cache_file=None):
         super().__init__()
@@ -309,7 +318,7 @@ class IconSwapper(QObject):
                 if new is not None:
                     action.setIcon(new)
         for owner, kind, index, _icon in self._swapped:
-            if not sip.isdeleted(owner) and (kind is None or index < owner.count()):
+            if not sip.isdeleted(owner) and self._valid(owner, kind, index):
                 new = self._rethemed(self._get(owner, kind, index))
                 if new is not None:
                     self._set(owner, kind, index, new)
@@ -353,7 +362,9 @@ class IconSwapper(QObject):
         self._filtered.append(obj)
 
     def eventFilter(self, watched, event):  # pylint: disable=invalid-name
-        if event.type() == self._CHILD_POLISHED:
+        if event.type() == self._SHOW and isinstance(watched, QMenu):
+            self._menu_shown(watched)
+        elif event.type() == self._CHILD_POLISHED:
             child = event.child()
             if child is not None and child.isWidgetType() and (
                 not isinstance(watched, QStackedWidget) or watched.currentWidget() is child
@@ -393,8 +404,9 @@ class IconSwapper(QObject):
         for name in studio_icons.ICON_MAP:
             # Check first: QIcon on a missing resource logs a Qt warning,
             # which QGIS surfaces in the message bar.
-            if QFile.exists(self.RESOURCES + name):
-                self._reference_table.setdefault(self._digest(QIcon(self.RESOURCES + name)), name)
+            source = self._source(name)
+            if source is not None:
+                self._reference_table.setdefault(self._digest(QIcon(source)), name)
         if self._cache_file is not None:
             try:
                 self._cache_file.write_text(
@@ -438,30 +450,56 @@ class IconSwapper(QObject):
     def _builtin(self, icon):
         """The stock icon for one of our icons (used when restoring)."""
         name = self._ours.get(icon.cacheKey())
-        if name is None or not QFile.exists(self.RESOURCES + name):
-            return None
-        return QIcon(self.RESOURCES + name)
+        source = None if name is None else self._source(name)
+        return None if source is None else QIcon(source)
+
+    def _source(self, name):
+        """Where QGIS loads the stock icon `name` from (None if missing).
+        Checked first: QIcon on a missing file logs a Qt warning, which QGIS
+        surfaces in the message bar."""
+        if QFile.exists(self.RESOURCES + name):
+            return self.RESOURCES + name
+        external = studio_icons.EXTERNAL.get(name)
+        if external is not None:
+            path = Path(QgsApplication.pkgDataPath()) / external
+            if path.exists():
+                return str(path)
+        return None
 
     # ---- Applying ---------------------------------------------------------
 
     # Icon slots: (None, None) is the owner's own icon, ("row", i) a list
-    # row, ("tab", i) a tab, ("item", i) a combo box item.
+    # row, ("tab", i) a tab, ("item", i) a combo box item, ("model", p) the
+    # item at persistent index p of a QStandardItemModel.
     @staticmethod
-    def _get(owner, kind, index):
+    def _valid(owner, kind, index):
+        if kind is None:
+            return True
+        if kind == "model":
+            return index.isValid()
+        return index < owner.count()
+
+    @classmethod
+    def _get(cls, owner, kind, index):
         if kind is None:
             return owner.icon()
-        if index >= owner.count():
+        if not cls._valid(owner, kind, index):
             return QIcon()
+        if kind == "model":
+            icon = owner.data(QModelIndex(index), cls._DECORATION)
+            return icon if isinstance(icon, QIcon) else QIcon()
         if kind == "row":
             return owner.item(index).icon()
         if kind == "tab":
             return owner.tabIcon(index)
         return owner.itemIcon(index)
 
-    @staticmethod
-    def _set(owner, kind, index, icon):
+    @classmethod
+    def _set(cls, owner, kind, index, icon):
         if kind is None:
             owner.setIcon(icon)
+        elif kind == "model":
+            owner.setData(QModelIndex(index), icon, cls._DECORATION)
         elif kind == "row":
             owner.item(index).setIcon(icon)
         elif kind == "tab":
@@ -545,6 +583,14 @@ class IconSwapper(QObject):
                 self._swap(action, None, None, deferred)
             else:
                 self._swap(widget, None, None, deferred)
+            # Drop-down choices (align, distribute, export...): actions added
+            # to the button itself, or a menu outside the scanned tree.
+            for extra in widget.actions():
+                if extra is not action:
+                    self._swap(extra, None, None, deferred)
+            menu = widget.menu() or (action.menu() if action is not None else None)
+            if menu is not None:
+                self._hook_menu(menu)
         elif isinstance(widget, QMenu):
             self._hook_menu(widget)
         elif isinstance(widget, (QToolBar, QMenuBar)):
@@ -559,19 +605,39 @@ class IconSwapper(QObject):
         elif isinstance(widget, QTabBar):
             for index in range(widget.count()):
                 self._swap(widget, "tab", index, deferred)
+        elif isinstance(widget, QLineEdit):
+            # Embedded actions: clear, search, show password...
+            for action in widget.actions():
+                self._swap(action, None, None, deferred)
+        elif isinstance(widget, QDockWidget):
+            # Panels may get (or replace) their contents after the window
+            # was scanned.
+            if widget not in self._filtered:
+                self._filter(widget)
+        elif isinstance(widget, QAbstractItemView):
+            model = widget.model()
+            while isinstance(model, QAbstractProxyModel):
+                model = model.sourceModel()
+            # A combo box's popup view shares the model hooked by _rows.
+            if isinstance(model, QStandardItemModel) and id(model) not in self._models:
+                self._model_items(model, deferred)
 
     def _hook_menu(self, menu):
-        """Swap a menu's icons right before it opens, not at startup."""
+        """Swap a menu's icons right before it opens, not at startup. The
+        Show event comes after every aboutToShow handler, so actions that
+        QGIS (re)creates there are covered too."""
         if id(menu) in self._menus:
             return
+        self._filter(menu)
+        self._menus[id(menu)] = (menu, None)
 
-        def about_to_show(menu=menu):
-            if self._theme is not None and not sip.isdeleted(menu):
-                for action in menu.actions():
-                    self._swap(action, None, None, False)
-
-        menu.aboutToShow.connect(about_to_show)
-        self._menus[id(menu)] = (menu, about_to_show)
+    def _menu_shown(self, menu):
+        if self._theme is None:
+            return
+        for action in menu.actions():
+            self._swap(action, None, None, False)
+            if action.menu() is not None:
+                self._hook_menu(action.menu())
 
     def _rows(self, widget, kind, deferred):
         for index in range(widget.count()):
@@ -585,6 +651,33 @@ class IconSwapper(QObject):
                 return
             for index in range(first, last + 1):
                 self._swap(widget, kind, index, False)
+
+        model.rowsInserted.connect(inserted)
+        self._models[id(model)] = (model, inserted)
+
+    def _model_items(self, model, deferred):
+        """Swap the item icons of a small QStandardItemModel, and of rows
+        added to it later."""
+        def walk(parent, budget):
+            for row in range(model.rowCount(parent)):
+                if budget[0] <= 0:
+                    return
+                budget[0] -= 1
+                index = model.index(row, 0, parent)
+                if isinstance(model.data(index, self._DECORATION), QIcon):
+                    self._swap(model, "model", QPersistentModelIndex(index), deferred)
+                if model.hasChildren(index):
+                    walk(index, budget)
+
+        walk(QModelIndex(), [self.MODEL_LIMIT])
+
+        def inserted(parent, first, last, model=model):
+            if self._theme is None or sip.isdeleted(model):
+                return
+            for row in range(first, last + 1):
+                index = model.index(row, 0, parent)
+                if isinstance(model.data(index, self._DECORATION), QIcon):
+                    self._swap(model, "model", QPersistentModelIndex(index), False)
 
         model.rowsInserted.connect(inserted)
         self._models[id(model)] = (model, inserted)
@@ -629,9 +722,6 @@ class IconSwapper(QObject):
             if not sip.isdeleted(stacked):
                 stacked.currentChanged.disconnect(current_changed)
         self._stacks = {}
-        for menu, about_to_show in self._menus.values():
-            if not sip.isdeleted(menu):
-                menu.aboutToShow.disconnect(about_to_show)
         self._menus = {}
         for model, inserted in self._models.values():
             if not sip.isdeleted(model):
@@ -646,7 +736,7 @@ class IconSwapper(QObject):
                 action.setIcon(builtin)
         self._watched = {}
         for owner, kind, index, icon in reversed(self._swapped):
-            if not sip.isdeleted(owner) and (kind is None or index < owner.count()):
+            if not sip.isdeleted(owner) and self._valid(owner, kind, index):
                 self._set(owner, kind, index, icon)
         self._swapped = []
         for root in self._scanned:
@@ -700,6 +790,8 @@ class QgisStudioThemesPlugin:
         self._rendering = set()
         self._relay = _Relay()
         self._relay.pngs_ready.connect(self._icons.use_pngs)
+        self._labels = ToolbarLabels()
+        self._labels_action = None
 
     @staticmethod
     def theme_target(name):
@@ -722,7 +814,15 @@ class QgisStudioThemesPlugin:
             self._prepare(configured)
         QgsApplication.instance().themeChanged.connect(self._sync)
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
+        self.iface.layoutDesignerOpened.connect(self._label_designer)
         self._connected = True
+        self._labels_action = QAction("Studio Toolbar Labels", self.iface.mainWindow())
+        self._labels_action.setObjectName("mActionStudioToolbarLabels")
+        self._labels_action.setCheckable(True)
+        self._labels_action.setChecked(QgsSettings().value(LABELS_SETTING, True, type=bool))
+        self._labels_action.setToolTip("Show each toolbar's name on its handle (Studio themes)")
+        self._labels_action.toggled.connect(self._toggle_labels)
+        self.iface.viewMenu().addAction(self._labels_action)
         self._shared_stamp = BUILD_FORMAT + build_stamp(shared_sources())
         # Only the configured theme is built now; the others only need a
         # placeholder style.qss to be registered and are built in the
@@ -788,7 +888,12 @@ class QgisStudioThemesPlugin:
         if self._connected:
             QgsApplication.instance().themeChanged.disconnect(self._sync)
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
+            self.iface.layoutDesignerOpened.disconnect(self._label_designer)
             self._connected = False
+        if self._labels_action is not None:
+            self.iface.viewMenu().removeAction(self._labels_action)
+            self._labels_action.deleteLater()
+            self._labels_action = None
         self._deactivate()
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
@@ -877,7 +982,33 @@ class QgisStudioThemesPlugin:
         icons_dir = self.theme_target(name) / "icons"
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
         self._style_message_bar()
+        self._apply_labels()
         self._prerender(icons_dir)
+
+    # ---- Toolbar labels ---------------------------------------------------
+
+    def _labels_enabled(self):
+        return self._labels_action is not None and self._labels_action.isChecked()
+
+    def _label_color(self):
+        r, g, b, a = parse_color(self._tokens["@text_dim"])
+        return QColor(r, g, b, round(a * 255))
+
+    def _apply_labels(self):
+        """Attach (or update) the toolbar labels for the active theme."""
+        if self._active is None or not self._labels_enabled():
+            self._labels.detach()
+            return
+        self._labels.set_color(self._label_color())
+        self._labels.attach(self.iface.mainWindow(), self._label_color())
+
+    def _toggle_labels(self, checked):
+        QgsSettings().setValue(LABELS_SETTING, checked)
+        self._apply_labels()
+
+    def _label_designer(self, designer):
+        if self._active is not None and self._labels_enabled():
+            self._labels.attach(designer.window(), self._label_color())
 
     def _prerender(self, icons_dir):
         """Pre-render the theme's icons as PNGs in a worker thread, off
@@ -897,6 +1028,7 @@ class QgisStudioThemesPlugin:
             return
         self._active = None
         self._prepared = None
+        self._labels.detach()
         self._icons.restore()
         QApplication.setPalette(self._original_palette)
         QApplication.setFont(self._original_font)

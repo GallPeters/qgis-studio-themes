@@ -166,6 +166,11 @@ QToolBar::handle {
     width: 6px;
     height: 6px;
 }
+/* Room for the toolbar name label the plugin paints over the handle. */
+QToolBar[studioLabel="true"]::handle {
+    width: 13px;
+    height: 13px;
+}
 QToolBar::separator {
     background-color: @divider_strong;
     width: 1px;

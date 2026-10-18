@@ -17,7 +17,15 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v0.9 (15.10.2026):
+     ** v0.9 (18.10.2026):
+          - Lighter, slightly larger icons; crisper add/remove/check badges.
+          - About 230 more QGIS icons modernised: Options and Project Properties
+            pages, Advanced Digitizing, Data Source Manager, Browser, annotation
+            tools, layout designer, styling panel, Processing Toolbox and more.
+          - Toolbar names shown as small labels on each toolbar's handle
+            (View > Studio Toolbar Labels to turn them off).
+          - Icons in drop-down buttons, sub-menus and option trees now follow
+            the theme too.
           - Faster startup: only the active theme is prepared at startup,
             the others are built in the background.
           - Faster opening of dialogs and windows (cheaper icon scan).

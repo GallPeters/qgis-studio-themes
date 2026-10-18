@@ -395,16 +395,283 @@ ICON_MAP = {
     "gpsicons/mActionRecenter.svg": "current-location",
     "gpsicons/mActionReset.svg": "refresh",
     "gpsicons/mIconGpsDestinationLayer.svg": "stack-2",
+    # ---- Advanced digitizing ---------------------------------------------
+    "cadtools/cad.svg": "ruler-3",
+    "cadtools/circlesintersection.svg": "circles-relation",
+    "cadtools/construction.svg": "line-dashed",
+    "cadtools/floater.svg": "cursor-text",
+    "cadtools/parallel.svg": "equal",
+    "cadtools/perpendicular.svg": "border-corner-square",
+    # ---- Data sources / browser ------------------------------------------
+    "mActionAddLayer.svg": "stack-2+plus",
+    "mActionAddGeoPackageLayer.svg": "package+plus",
+    "mActionAddGpsLayer.svg": "gps+plus",
+    "mActionAddOracleLayer.svg": "database+plus",
+    "mActionAddPointCloudLayer.svg": "grain+plus",
+    "mActionAddSensorThingsLayer.svg": "antenna+plus",
+    "mActionAddTiledSceneLayer.svg": "buildings+plus",
+    "mActionNewGpx.svg": "gps+star",
+    "mGeoPackage.svg": "package",
+    "mIconCloud.svg": "cloud",
+    "mIconEsriRest.svg": "api",
+    "mIconHana.svg": "database",
+    "mIconMssql.svg": "database",
+    "mIconSensorThings.svg": "antenna",
+    "mIconStac.svg": "stack-3",
+    "mIconTiledScene.svg": "buildings",
+    "mIconWcs.svg": "world-download",
+    "mIconWfs.svg": "world-share",
+    "mIconWms.svg": "world",
+    "mIconXyz.svg": "map-2",
+    "mIconVector.svg": "vector-triangle",
+    "mIconAnnotationLayer.svg": "note",
+    "dbmanager.svg": "database-cog",
+    "mIconQueryHistory.svg": "history",
+    "MetaSearch.svg": "world-search",
+    # ---- Options / project properties ------------------------------------
+    "transformation.svg": "transform",
+    "relation.svg": "affiliate",
+    "mIconFonts.svg": "typography",
+    "mIconLayout.svg": "layout",
+    "mIconGPU.svg": "cpu",
+    "mIconGps.svg": "gps",
+    "mIconCodeEditor.svg": "code",
+    "mIconWarning.svg": "alert-triangle",
+    "mActionNewPage.svg": "file+plus",
+    "mActionStart.svg": "player-play",
+    "symbologyEdit.svg": "pencil",
+    "mIconDataDefine.svg": "variable",
+    "mActionContextHelp.png": "help-circle",
+    # ---- Panels / toolbars -----------------------------------------------
+    "mActionSelect.svg": "pointer",
+    "mActionEditNodesItem.svg": "vector",
+    "mActionCreateAnnotationLayer.svg": "note+plus",
+    "mActionMultiEdit.svg": "forms",
+    "mActionProcessSelected.svg": "pencil-bolt",
+    "mIconHistory.svg": "history",
+    "mActionToggleSelectedLayers.svg": "eye",
+    "mActionZoomToBookmark.svg": "zoom-pan",
+    "mActionSharingExport.svg": "file-export",
+    "mActionSharingImport.svg": "file-import",
+    "mActionRecord.svg": "player-record",
+    "mIconQt.svg": "book",
+    "mActionDigitizeWithSegment.svg": "line",
+    "mActionNew3DMapGlobe.svg": "world+plus",
+    "mActionNewElevationProfile.svg": "mountain+plus",
+    "georeferencer/mGeorefRun.svg": "map-pins",
+    "mActionTerminal.svg": "terminal-2",
+    "mIconPythonFile.svg": "brand-python",
+    "console/iconClearConsole.svg": "clear-all",
+    "console/iconTabEditorConsole.svg": "file-code",
+    "mActionAdd.svg": "plus",
+    "mActionListActions.svg": "list-details",
+    "mActionSelectAllTree.svg": "list-check",
+    # ---- Attribute table / field calculator ------------------------------
+    "mActionConditionalFormatting.svg": "paint",
+    "mActionEditTable.svg": "table-options",
+    "mActionHighlightFeature.svg": "highlight",
+    "mActionPanTo.svg": "hand-stop",
+    "mActionZoomTo.svg": "zoom-in-area",
+    "mActionArrowLeft.svg": "arrow-left",
+    "mActionArrowRight.svg": "arrow-right",
+    "mActionDoubleArrowLeft.svg": "chevrons-left",
+    "mActionDoubleArrowRight.svg": "chevrons-right",
+    "mIconFieldArrayFloat.svg": "brackets",
+    "mIconFieldArrayInteger.svg": "brackets",
+    "mIconFieldArrayString.svg": "brackets",
+    "mActionFindReplace.svg": "replace",
+    "mActionSaveAsSVG.svg": "file-type-svg",
+    "mIconPhongMaterial.svg": "sphere",
+    # ---- Styling: renderers, diagrams, labels ----------------------------
+    "rendererMergedFeatures.svg": "arrows-join",
+    "diagramNone.svg": "chart-pie-off",
+    "histogram.svg": "chart-histogram",
+    "pie-chart.svg": "chart-pie",
+    "stacked-bar.svg": "chart-bar",
+    "stacked-diagram.svg": "chart-arcs",
+    "text.svg": "typography",
+    "labelingNone.svg": "circle-off",
+    "labelingObstacle.svg": "barrier-block",
+    "labelingRuleBased.svg": "list-tree",
+    "heatmap.svg": "flame",
+    "mIconRenderOnTerrain.svg": "mountain",
+    "styleicons/color.svg": "color-swatch",
+    "styleicons/multibandcolor.svg": "palette",
+    "styleicons/paletted.svg": "color-swatch",
+    "styleicons/singlebandgray.svg": "contrast",
+    "styleicons/singlebandpseudocolor.svg": "color-filter",
+    "styleicons/singlecolor.svg": "droplet",
+    # ---- Layout designer -------------------------------------------------
+    "mActionAdd3DMap.svg": "cube+plus",
+    "mActionAddArrow.svg": "arrow-narrow-right",
+    "mActionAddBasicCircle.svg": "oval",
+    "mActionAddBasicRectangle.svg": "rectangle",
+    "mActionAddBasicShape.svg": "shape",
+    "mActionAddBasicTriangle.svg": "triangle",
+    "mActionAddChart.svg": "chart-bar",
+    "mActionAddHtml.svg": "html",
+    "mActionAddLegend.svg": "list",
+    "mActionAddManualTable.svg": "table+plus",
+    "mActionAddMap.svg": "map+plus",
+    "mActionAddNodesItem.svg": "vector-spline",
+    "mActionAddTable.svg": "table",
+    "mActionElevationProfile.svg": "mountain",
+    "mActionLabel.svg": "label",
+    "mLayoutItemLabel.svg": "label",
+    "mLayoutItemMap.svg": "map",
+    "mActionAlignBottom.svg": "layout-align-bottom",
+    "mActionAlignHCenter.svg": "layout-align-center",
+    "mActionAlignLeft.svg": "layout-align-left",
+    "mActionAlignRight.svg": "layout-align-right",
+    "mActionAlignTop.svg": "layout-align-top",
+    "mActionAlignVCenter.svg": "layout-align-middle",
+    "mActionDistributeBottom.svg": "layout-distribute-horizontal",
+    "mActionDistributeTop.svg": "layout-distribute-horizontal",
+    "mActionDistributeVCenter.svg": "layout-distribute-horizontal",
+    "mActionDistributeVSpace.svg": "layout-distribute-horizontal",
+    "mActionDistributeLeft.svg": "layout-distribute-vertical",
+    "mActionDistributeRight.svg": "layout-distribute-vertical",
+    "mActionDistributeHCenter.svg": "layout-distribute-vertical",
+    "mActionDistributeHSpace.svg": "layout-distribute-vertical",
+    "mActionResizeNarrowest.svg": "arrow-autofit-width",
+    "mActionResizeWidest.svg": "arrow-autofit-width",
+    "mActionResizeShortest.svg": "arrow-autofit-height",
+    "mActionResizeTallest.svg": "arrow-autofit-height",
+    "mActionResizeSquare.svg": "square",
+    "mActionRaiseItems.svg": "arrow-bar-up",
+    "mActionLowerItems.svg": "arrow-bar-down",
+    "mActionMoveItemsToTop.svg": "arrow-bar-to-up",
+    "mActionMoveItemsToBottom.svg": "arrow-bar-to-down",
+    "mActionGroupItems.svg": "box-multiple",
+    "mActionUngroupItems.svg": "box-multiple+x",
+    "mActionLockItems.svg": "lock",
+    "mActionUnlockAll.svg": "lock-open",
+    "mActionMoveItemContent.svg": "arrows-move",
+    "mActionZoomToArea.svg": "zoom-in-area",
+    "mActionDuplicateLayout.svg": "copy",
+    "mActionFilePrint.svg": "printer",
+    "mActionLayers.svg": "stack-2",
+    "mActionSetToCanvasExtent.svg": "frame",
+    "mActionSetToCanvasScale.svg": "ruler",
+    "mActionViewExtentInCanvas.svg": "focus-2",
+    "mActionViewScaleInCanvas.svg": "zoom-scan",
+    "mActionAtlasFirst.svg": "player-skip-back",
+    "mActionAtlasLast.svg": "player-skip-forward",
+    "mActionAtlasNext.svg": "chevron-right",
+    "mActionAtlasPrev.svg": "chevron-left",
+    "mActionAtlasSettings.svg": "book-2",
+    "mIconAtlas.svg": "book-2",
+    "vector_grid.svg": "grid-dots",
+    # ---- Processing ------------------------------------------------------
+    "providerGdal.svg": "file-database",
+    "providerGrass.svg": "plant",
+    "providerQgis.svg": "hexagon-letter-q",
+    "mIconIterate.svg": "repeat",
+    "mIconModelInput.svg": "forms",
+    "mActionRunSelected.svg": "player-play+check",
+    "mesh/Elevation.svg": "mountain",
+    "mActionEditHelpContent.svg": "message-question",
+    "mActionSaveAsPython.svg": "brand-python",
+    "mAddToProject.svg": "file-import",
+    "algorithms/mAlgorithmAddGeometryAttributes.svg": "ruler-measure",
+    "algorithms/mAlgorithmBasicStatistics.svg": "chart-bar",
+    "algorithms/mAlgorithmBuffer.svg": "border-outer",
+    "algorithms/mAlgorithmCellStatistics.svg": "grid-dots",
+    "algorithms/mAlgorithmCellStatisticsPercentRank.svg": "percentage",
+    "algorithms/mAlgorithmCellStatisticsPercentile.svg": "percentage",
+    "algorithms/mAlgorithmCentroids.svg": "circle-dot",
+    "algorithms/mAlgorithmCheckGeometry.svg": "shield-check",
+    "algorithms/mAlgorithmClip.svg": "cut",
+    "algorithms/mAlgorithmCollect.svg": "packages",
+    "algorithms/mAlgorithmConcaveHull.svg": "polygon",
+    "algorithms/mAlgorithmConstantRaster.svg": "grid-4x4",
+    "algorithms/mAlgorithmConvexHull.svg": "hexagon",
+    "algorithms/mAlgorithmCreateGrid.svg": "layout-grid",
+    "algorithms/mAlgorithmDelaunay.svg": "triangles",
+    "algorithms/mAlgorithmDifference.svg": "layers-difference",
+    "algorithms/mAlgorithmDissolve.svg": "layers-union",
+    "algorithms/mAlgorithmDistanceMatrix.svg": "table",
+    "algorithms/mAlgorithmExtractLayerExtent.svg": "crop",
+    "algorithms/mAlgorithmExtractVertices.svg": "point",
+    "algorithms/mAlgorithmFillNoData.svg": "paint",
+    "algorithms/mAlgorithmFuzzifyGaussian.svg": "wave-sine",
+    "algorithms/mAlgorithmFuzzifyLarge.svg": "wave-sine",
+    "algorithms/mAlgorithmFuzzifyLinear.svg": "wave-sine",
+    "algorithms/mAlgorithmFuzzifyNear.svg": "wave-sine",
+    "algorithms/mAlgorithmFuzzifyPower.svg": "wave-sine",
+    "algorithms/mAlgorithmFuzzifySmall.svg": "wave-sine",
+    "algorithms/mAlgorithmIntersect.svg": "layers-intersect",
+    "algorithms/mAlgorithmLineDensity.svg": "grain",
+    "algorithms/mAlgorithmLineIntersections.svg": "x",
+    "algorithms/mAlgorithmLineToPolygon.svg": "polygon",
+    "algorithms/mAlgorithmMeanCoordinates.svg": "target",
+    "algorithms/mAlgorithmMergeLayers.svg": "arrows-join",
+    "algorithms/mAlgorithmMultiToSingle.svg": "arrows-split",
+    "algorithms/mAlgorithmNearestNeighbour.svg": "chart-dots",
+    "algorithms/mAlgorithmNetworkAnalysis.svg": "route",
+    "algorithms/mAlgorithmNormalRaster.svg": "dice",
+    "algorithms/mAlgorithmOffsetLines.svg": "baseline-density-medium",
+    "algorithms/mAlgorithmPolygonToLine.svg": "line",
+    "algorithms/mAlgorithmRandomExponentialRaster.svg": "dice",
+    "algorithms/mAlgorithmRandomGammaRaster.svg": "dice",
+    "algorithms/mAlgorithmRandomPointsInPolygons.svg": "chart-scatter",
+    "algorithms/mAlgorithmRandomPointsOnLines.svg": "chart-scatter",
+    "algorithms/mAlgorithmRandomPointsWithinExtent.svg": "chart-scatter",
+    "algorithms/mAlgorithmRandomPointsWithinPolygon.svg": "chart-scatter",
+    "algorithms/mAlgorithmRandomPoissonRaster.svg": "dice",
+    "algorithms/mAlgorithmRandomRaster.svg": "dice",
+    "algorithms/mAlgorithmRasterCalculator.svg": "calculator",
+    "algorithms/mAlgorithmRectanglesOvalsDiamonds.svg": "shape-2",
+    "algorithms/mAlgorithmRegularPoints.svg": "grid-dots",
+    "algorithms/mAlgorithmRoundRastervalues.svg": "decimal",
+    "algorithms/mAlgorithmSelectDistance.svg": "radar",
+    "algorithms/mAlgorithmSelectRandom.svg": "dice",
+    "algorithms/mAlgorithmSimplify.svg": "ease-in-out-control-points",
+    "algorithms/mAlgorithmSingleToMulti.svg": "arrows-join",
+    "algorithms/mAlgorithmSplitLayer.svg": "arrows-split",
+    "algorithms/mAlgorithmSumLengthLines.svg": "sum",
+    "algorithms/mAlgorithmSumPoints.svg": "sum",
+    "algorithms/mAlgorithmSymmetricalDifference.svg": "layers-difference",
+    "algorithms/mAlgorithmUnion.svg": "layers-union",
+    "algorithms/mAlgorithmUniqueValues.svg": "list",
+    "algorithms/mAlgorithmVoronoi.svg": "hexagons",
 }
+
+# Icons that QGIS core plugins load from their own folder instead of the
+# theme: name -> path relative to QgsApplication.pkgDataPath().
+EXTERNAL = {
+    "MetaSearch.svg": "python/plugins/MetaSearch/images/MetaSearch.svg",
+}
+
+# Visible stroke width (in 24x24 icon units) of every glyph, and how much a
+# glyph is enlarged around the centre: Tabler glyphs leave a ~3 unit margin,
+# so 1.1 makes icons read bigger without changing any widget's icon size.
+STROKE = 1.5
+SCALE = 1.1
+# Glyphs with a badge are shrunk towards the top-left instead.
+BADGED_SCALE = 0.9
+BADGE_RADIUS = 5.4
+# Transparent ring cut out of the glyph around the badge, so the two never
+# touch (needs Qt >= 6.7 for SVG masks; older Qt just draws them overlapping).
+BADGE_GAP = 1.2
 
 # Badge marks, drawn in a 24x24 icon inside a circle centred at (18, 18).
 BADGES = {
-    "plus": "M18 15.4v5.2M15.4 18h5.2",
-    "minus": "M15.4 18h5.2",
-    "x": "M16.2 16.2l3.6 3.6M19.8 16.2l-3.6 3.6",
-    "check": "M15.6 18.1l1.6 1.6l3.1 -3.3",
-    "star": "M18 15.2l0.9 1.9l1.9 0.9l-1.9 0.9l-0.9 1.9l-0.9 -1.9l-1.9 -0.9l1.9 -0.9z",
+    "plus": "M18 15.3v5.4M15.3 18h5.4",
+    "minus": "M15.3 18h5.4",
+    "x": "M16.1 16.1l3.8 3.8M19.9 16.1l-3.8 3.8",
+    "check": "M15.5 18.1l1.7 1.7l3.2 -3.4",
+    "star": "M18 15.1l0.85 2.05l2.05 0.85l-2.05 0.85l-0.85 2.05l-0.85 -2.05l-2.05 -0.85l2.05 -0.85z",
     "dot": "",
+}
+# Straight marks get square-cut ends: round caps on such short strokes blur
+# into a blob at 16 px.
+BADGE_MARK = {
+    "plus": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
+    "minus": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
+    "x": 'stroke-width="1.35" stroke-linecap="butt" fill="none"',
+    "check": 'stroke-width="1.35" fill="none"',
+    "star": 'stroke-width="0.5" fill="{on_accent}"',
 }
 
 _BODY = re.compile(r"<svg[^>]*>(.*)</svg>", re.S)
@@ -435,24 +702,38 @@ def render_icon(spec, colors):
     danger (used for remove badges)."""
     glyph, _, badge = spec.partition("+")
     body = _glyph_body(glyph).replace("currentColor", colors["icon"])
+    radius = 3 if badge == "dot" else BADGE_RADIUS
     if badge:
         # Shrink the glyph towards the top-left to leave room for the badge.
-        body = f'<g transform="translate(0.6 0.6) scale(0.8)">{body}</g>'
+        scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
+    else:
+        offset = round(12 * (1 - SCALE), 3)
+        scale, transform = SCALE, f"translate({offset} {offset}) scale({SCALE})"
+    # The stroke is scaled with the glyph: compensate so every icon ends up
+    # with the same visible line weight.
+    stroke = round(STROKE / scale, 3)
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" '
         'viewBox="0 0 24 24" fill="none" stroke-linecap="round" '
         'stroke-linejoin="round">',
-        f'<g stroke="{colors["icon"]}" stroke-width="1.75">{body}</g>',
     ]
+    mask = ""
+    if badge:
+        parts.append(
+            '<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">'
+            '<rect width="24" height="24" fill="#fff"/>'
+            f'<circle cx="18" cy="18" r="{radius + BADGE_GAP}" fill="#000"/></mask></defs>'
+        )
+        mask = ' mask="url(#b)"'
+    parts.append(
+        f'<g{mask}><g transform="{transform}" stroke="{colors["icon"]}" '
+        f'stroke-width="{stroke}">{body}</g></g>'
+    )
     if badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
-        radius = 3 if badge == "dot" else 5.6
         parts.append(f'<circle cx="18" cy="18" r="{radius}" fill="{fill}"/>')
         if BADGES[badge]:
-            mark_fill = colors["on_accent"] if badge == "star" else "none"
-            parts.append(
-                f'<path d="{BADGES[badge]}" stroke="{colors["on_accent"]}" '
-                f'stroke-width="1.6" fill="{mark_fill}"/>'
-            )
+            style = BADGE_MARK[badge].format(on_accent=colors["on_accent"])
+            parts.append(f'<path d="{BADGES[badge]}" stroke="{colors["on_accent"]}" {style}/>')
     parts.append("</svg>")
     return "".join(parts)
