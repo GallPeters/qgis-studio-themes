@@ -1,7 +1,8 @@
 """Toolbar names: a title above each toolbar's buttons.
 
 A docked horizontal toolbar gets a title strip above its buttons, the name
-centred between two hairlines:  ───── Map Navigation ─────. The strip is
+centred between two hairlines whose ends turn down into short ticks:
+┌──── Map Navigation ────┐, so each toolbar's edges show. The strip is
 made by a top margin on every item of the toolbar (QToolBar[studioLabel=
 "title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
 keep their own layout and the toolbar simply grows by the strip; widgets
@@ -14,7 +15,8 @@ plugins and Interface Customization never see it.
 The title is horizontal text, drawn straight onto the window: Windows
 smooths it with ClearType like all other UI text. The capitals are centred
 in the strip with the baseline on a whole device pixel, and the hairlines
-are one device pixel thick, so the strip stays sharp at every scaling.
+and ticks are one device pixel thick, so the strip stays sharp at every
+scaling.
 
 A vertical toolbar (docked left or right) has no room for a strip; it gets
 a short three-letter name across the top of a taller handle
@@ -180,11 +182,18 @@ class _Label(QWidget):
             pen.setCosmetic(True)
             pen.setWidth(1)
             painter.setPen(pen)
-            left, right = 1, rect.width() - 1
+            # Each end turns down into a tick, so the toolbar's edges show
+            # without a separator: ┌── Name ──┐. Ticks on device pixel
+            # columns, ending a pixel above the buttons.
+            left = (round(1 * ratio) + 0.5) / ratio
+            right = (round((rect.width() - 1) * ratio) - 0.5) / ratio
+            bottom = (round(rect.height() * ratio) - 1.5) / ratio
             if x - RULE_GAP > left + 4:
                 painter.drawLine(QPointF(left, y), QPointF(x - RULE_GAP, y))
+                painter.drawLine(QPointF(left, y), QPointF(left, bottom))
             if x + width + RULE_GAP < right - 4:
                 painter.drawLine(QPointF(x + width + RULE_GAP, y), QPointF(right, y))
+                painter.drawLine(QPointF(right, y), QPointF(right, bottom))
         painter.end()
 
 

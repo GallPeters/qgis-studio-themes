@@ -17,25 +17,26 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.0 (19.10.2026):
+     ** v1.0 (20.10.2026):
           - Sharper icons on every screen: each icon is drawn for the exact
             pixel size it is shown at, with its lines on the pixel grid
-            (solid 1-2 px lines instead of blurred ones), at 100% and at
-            125-200% scaling alike; icons shown before they are ready switch
-            over in place.
+            (solid 1-2 px lines instead of blurred ones), at normal and at
+            higher display scaling alike; icons shown before they are ready
+            switch over in place.
           - Calmer badges: add and new actions show a small + in the icon's
             colour, remove-from a -, save and accept a check mark; delete
             keeps its red dot.
           - Stronger Identify "i" and larger SQL letters.
           - Toolbar titles: each toolbar's name is shown centred above its
-            buttons between two hairlines (Project, Map Navigation, Data
+            buttons between two hairlines whose ends turn down, marking where
+            each toolbar starts and ends (Project, Map Navigation, Data
             Sources...), as sharp as the rest of the UI text; vertical
             toolbars show a three-letter name on their handle.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.
           - Even line weight on every screen: 1 px lines on desktop monitors
-            (2 px looked heavy there), 2 px on laptops at 125-150%.
+            (2 px looked heavy there), 2 px on scaled laptop screens.
           - Toolbar icons on large desktop monitors match the size of QGIS's
             own icons; laptops keep their slightly larger icons.
           - Sharper widget glyphs (combo, spin box, menu and header arrows,
@@ -46,8 +47,11 @@ changelog=
             (View > Studio Compact Sizes to override).
           - Upgrading in a running QGIS keeps the Studio theme and its modern
             Processing Toolbox and provider icons.
+          - Fixed missing modern icons in the Processing Toolbox (group
+            folders and tool icons) and in search boxes on QGIS builds where
+            these panels are built natively, such as recent Linux builds.
 
-     ** v0.9 (19.10.2026):
+     ** v0.9 (18.10.2026):
           - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,
             Orange Dark, Orange Light (saved choices follow automatically).
           - Brighter Premium green; stronger accents and text where contrast

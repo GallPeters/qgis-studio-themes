@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
-from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView
+from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
@@ -883,7 +883,10 @@ class IconSwapper(QObject):
         self._filter(stacked)
 
     def _visit(self, widget, deferred):
-        """Swap the icons one widget shows itself (not its children)."""
+        """Swap the icons one widget shows itself (not its children).
+        QGIS classes are matched with inherits(), not isinstance(): a QGIS
+        widget created in C++ (the Processing Toolbox since QGIS 4.x) can
+        reach Python as its Qt base class (QTreeView, QLineEdit)."""
         if isinstance(widget, QToolButton):
             action = widget.defaultAction()
             if action is not None:
@@ -922,7 +925,7 @@ class IconSwapper(QObject):
         elif isinstance(widget, QTabBar):
             for index in range(widget.count()):
                 self._swap(widget, "tab", index, deferred)
-        elif isinstance(widget, QgsFilterLineEdit):
+        elif widget.inherits("QgsFilterLineEdit"):
             # Embedded actions (clear, search). Spin boxes' editors are
             # skipped: big dialogs hold hundreds of them.
             if not isinstance(widget.parent(), QAbstractSpinBox):
@@ -935,9 +938,8 @@ class IconSwapper(QObject):
                 self._docks.add(id(widget))
                 self._filter(widget)
         elif isinstance(widget, QAbstractItemView):
-            if isinstance(widget, QgsProcessingToolboxTreeView):
+            if widget.inherits("QgsProcessingToolboxTreeView"):
                 self._delegate_view(widget)
-            if isinstance(widget, QgsProcessingToolboxTreeView):
                 # Every row has the same height (theme rule): let Qt measure
                 # one row instead of each, when expanding and scrolling. (Not
                 # the Browser: it is filled lazily, and a row measured while
