@@ -513,9 +513,12 @@ class IconSwapper(QObject):
         QTimer.singleShot(self.WARM_DELAY, self._warm_reference)
         # Existing widgets: identify cheap matches now, the rest in idle
         # time. Hidden windows are left to the focus fallback and menus are
-        # swapped when they are about to open.
+        # swapped when they are about to open, except the main window: QGIS
+        # shows it only after loading the plugins, and left to the focus
+        # fallback its toolbars would first show the theme's unsnapped
+        # SVGs, then switch.
         for window in QApplication.topLevelWidgets():
-            if window.isVisible() or isinstance(window, QMenu):
+            if window.isVisible() or isinstance(window, QMenu) or window is main_window:
                 self._scan(window, deferred=True)
         if self._pending:
             QTimer.singleShot(0, self._drain)
