@@ -35,6 +35,9 @@ PROPERTY = "studioLabel"
 # Height of the title strip (logical px), shared with style.qss.
 TITLE_HEIGHT = 15
 TITLE_SIZE = 11
+# Regular weight, slightly spaced: SemiBold letters ran together,
+# especially at 150 %.
+TITLE_SPACING = 0.5
 # Gap between the name and its hairlines.
 RULE_GAP = 6
 # Items the stylesheet pushes down itself (box model); any other widget in
@@ -125,7 +128,7 @@ def _font(size, weight, spacing=0.0):
 
 
 def title_font():
-    return _font(TITLE_SIZE, QFont.Weight.DemiBold)
+    return _font(TITLE_SIZE, QFont.Weight.Normal, TITLE_SPACING)
 
 
 def handle_font(size, spacing=LETTER_SPACING):
