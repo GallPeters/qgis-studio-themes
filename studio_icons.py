@@ -892,9 +892,18 @@ def stroke_px(size):
     """Line width in whole device pixels for an icon of `size` px: 1 px up
     to 25 px, 2 px from 28 to 40 px, 3 px at 48 px. That keeps the line
     about as thick on paper on every screen: 1 px on a ~95 PPI desktop
-    monitor (0.27 mm) is close to 2 px on a laptop at 150 % (0.32 mm),
-    while 2 px there (0.53 mm) looked heavy and crowded detailed glyphs."""
+    monitor (0.27 mm) is close to 2 px on a laptop at 150 percent
+    (0.32 mm), while 2 px there (0.53 mm) looked heavy and crowded
+    detailed glyphs."""
     return max(1, math.floor(STROKE * size / 24 + 0.25))
+
+
+def screen_stroke_px(ratio):
+    """Line width in device pixels of every icon on a screen at `ratio`:
+    that of a 24 px toolbar icon there (1 px at 100 percent, 2 px at
+    125-175, 3 px at 200), whatever the icon's size, so menus, panels,
+    toolbars and dialog page lists all share one line weight."""
+    return stroke_px(round(24 * ratio))
 
 
 def _parse(d):
@@ -1096,13 +1105,14 @@ def _snap_circle(center, radius):
     return math.floor(center - offset + 0.5) + offset, diameter / 2
 
 
-def render_icon_px(spec, colors, size, scale=SCALE):
+def render_icon_px(spec, colors, size, scale=SCALE, width=None):
     """Compose one icon for exactly `size` device pixels, with its lines on
-    the pixel grid (see the module docstring). Same design as render_icon:
-    same glyph enlargement, badge and visible weight, in whole pixels."""
+    the pixel grid (see the module docstring), `width` device pixels wide
+    (by default the width for its size, see stroke_px). Same design as
+    render_icon: same glyph enlargement and badge, in whole pixels."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
-    width = stroke_px(size)
+    width = stroke_px(size) if width is None else width
     if badge:
         unit = BADGED_SCALE * px
 

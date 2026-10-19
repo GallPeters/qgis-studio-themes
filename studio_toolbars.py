@@ -1,8 +1,7 @@
 """Toolbar names: a title above each toolbar's buttons.
 
 A docked horizontal toolbar gets a title strip above its buttons, the name
-centred between two hairlines whose ends turn down into short ticks:
-┌──── Map Navigation ────┐, so each toolbar's edges show. The strip is
+centred between two hairlines:  ───── Map Navigation ─────. The strip is
 made by a top margin on every item of the toolbar (QToolBar[studioLabel=
 "title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
 keep their own layout and the toolbar simply grows by the strip; widgets
@@ -10,12 +9,14 @@ the stylesheet cannot push down (containers such as the snapping widget)
 get the same space as a top contents margin, undone on detach. A
 transparent overlay paints the strip. It ignores the mouse, so the buttons
 and dragging work as before, and it is not a toolbar action, so QGIS,
-plugins and Interface Customization never see it.
+plugins and Interface Customization never see it. Toolbars side by side
+are told apart by a divider line in the handle gap between them, the
+height of the toolbar:  ── Project ── │ ── Map Navigation ──.
 
 The title is horizontal text, drawn straight onto the window: Windows
 smooths it with ClearType like all other UI text. The capitals are centred
 in the strip with the baseline on a whole device pixel, and the hairlines
-and ticks are one device pixel thick, so the strip stays sharp at every
+and dividers are one device pixel thick, so the strip stays sharp at every
 scaling.
 
 A vertical toolbar (docked left or right) has no room for a strip; it gets
@@ -42,9 +43,8 @@ TITLE_SIZE = 11
 TITLE_SPACING = 0.5
 # Gap between the name and its hairlines.
 RULE_GAP = 6
-# How far the end ticks reach below the strip: down to the top of the
-# icons (the buttons' padding), so the strip's overlay is this much taller.
-TICK_DROP = 3
+# Space left above and below a divider between toolbars.
+DIVIDER_INSET = 3
 # Items the stylesheet pushes down itself (box model); any other widget in
 # a titled toolbar gets a top contents margin instead.
 STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
@@ -169,13 +169,11 @@ class _Label(QWidget):
         metrics = QFontMetricsF(self.font())
         rect = self.rect()
         width = metrics.horizontalAdvance(self.text)
-        # The strip, without the ticks' extra reach below it.
-        height = TITLE_HEIGHT if self.titled else rect.height()
         # Capitals centred (centring the full line height would push them
         # up by the descender); baseline and start on whole device pixels,
         # where hinting keeps stems sharp.
         x = _snap((rect.width() - width) / 2, ratio)
-        baseline = _snap((height + metrics.capHeight()) / 2, ratio)
+        baseline = _snap((rect.height() + metrics.capHeight()) / 2, ratio)
         painter.setFont(self.font())
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
@@ -187,18 +185,35 @@ class _Label(QWidget):
             pen.setCosmetic(True)
             pen.setWidth(1)
             painter.setPen(pen)
-            # Each end turns down into a tick, so the toolbar's edges show
-            # without a separator: ┌── Name ──┐. Ticks on device pixel
-            # columns, ending level with the top of the icons.
-            left = (round(1 * ratio) + 0.5) / ratio
-            right = (round((rect.width() - 1) * ratio) - 0.5) / ratio
-            bottom = (round(rect.height() * ratio) - 0.5) / ratio
+            left, right = 1, rect.width() - 1
             if x - RULE_GAP > left + 4:
                 painter.drawLine(QPointF(left, y), QPointF(x - RULE_GAP, y))
-                painter.drawLine(QPointF(left, y), QPointF(left, bottom))
             if x + width + RULE_GAP < right - 4:
                 painter.drawLine(QPointF(x + width + RULE_GAP, y), QPointF(right, y))
-                painter.drawLine(QPointF(right, y), QPointF(right, bottom))
+        painter.end()
+
+
+class _Divider(QWidget):
+    """The line between a titled toolbar and the one to its left, drawn in
+    this toolbar's handle gap: one device pixel wide, in the hairlines'
+    colour."""
+
+    def __init__(self, toolbar, rule):
+        super().__init__(toolbar)
+        self.setObjectName("studioToolbarDivider")
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.rule = rule
+
+    def paintEvent(self, _event):  # pylint: disable=invalid-name
+        painter = QPainter(self)
+        ratio = self.devicePixelRatioF()
+        pen = QPen(self.rule)
+        pen.setCosmetic(True)
+        pen.setWidth(1)
+        painter.setPen(pen)
+        x = (int(self.width() / 2 * ratio) + 0.5) / ratio
+        painter.drawLine(QPointF(x, 0), QPointF(x, self.height()))
         painter.end()
 
 
@@ -254,6 +269,7 @@ class ToolbarLabels(QObject):
         self._rule = QColor()
         self._windows = []
         self._labels = {}
+        self._dividers = {}
         self._tooltips = {}
         # Signal connections per toolbar, undone on detach.
         self._slots = {}
@@ -281,6 +297,10 @@ class ToolbarLabels(QObject):
                 label.color = self._color
                 label.rule = self._rule
                 label.update()
+        for divider in self._dividers.values():
+            if not sip.isdeleted(divider):
+                divider.rule = self._rule
+                divider.update()
 
     def detach(self):
         for window in self._windows:
@@ -298,7 +318,11 @@ class ToolbarLabels(QObject):
                 toolbar.setToolTip(self._tooltips[toolbar])
             if not sip.isdeleted(label):
                 label.deleteLater()
+            divider = self._dividers.get(toolbar)
+            if divider is not None and not sip.isdeleted(divider):
+                divider.deleteLater()
         self._labels = {}
+        self._dividers = {}
         self._tooltips = {}
         self._slots = {}
         self._shifted = {}
@@ -308,6 +332,7 @@ class ToolbarLabels(QObject):
             return
         label = _Label(toolbar, self._color, self._rule)
         self._labels[toolbar] = label
+        self._dividers[toolbar] = _Divider(toolbar, self._rule)
         toolbar.installEventFilter(self)
         place = lambda *_args, toolbar=toolbar: self._place(toolbar)  # noqa: E731
         forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
@@ -322,6 +347,7 @@ class ToolbarLabels(QObject):
 
     def _forget(self, toolbar):
         self._labels.pop(toolbar, None)
+        self._dividers.pop(toolbar, None)
         self._tooltips.pop(toolbar, None)
         self._slots.pop(toolbar, None)
         self._shifted.pop(toolbar, None)
@@ -353,7 +379,7 @@ class ToolbarLabels(QObject):
         # they cache (combo boxes), so the toolbar relayouts with the strip.
         style = toolbar.style()
         for widget in [toolbar] + [c for c in toolbar.children() if isinstance(c, QWidget)]:
-            if widget is self._labels.get(toolbar):
+            if widget in (self._labels.get(toolbar), self._dividers.get(toolbar)):
                 continue
             style.unpolish(widget)
             style.polish(widget)
@@ -387,21 +413,20 @@ class ToolbarLabels(QObject):
             return
         mode = self._mode(toolbar)
         self._set_mode(toolbar, mode)
+        style = toolbar.style()
+        frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
+        extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
+        self._place_divider(toolbar, mode, frame, extent)
         if mode is None:
             label.hide()
             label.placed = None
             return
-        style = toolbar.style()
-        frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
-        extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
         if mode == "title":
             # Above the buttons, beside the handle (if any). The last
             # toolbar of a row is stretched to the window's edge: the strip
             # spans its items, not the empty rest.
             handle = extent if toolbar.isMovable() else 0
-            rect = QRect(
-                frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT + TICK_DROP,
-            )
+            rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
                 rect.moveLeft(frame)
             items = self._items_span(toolbar)
@@ -443,6 +468,31 @@ class ToolbarLabels(QObject):
         label.raise_()
         label.update()
 
+    def _place_divider(self, toolbar, mode, frame, extent):
+        """The divider between a titled toolbar and its left neighbour, in
+        the handle gap (the toolbar's own left edge when it has no handle);
+        none for the first toolbar of a row."""
+        divider = self._dividers.get(toolbar)
+        if divider is None or sip.isdeleted(divider):
+            return
+        right_to_left = toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft
+        parent = toolbar.parentWidget()
+        if right_to_left:
+            first = parent is None or toolbar.geometry().right() >= parent.width() - 1
+        else:
+            first = toolbar.x() <= 0
+        if mode != "title" or first:
+            divider.hide()
+            return
+        middle = frame + extent // 2 if toolbar.isMovable() else 0
+        if right_to_left:
+            middle = toolbar.width() - 1 - middle
+        rect = QRect(middle - 1, DIVIDER_INSET, 3, toolbar.height() - 2 * DIVIDER_INSET)
+        if divider.geometry() != rect or not divider.isVisible():
+            divider.setGeometry(rect)
+            divider.show()
+            divider.raise_()
+
     @staticmethod
     def _items_span(toolbar):
         """(left, right) of a toolbar's visible items (and its overflow
@@ -466,7 +516,9 @@ class ToolbarLabels(QObject):
             # handled the event.
             QTimer.singleShot(0, lambda toolbar=watched: self._refresh(toolbar))
         elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange,
-                      QEvent.Type.LayoutRequest):
+                      QEvent.Type.LayoutRequest, QEvent.Type.Move):
+            # Move: a toolbar dragged to the start of a row loses its
+            # divider, one dragged away from it gets one.
             self._place(watched)
         return False
 

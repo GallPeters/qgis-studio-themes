@@ -28,15 +28,17 @@ changelog=
             keeps its red dot.
           - Stronger Identify "i" and larger SQL letters.
           - Toolbar titles: each toolbar's name is shown centred above its
-            buttons between two hairlines whose ends turn down to the icons,
-            marking where each toolbar starts and ends (Project, Map Navigation, Data
-            Sources...), as sharp as the rest of the UI text; vertical
-            toolbars show a three-letter name on their handle.
+            buttons between two hairlines (Project, Map Navigation, Data
+            Sources...), with a divider line between toolbars side by side,
+            as sharp as the rest of the UI text; vertical toolbars show a
+            three-letter name on their handle.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.
-          - Even line weight on every screen: 1 px lines on desktop monitors
-            (2 px looked heavy there), 2 px on scaled laptop screens.
+          - One line weight for every icon, whatever its size: toolbars,
+            menus, panels and dialog page lists (Layer Properties, Data
+            Source Manager, Options) alike; 1 px lines on unscaled screens,
+            2 px on scaled laptop screens.
           - Toolbar icons on large desktop monitors match the size of QGIS's
             own icons; laptops keep their slightly larger icons.
           - Sharper widget glyphs (combo, spin box, menu and header arrows,

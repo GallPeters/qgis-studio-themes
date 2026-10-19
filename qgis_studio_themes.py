@@ -46,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "15"
+BUILD_FORMAT = "16"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -101,11 +101,13 @@ def icon_file(name):
 
 # Icon sizes (logical px) that get pixel-snapped PNGs: menus and trees (16),
 # panel toolbars (20), toolbars (24, or QGIS's configured toolbar size,
-# added at runtime) and the larger toolbar sizes QGIS offers.
-PNG_SIZES = (16, 20, 24, 32, 48)
+# added at runtime), dialog page lists (28: the toolbar size plus 4, also
+# added at runtime as QGIS scales it) and the larger toolbar sizes QGIS
+# offers.
+PNG_SIZES = (16, 20, 24, 28, 32, 48)
 # On scaled screens every PNG is loaded up front (see IconSwapper._icon),
 # so only the sizes in common use are kept there.
-SCALED_PNG_SIZES = (16, 20, 24)
+SCALED_PNG_SIZES = (16, 20, 24, 28)
 
 
 def screen_ratios():
@@ -113,17 +115,21 @@ def screen_ratios():
     return frozenset(round(screen.devicePixelRatio(), 2) for screen in QGuiApplication.screens()) or {1.0}
 
 
-def logical_sizes(ratios, toolbar_size):
-    """The logical icon sizes to provide PNGs for on these screens."""
+def logical_sizes(ratios, extra_sizes):
+    """The logical icon sizes to provide PNGs for on these screens, with
+    `extra_sizes` (QGIS's toolbar and dialog page list sizes)."""
     sizes = set(PNG_SIZES if ratios == {1.0} else SCALED_PNG_SIZES)
-    if 8 <= toolbar_size <= 96:
-        sizes.add(toolbar_size)
+    sizes.update(size for size in extra_sizes if 8 <= size <= 96)
     return tuple(sorted(sizes))
 
 
 def device_sizes(ratios, sizes):
-    """Pixel sizes of the PNGs needed for `sizes` on screens at `ratios`."""
-    return frozenset(round(size * ratio) for size in sizes for ratio in ratios)
+    """The PNGs needed for `sizes` on screens at `ratios`: (pixel size,
+    line width) pairs, the width being the screen's (see
+    studio_icons.screen_stroke_px)."""
+    return frozenset(
+        (round(size * ratio), studio_icons.screen_stroke_px(ratio)) for size in sizes for ratio in ratios
+    )
 
 
 def icon_colors(tokens):
@@ -142,9 +148,12 @@ def png_marker(icons_dir):
 
 
 def rendered_sizes(icons_dir):
-    """Pixel sizes whose PNGs are complete for a built theme."""
+    """(pixel size, line width) pairs whose PNGs are complete for a built
+    theme."""
     try:
-        return frozenset(json.loads(png_marker(icons_dir).read_text(encoding="utf-8")))
+        return frozenset(
+            (size, width) for size, width in json.loads(png_marker(icons_dir).read_text(encoding="utf-8"))
+        )
     except (OSError, ValueError, TypeError):
         return frozenset()
 
@@ -156,25 +165,26 @@ def disabled_path(icons_dir, name):
     return icons_dir / "disabled" / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
-def png_path(icons_dir, name, size, disabled=False):
+def png_path(icons_dir, name, size, width, disabled=False):
     """Shared by every icon name with the same drawing (spec)."""
     suffix = "-disabled" if disabled else ""
-    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}{suffix}.png"
+    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}w{width}{suffix}.png"
 
 
 def render_pngs(icons_dir, name, sizes, colors, scale):
-    """Pre-render one icon at each pixel size, drawn for that exact size
-    with its lines on the pixel grid (studio_icons.render_icon_px), so it
-    is shown 1:1, never resampled. Decoding a small PNG is also cheaper
-    than drawing an SVG. `colors` is (normal, disabled). Safe in a worker
-    thread (QImage painting needs no GUI thread)."""
+    """Pre-render one icon at each (pixel size, line width) of `sizes`,
+    drawn for that exact size with its lines on the pixel grid
+    (studio_icons.render_icon_px), so it is shown 1:1, never resampled.
+    Decoding a small PNG is also cheaper than drawing an SVG. `colors` is
+    (normal, disabled). Safe in a worker thread (QImage painting needs no
+    GUI thread)."""
     spec = studio_icons.ICON_MAP[name]
     for disabled, state_colors in zip((False, True), colors):
-        for size in sizes:
-            path = png_path(icons_dir, name, size, disabled)
+        for size, width in sizes:
+            path = png_path(icons_dir, name, size, width, disabled)
             if path.exists():
                 continue
-            svg = studio_icons.render_icon_px(spec, state_colors, size, scale)
+            svg = studio_icons.render_icon_px(spec, state_colors, size, scale, width)
             renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
             image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
             image.fill(Qt.GlobalColor.transparent)
@@ -201,9 +211,9 @@ def load_tokens(folder):
 
 
 def prerender_pngs(icons_dir, sizes, colors, scale, stop):
-    """Pre-render every distinct icon of a built theme at the pixel sizes
-    `sizes` that are not done yet (worker thread). Returns True once all
-    are written, False if stopped or failed."""
+    """Pre-render every distinct icon of a built theme at the (pixel size,
+    line width) pairs `sizes` that are not done yet (worker thread).
+    Returns True once all are written, False if stopped or failed."""
     done = rendered_sizes(icons_dir)
     missing = sorted(set(sizes) - done)
     try:
@@ -453,8 +463,9 @@ class IconSwapper(QObject):
         # Loaded PNGs per (spec, pixel size, disabled, ratio), shared by
         # every icon name with the same drawing.
         self._pixmaps = {}
-        # QGIS's toolbar icon size, which gets PNGs of its own.
-        self._toolbar_size = 24
+        # QGIS's toolbar and dialog page list icon sizes, which get PNGs of
+        # their own.
+        self._extra_sizes = (24, 28)
         self._scanned = []
         self._names = {}
         self._base_names = {}
@@ -485,7 +496,7 @@ class IconSwapper(QObject):
         self._names = {}
         self._icons_dir = icons_dir
         self._pixmaps = {}
-        self._toolbar_size = main_window.iconSize().width()
+        self._extra_sizes = (main_window.iconSize().width(), self._list_size())
         self._png = self._pngs_usable(icons_dir)
         self._base_names = {
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
@@ -559,16 +570,24 @@ class IconSwapper(QObject):
             if self._pngs_usable(icons_dir):
                 self._retheme(self._theme, icons_dir)
 
+    @staticmethod
+    def _list_size():
+        """Icon size of dialog page lists (Layer Properties, Data Source
+        Manager, Options...), as QgsOptionsDialogBase sets it: the
+        configured toolbar size plus a 4 px buffer, both scaled by QGIS."""
+        size = QgsSettings().value("/IconSize", 24, type=int)
+        return QgsApplication.scaleIconSize(size) + QgsApplication.scaleIconSize(4)
+
     def needed_png_sizes(self):
-        """Pixel sizes of the PNGs these screens need."""
+        """(pixel size, line width) of the PNGs these screens need."""
         ratios = screen_ratios()
-        return device_sizes(ratios, logical_sizes(ratios, self._toolbar_size))
+        return device_sizes(ratios, logical_sizes(ratios, self._extra_sizes))
 
     def _pngs_usable(self, icons_dir):
         """(screen ratios, logical sizes) when the theme's PNGs cover every
         size on every screen, else None: the SVGs are used until then."""
         ratios = screen_ratios()
-        sizes = logical_sizes(ratios, self._toolbar_size)
+        sizes = logical_sizes(ratios, self._extra_sizes)
         if device_sizes(ratios, sizes) <= rendered_sizes(icons_dir):
             return ratios, sizes
         return None
@@ -775,10 +794,11 @@ class IconSwapper(QObject):
                 ours = QIcon()
                 if ratios == {1.0}:
                     # Loaded lazily, only at the sizes actually drawn.
+                    width = studio_icons.screen_stroke_px(1.0)
                     for size in sizes:
-                        ours.addFile(str(png_path(self._icons_dir, name, size)), QSize(size, size))
+                        ours.addFile(str(png_path(self._icons_dir, name, size, width)), QSize(size, size))
                         ours.addFile(
-                            str(png_path(self._icons_dir, name, size, True)), QSize(size, size),
+                            str(png_path(self._icons_dir, name, size, width, True)), QSize(size, size),
                             QIcon.Mode.Disabled,
                         )
                 else:
@@ -802,7 +822,8 @@ class IconSwapper(QObject):
         key = (studio_icons.ICON_MAP[name], size, disabled, ratio)
         pixmap = self._pixmaps.get(key)
         if pixmap is None:
-            pixmap = QPixmap(str(png_path(self._icons_dir, name, size, disabled)))
+            width = studio_icons.screen_stroke_px(ratio)
+            pixmap = QPixmap(str(png_path(self._icons_dir, name, size, width, disabled)))
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
         return pixmap
