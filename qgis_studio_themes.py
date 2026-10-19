@@ -1596,16 +1596,22 @@ class QgisStudioThemesPlugin:
         r, g, b, a = parse_color(self._tokens["@divider_strong"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
+    def _label_row_rule(self):
+        """The lines between rows of toolbars: the colour of the line under
+        the menu bar."""
+        r, g, b, a = parse_color(self._tokens["@divider"])
+        return QColor(round(r), round(g), round(b), round(a * 255))
+
     def _apply_labels(self):
         """Attach (or update) the toolbar labels for the active theme."""
         if self._active is None or not self._labels_enabled():
             self._labels.detach()
             return
-        color, rule = self._label_color(), self._label_rule()
-        self._labels.set_color(color, rule)
-        self._labels.attach(self.iface.mainWindow(), color, rule)
+        color, rule, row_rule = self._label_color(), self._label_rule(), self._label_row_rule()
+        self._labels.set_color(color, rule, row_rule)
+        self._labels.attach(self.iface.mainWindow(), color, rule, row_rule)
         for designer in self.iface.openLayoutDesigners():
-            self._labels.attach(designer.window(), color, rule)
+            self._labels.attach(designer.window(), color, rule, row_rule)
 
     def _toggle_labels(self, checked):
         QgsSettings().setValue(LABELS_SETTING, checked)
@@ -1613,7 +1619,9 @@ class QgisStudioThemesPlugin:
 
     def _label_designer(self, designer):
         if self._active is not None and self._labels_enabled():
-            self._labels.attach(designer.window(), self._label_color(), self._label_rule())
+            self._labels.attach(
+                designer.window(), self._label_color(), self._label_rule(), self._label_row_rule()
+            )
 
     def _prerender(self, icons_dir):
         """Pre-render the theme's icons as pixel-snapped PNGs for these

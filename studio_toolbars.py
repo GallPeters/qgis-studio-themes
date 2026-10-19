@@ -11,7 +11,10 @@ transparent overlay paints the strip. It ignores the mouse, so the buttons
 and dragging work as before, and it is not a toolbar action, so QGIS,
 plugins and Interface Customization never see it. Toolbars side by side
 are told apart by a divider line in the handle gap between them, the
-toolbar's full height:  Project │ Map Navigation.
+toolbar's full height:  Project │ Map Navigation. Rows of toolbars are
+told apart by a line along the bottom of every row but the last, like the
+one under the menu bar: the last toolbar of a row reaches the window's
+edge, so the toolbars' lines join into one across the window.
 
 The title is horizontal text, drawn straight onto the window: Windows
 smooths it with ClearType like all other UI text. The capitals are centred
@@ -174,16 +177,18 @@ class _Label(QWidget):
 
 
 class _Divider(QWidget):
-    """The line between a titled toolbar and the one to its left, drawn in
-    this toolbar's handle gap: one device pixel wide, in the separators'
-    colour."""
+    """A line one device pixel thick, in `rule`: down the middle of the
+    widget (the divider between a titled toolbar and the one to its left,
+    in this toolbar's handle gap), or along its bottom when `row` (the line
+    under a row of toolbars)."""
 
-    def __init__(self, toolbar, rule):
+    def __init__(self, toolbar, rule, row=False):
         super().__init__(toolbar)
-        self.setObjectName("studioToolbarDivider")
+        self.setObjectName("studioToolbarRowLine" if row else "studioToolbarDivider")
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.rule = rule
+        self.row = row
 
     def paintEvent(self, _event):  # pylint: disable=invalid-name
         painter = QPainter(self)
@@ -192,8 +197,12 @@ class _Divider(QWidget):
         pen.setCosmetic(True)
         pen.setWidth(1)
         painter.setPen(pen)
-        x = (int(self.width() / 2 * ratio) + 0.5) / ratio
-        painter.drawLine(QPointF(x, 0), QPointF(x, self.height()))
+        if self.row:
+            y = (int(self.height() * ratio) - 0.5) / ratio
+            painter.drawLine(QPointF(0, y), QPointF(self.width(), y))
+        else:
+            x = (int(self.width() / 2 * ratio) + 0.5) / ratio
+            painter.drawLine(QPointF(x, 0), QPointF(x, self.height()))
         painter.end()
 
 
@@ -247,9 +256,13 @@ class ToolbarLabels(QObject):
         super().__init__()
         self._color = QColor()
         self._rule = QColor()
+        self._row_rule = QColor()
         self._windows = []
         self._labels = {}
         self._dividers = {}
+        self._row_lines = {}
+        # Windows whose row lines are re-placed on the next event-loop pass.
+        self._rows_pending = set()
         self._tooltips = {}
         # Signal connections per toolbar, undone on detach.
         self._slots = {}
@@ -257,11 +270,13 @@ class ToolbarLabels(QObject):
         # their own margins to restore: {toolbar: {widget: QMargins}}.
         self._shifted = {}
 
-    def attach(self, window, color, rule):
+    def attach(self, window, color, rule, row_rule=None):
         """Name every toolbar of `window` (a QMainWindow): text in
-        `color`, dividers between toolbars in `rule`."""
+        `color`, dividers between toolbars in `rule`, lines between rows of
+        toolbars in `row_rule` (by default `rule`)."""
         self._color = QColor(color)
         self._rule = QColor(rule)
+        self._row_rule = QColor(rule if row_rule is None else row_rule)
         if window not in self._windows:
             self._windows.append(window)
             window.installEventFilter(self)
@@ -269,9 +284,10 @@ class ToolbarLabels(QObject):
             if toolbar.parent() is window:
                 self._add(toolbar)
 
-    def set_color(self, color, rule):
+    def set_color(self, color, rule, row_rule=None):
         self._color = QColor(color)
         self._rule = QColor(rule)
+        self._row_rule = QColor(rule if row_rule is None else row_rule)
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
@@ -280,6 +296,10 @@ class ToolbarLabels(QObject):
             if not sip.isdeleted(divider):
                 divider.rule = self._rule
                 divider.update()
+        for line in self._row_lines.values():
+            if not sip.isdeleted(line):
+                line.rule = self._row_rule
+                line.update()
 
     def detach(self):
         for window in self._windows:
@@ -297,11 +317,13 @@ class ToolbarLabels(QObject):
                 toolbar.setToolTip(self._tooltips[toolbar])
             if not sip.isdeleted(label):
                 label.deleteLater()
-            divider = self._dividers.get(toolbar)
-            if divider is not None and not sip.isdeleted(divider):
-                divider.deleteLater()
+            for line in (self._dividers.get(toolbar), self._row_lines.get(toolbar)):
+                if line is not None and not sip.isdeleted(line):
+                    line.deleteLater()
         self._labels = {}
         self._dividers = {}
+        self._row_lines = {}
+        self._rows_pending = set()
         self._tooltips = {}
         self._slots = {}
         self._shifted = {}
@@ -312,6 +334,7 @@ class ToolbarLabels(QObject):
         label = _Label(toolbar, self._color)
         self._labels[toolbar] = label
         self._dividers[toolbar] = _Divider(toolbar, self._rule)
+        self._row_lines[toolbar] = _Divider(toolbar, self._row_rule, row=True)
         toolbar.installEventFilter(self)
         place = lambda *_args, toolbar=toolbar: self._place(toolbar)  # noqa: E731
         forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
@@ -327,6 +350,7 @@ class ToolbarLabels(QObject):
     def _forget(self, toolbar):
         self._labels.pop(toolbar, None)
         self._dividers.pop(toolbar, None)
+        self._row_lines.pop(toolbar, None)
         self._tooltips.pop(toolbar, None)
         self._slots.pop(toolbar, None)
         self._shifted.pop(toolbar, None)
@@ -358,7 +382,7 @@ class ToolbarLabels(QObject):
         # they cache (combo boxes), so the toolbar relayouts with the strip.
         style = toolbar.style()
         for widget in [toolbar] + [c for c in toolbar.children() if isinstance(c, QWidget)]:
-            if widget in (self._labels.get(toolbar), self._dividers.get(toolbar)):
+            if widget in (self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar)):
                 continue
             style.unpolish(widget)
             style.polish(widget)
@@ -396,6 +420,7 @@ class ToolbarLabels(QObject):
         frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
         extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
         self._place_divider(toolbar, mode, frame, extent)
+        self._schedule_rows(toolbar.parentWidget())
         if mode is None:
             label.hide()
             label.placed = None
@@ -465,13 +490,52 @@ class ToolbarLabels(QObject):
         middle = frame + extent // 2 if toolbar.isMovable() else 0
         if right_to_left:
             middle = toolbar.width() - 1 - middle
-        # The toolbar's full height, title strip included: it divides the
-        # names too, and is never mistaken for a separator inside a toolbar.
-        rect = QRect(middle - 1, frame, 3, max(0, toolbar.height() - 2 * frame))
+        # The toolbar's full height, title strip included, meeting the lines
+        # between rows: it divides the names too, and is never mistaken for
+        # a separator inside a toolbar.
+        rect = QRect(middle - 1, 0, 3, toolbar.height())
         if divider.geometry() != rect or not divider.isVisible():
             divider.setGeometry(rect)
             divider.show()
             divider.raise_()
+
+    def _schedule_rows(self, window):
+        """Re-place `window`'s row lines once the current layout changes
+        have settled: one toolbar moving or resizing can change which row
+        is the last for all of them."""
+        if not isinstance(window, QMainWindow) or window in self._rows_pending:
+            return
+        self._rows_pending.add(window)
+        QTimer.singleShot(0, lambda window=window: self._place_rows(window))
+
+    def _place_rows(self, window):
+        """A line along the bottom of each titled toolbar in the top area,
+        except those in its last row."""
+        self._rows_pending.discard(window)
+        if sip.isdeleted(window):
+            return
+        top = Qt.ToolBarArea.TopToolBarArea
+        toolbars = [
+            toolbar for toolbar, line in self._row_lines.items()
+            if not sip.isdeleted(toolbar) and not sip.isdeleted(line)
+            and toolbar.parentWidget() is window
+        ]
+        lined = [
+            toolbar for toolbar in toolbars
+            if toolbar.isVisible() and toolbar.property(PROPERTY) == "title"
+            and window.toolBarArea(toolbar) == top
+        ]
+        last = max((toolbar.geometry().bottom() for toolbar in lined), default=0)
+        for toolbar in toolbars:
+            line = self._row_lines[toolbar]
+            if toolbar not in lined or toolbar.geometry().bottom() >= last - 1:
+                line.hide()
+                continue
+            rect = QRect(0, toolbar.height() - 2, toolbar.width(), 2)
+            if line.geometry() != rect or not line.isVisible():
+                line.setGeometry(rect)
+                line.show()
+                line.raise_()
 
     @staticmethod
     def _items_span(toolbar):
@@ -496,9 +560,10 @@ class ToolbarLabels(QObject):
             # handled the event.
             QTimer.singleShot(0, lambda toolbar=watched: self._refresh(toolbar))
         elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange,
-                      QEvent.Type.LayoutRequest, QEvent.Type.Move):
+                      QEvent.Type.LayoutRequest, QEvent.Type.Move, QEvent.Type.Hide):
             # Move: a toolbar dragged to the start of a row loses its
-            # divider, one dragged away from it gets one.
+            # divider, one dragged away from it gets one. Hide: hiding a
+            # whole row changes which row is the last.
             self._place(watched)
         return False
 
