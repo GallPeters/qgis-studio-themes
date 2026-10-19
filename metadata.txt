@@ -53,6 +53,19 @@ changelog=
           - Fixed missing modern icons in the Processing Toolbox (group
             folders and tool icons) and in search boxes on QGIS builds where
             these panels are built natively, such as recent Linux builds.
+          - Smoother, faster toolbars: centred toolbars no longer flicker when
+            tools are switched, and toolbar names add a third of the work
+            they did to every selection or layer change; toolbar names are
+            never cut short.
+          - One line colour for the menu bar, toolbar rows and dividers,
+            clearly visible in dark themes; lighter separators inside a
+            toolbar; drop-down arrows centred beside the icon; one outline
+            chevron style for spin boxes, menus and the panels' expand arrows;
+            even heights for the snapping fields; stronger checked buttons in
+            dark themes.
+          - Clearer icons: larger glyphs with + and - badges in menus and
+            trees, and new Zoom Full, raster, vertex snapping and topological
+            editing icons.
           - Browser and Layers panels use the same sharp, pixel-snapped icons
             as the toolbars (their lines looked heavier before); Layers groups
             get a folder icon.
