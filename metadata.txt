@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=0.9
+version=1.0
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,12 @@ tracker=https://github.com/GallPeters/qgis-studio-themes
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.0 (19.10.2026):
+          - Compact sizes picked automatically on large, low-density monitors
+            (View > Studio Compact Sizes to override).
+          - Upgrading in a running QGIS keeps the Studio theme and its modern
+            Processing Toolbox and provider icons.
 
      ** v0.9 (19.10.2026):
           - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,
@@ -45,10 +51,6 @@ changelog=
             runtime, and in mode buttons such as snapping overlap.
           - Sharp icons on scaled (HiDPI) screens; DB Manager, Oracle and more
             provider icons modernised; dialog page lists fit when collapsed.
-          - Compact sizes picked automatically on large, low-density monitors
-            (View > Studio Compact Sizes to override).
-          - Upgrading in a running QGIS keeps the Studio theme and its modern
-            Processing Toolbox and provider icons.
           - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 
