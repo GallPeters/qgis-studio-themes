@@ -198,8 +198,8 @@ QgsProcessingToolboxTreeView::item {
 }
 /* Room for the toolbar name label the plugin paints over the handle. */
 QToolBar[studioLabel="true"]::handle {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
 }
 QToolBar::separator {
     background-color: @divider_strong;

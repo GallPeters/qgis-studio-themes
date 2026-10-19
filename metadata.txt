@@ -18,6 +18,13 @@ icon=icon.png
 changelog=
 
      ** v1.0 (19.10.2026):
+          - Sharper icons on every screen: each icon is drawn for the exact
+            pixel size it is shown at, with its lines on the pixel grid
+            (solid 1-2 px lines instead of blurred ones), at 100% and at
+            125-200% scaling alike; icons shown before they are ready switch
+            over in place.
+          - Crisper toolbar name labels: SemiBold, hinted, larger (10 px on
+            standard toolbars) and one shared size for all toolbars.
           - Compact sizes picked automatically on large, low-density monitors
             (View > Studio Compact Sizes to override).
           - Upgrading in a running QGIS keeps the Studio theme and its modern

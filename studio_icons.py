@@ -9,8 +9,17 @@ per-icon decorations.
 
 Icons are rendered per theme into the profile theme folder, where QGIS's
 own icon lookup (QgsApplication.iconPath) finds them.
+
+Those SVGs scale to any size, which costs sharpness: Tabler's lines sit on
+whole units of a 24 unit grid, and once enlarged and drawn at 16 or 20 px
+they fall between device pixels, so each 1 px line is smeared over two
+grey ones. For the sizes widgets actually ask for, render_icon_px instead
+draws every glyph in device pixels with its points moved onto the pixel
+grid and a stroke of whole pixels, like a hand-hinted icon: straight lines
+come out solid and sharp. Those are pre-rendered as PNGs (see the plugin).
 """
 import functools
+import math
 import re
 from pathlib import Path
 
@@ -748,6 +757,9 @@ BADGE_GAP = 2.3
 
 _BODY = re.compile(r"<svg[^>]*>(.*)</svg>", re.S)
 _FRAME = re.compile(r'<path stroke="none" d="M0 0h24v24H0z" fill="none"\s*/>')
+_PATH = re.compile(r'<path\s+d="([^"]*)"([^>]*?)\s*/>')
+_TOKEN = re.compile(r"[A-Za-z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
+_ARGS = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "S": 4, "A": 7}
 
 
 def glyph_names():
@@ -806,5 +818,195 @@ def render_icon(spec, colors, scale=SCALE):
         parts.append(
             f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>'
         )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# ---- Pixel-snapped rendering (pre-rendered PNGs) ---------------------------
+
+def stroke_px(size):
+    """Line width in whole device pixels for an icon of `size` px: the
+    nearest to the scalable icons' weight, ties rounding up (at 24 px a
+    solid 2 px line matches how heavy the smeared 1.5 px one looked;
+    1 px would read faint)."""
+    return max(1, math.floor(STROKE * size / 24 + 0.5))
+
+
+def _parse(d):
+    """Path data as absolute segments: ("M"|"L", x, y),
+    ("C", x1, y1, x2, y2, x, y), ("A", rx, ry, rot, large, sweep, x, y)
+    and ("Z",). Covers the commands Tabler uses (M L H V C S A Z)."""
+    tokens = _TOKEN.findall(d)
+    segments = []
+    x = y = start_x = start_y = 0.0
+    control = None  # second control point of the previous C/S, for S
+    command = None
+    i = 0
+    while i < len(tokens):
+        if tokens[i].isalpha():
+            command = tokens[i]
+            i += 1
+            if command in "Zz":
+                segments.append(("Z",))
+                x, y = start_x, start_y
+                control = None
+                continue
+        kind = command.upper()
+        count = _ARGS[kind]
+        args = [float(v) for v in tokens[i:i + count]]
+        if len(args) < count:
+            raise ValueError(f"bad path data: {d}")
+        i += count
+        dx, dy = (x, y) if command.islower() else (0.0, 0.0)
+        if kind == "M":
+            x, y = args[0] + dx, args[1] + dy
+            start_x, start_y = x, y
+            segments.append(("M", x, y))
+            # Further pairs after a moveto are linetos.
+            command = "l" if command.islower() else "L"
+            control = None
+        elif kind in "LHV":
+            if kind == "L":
+                x, y = args[0] + dx, args[1] + dy
+            elif kind == "H":
+                x = args[0] + dx
+            else:
+                y = args[0] + dy
+            segments.append(("L", x, y))
+            control = None
+        elif kind in "CS":
+            if kind == "C":
+                x1, y1 = args[0] + dx, args[1] + dy
+                rest = args[2:]
+            else:
+                x1, y1 = (2 * x - control[0], 2 * y - control[1]) if control else (x, y)
+                rest = args
+            x2, y2 = rest[0] + dx, rest[1] + dy
+            x, y = rest[2] + dx, rest[3] + dy
+            segments.append(("C", x1, y1, x2, y2, x, y))
+            control = (x2, y2)
+        else:
+            x, y = args[5] + dx, args[6] + dy
+            segments.append(("A", *args[:5], x, y))
+            control = None
+    return segments
+
+
+@functools.lru_cache(maxsize=None)
+def _glyph_paths(name):
+    """(segments, extra attributes) of every path of a glyph."""
+    return tuple((tuple(_parse(d)), attrs) for d, attrs in _PATH.findall(_glyph_body(name)))
+
+
+def _num(value):
+    text = f"{value:.3f}".rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
+
+
+def _snapped_path(segments, place, snap, unit):
+    """Path data in device pixels: endpoints moved onto the pixel grid,
+    curve controls moved with their endpoint and arc radii stretched with
+    the arc's ends, so shapes keep their tangents (rounded corners still
+    meet their straight edges)."""
+    out = []
+    here = here_snapped = start = start_snapped = (0.0, 0.0)
+    for segment in segments:
+        kind = segment[0]
+        if kind == "Z":
+            out.append("Z")
+            here, here_snapped = start, start_snapped
+            continue
+        end = place(segment[-2], segment[-1])
+        end_snapped = (snap(end[0]), snap(end[1]))
+        if kind == "M":
+            out.append(f"M{_num(end_snapped[0])} {_num(end_snapped[1])}")
+            start, start_snapped = end, end_snapped
+        elif kind == "L":
+            out.append(f"L{_num(end_snapped[0])} {_num(end_snapped[1])}")
+        elif kind == "C":
+            c1, c2 = place(segment[1], segment[2]), place(segment[3], segment[4])
+            c1 = (c1[0] + here_snapped[0] - here[0], c1[1] + here_snapped[1] - here[1])
+            c2 = (c2[0] + end_snapped[0] - end[0], c2[1] + end_snapped[1] - end[1])
+            out.append("C" + " ".join(_num(v) for v in (*c1, *c2, *end_snapped)))
+        else:
+            rx, ry, rotation, large, sweep = segment[1:6]
+            dx, dy = end[0] - here[0], end[1] - here[1]
+            sdx, sdy = end_snapped[0] - here_snapped[0], end_snapped[1] - here_snapped[1]
+            if abs(dx) > 1e-6 and abs(dy) > 1e-6:
+                fx, fy = sdx / dx, sdy / dy
+            elif abs(dx) > 1e-6:
+                fx = fy = sdx / dx
+            elif abs(dy) > 1e-6:
+                fx = fy = sdy / dy
+            else:
+                fx = fy = 1.0
+            if fx > 0 and fy > 0:
+                out.append("A" + " ".join(_num(v) for v in (
+                    rx * unit * fx, ry * unit * fy, rotation, large, sweep, *end_snapped,
+                )))
+            else:
+                # Collapsed onto one pixel: a dot (round caps) or nothing.
+                out.append(f"L{_num(end_snapped[0])} {_num(end_snapped[1])}")
+        here, here_snapped = end, end_snapped
+    return "".join(out)
+
+
+def _snap_circle(center, radius):
+    """A dot's centre and radius with its bounding box on whole pixels."""
+    diameter = max(2, round(2 * radius))
+    offset = 0.0 if diameter % 2 == 0 else 0.5
+    return math.floor(center - offset + 0.5) + offset, diameter / 2
+
+
+def render_icon_px(spec, colors, size, scale=SCALE):
+    """Compose one icon for exactly `size` device pixels, with its lines on
+    the pixel grid (see the module docstring). Same design as render_icon:
+    same glyph enlargement, badge and visible weight, in whole pixels."""
+    glyph, _, badge = spec.partition("+")
+    px = size / 24
+    if badge:
+        unit = BADGED_SCALE * px
+
+        def place(x, y):
+            return (0.2 + BADGED_SCALE * x) * px, (0.2 + BADGED_SCALE * y) * px
+    else:
+        unit = scale * px
+        middle = size / 2
+
+        def place(x, y):
+            return middle + (x - 12) * unit, middle + (y - 12) * unit
+    width = stroke_px(size)
+    # Odd widths are centred on pixel centres, even ones on pixel edges.
+    offset = 0.5 if width % 2 else 0.0
+
+    def snap(value):
+        return math.floor(value - offset + 0.5) + offset
+
+    icon = colors["icon"]
+    paths = "".join(
+        f'<path d="{_snapped_path(segments, place, snap, unit)}"'
+        f'{attrs.replace("currentColor", icon)}/>'
+        for segments, attrs in _glyph_paths(glyph)
+    )
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 {size} {size}" fill="none" stroke-linecap="round" '
+        'stroke-linejoin="round">',
+    ]
+    mask = ""
+    if badge:
+        center, radius = _snap_circle(BADGE_CENTER * px, BADGE_RADIUS * px)
+        gap = max(1, round(BADGE_GAP * px))
+        parts.append(
+            f'<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="{size}" height="{size}">'
+            f'<rect width="{size}" height="{size}" fill="#fff"/>'
+            f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius + gap)}" fill="#000"/>'
+            '</mask></defs>'
+        )
+        mask = ' mask="url(#b)"'
+    parts.append(f'<g{mask} stroke="{icon}" stroke-width="{width}">{paths}</g>')
+    if badge:
+        fill = colors["danger"] if badge == "x" else colors["accent"]
+        parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
     parts.append("</svg>")
     return "".join(parts)

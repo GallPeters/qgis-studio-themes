@@ -12,22 +12,32 @@ chart's y-axis title: the baseline faces the toolbar's icons. Text drawn
 rotated loses Windows' font hinting and looks blurry at this size, so it is
 drawn upright into an image that is then turned by exactly 90 degrees
 (lossless). Vertical toolbars get the name across the top.
+
+Sharpness at small sizes: bold capitals of 8 px turn into blobs on a
+normal-density monitor, so labels are SemiBold, fully hinted, and the
+baseline sits on a whole device pixel with the capitals (not the font's
+full line height) centred on the handle. Labels share one size, the
+largest at which every short (up to four letter) QGIS toolbar name fits the
+handle (10 px on 24 px toolbars, larger on larger ones), so no name looks
+louder than the rest; only a longer name steps down as far as it must.
 """
 from qgis.PyQt import sip
 import functools
 import math
 
-from qgis.PyQt.QtCore import QEvent, QObject, QRect, Qt
-from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QTransform
+from qgis.PyQt.QtCore import QEvent, QObject, QPointF, QRect, Qt
+from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QFontMetricsF, QImage, QPainter, QTransform
 from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWidget
 
 PROPERTY = "studioLabel"
-# Largest first; the first size at which the name fits the handle wins.
+# Largest first (see _fit); 8 px only where nothing else fits the handle.
 # Compact sizes (see set_compact) start one size smaller.
-FONT_SIZES = (10, 9, 8)
-COMPACT_FONT_SIZES = (9, 8)
+FONT_SIZES = (11, 10, 9, 8)
+COMPACT_FONT_SIZES = (10, 9, 8)
 _font_sizes = FONT_SIZES
 LETTER_SPACING = 1.0
+# Whole pixels only: fractional spacing puts letters between pixels.
+SPACINGS = (LETTER_SPACING, 0)
 
 # QGIS's own toolbars (main window and layout designer): short, plain words
 # (shrunk to fit if needed). Others, such as plugin toolbars, get the first
@@ -92,19 +102,29 @@ class _Label(QWidget):
             return
         painter = QPainter(self)
         rect = self.rect()
+        ratio = self.devicePixelRatioF()
         if rect.height() < rect.width():
             # Vertical toolbar: the name runs across the top.
             painter.setPen(self.color)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.text)
+            painter.drawText(self._origin(rect.width(), rect.height(), ratio), self.text)
             painter.end()
             return
-        ratio = self.devicePixelRatioF()
         key = (self.text, self.font().pixelSize(), self.color.rgba(), rect.size(), ratio)
         if key != self._image_key:
             self._image = self._render(rect, ratio)
             self._image_key = key
         painter.drawImage(rect.topLeft(), self._image)
         painter.end()
+
+    def _origin(self, width, height, ratio):
+        """Where to draw the text so it is centred in width x height:
+        capitals centred vertically (centring the full line height would
+        push them up by the descender) and the baseline and the start on
+        whole device pixels, where hinting keeps stems sharp."""
+        metrics = QFontMetricsF(self.font())
+        x = (width - metrics.horizontalAdvance(self.text)) / 2
+        baseline = (height + metrics.capHeight()) / 2
+        return QPointF(round(x * ratio) / ratio, round(baseline * ratio) / ratio)
 
     def _render(self, rect, ratio):
         """Draw the text upright (hinted, sharp), then turn the image
@@ -118,7 +138,7 @@ class _Label(QWidget):
         upright = QPainter(image)
         upright.setFont(self.font())
         upright.setPen(self.color)
-        upright.drawText(QRect(0, 0, rect.height(), rect.width()), Qt.AlignmentFlag.AlignCenter, self.text)
+        upright.drawText(self._origin(rect.height(), rect.width(), ratio), self.text)
         upright.end()
         image = image.transformed(QTransform().rotate(-90))
         image.setDevicePixelRatio(ratio)
@@ -134,25 +154,50 @@ def set_compact(compact):
 def label_font(size, spacing=LETTER_SPACING):
     font = QFont(QApplication.font())
     font.setPixelSize(size)
-    font.setWeight(QFont.Weight.Bold)
+    font.setWeight(QFont.Weight.DemiBold)
     font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
+    # Snap outlines to the pixel grid: crisp stems at 9-11 px.
+    font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
     return font
 
 
 def fit(text, length):
-    """The largest label font at which `text` fits `length` pixels, and the
-    text (shortened only if it does not fit even at the smallest size)."""
+    """The label font for `text` on a handle `length` pixels long (the
+    size all labels share, see _uniform), and the text (shortened only if
+    it does not fit even at the smallest size)."""
     size, spacing, text = _fit(text, length, QApplication.font().family(), _font_sizes)
     return label_font(size, spacing), text
 
 
+def _candidates(sizes):
+    """(size, spacing) pairs, largest first; tighter letter spacing before
+    a smaller size."""
+    return [(size, spacing) for size in sizes for spacing in SPACINGS]
+
+
+@functools.lru_cache(maxsize=64)
+def _uniform(length, _family, sizes):
+    """Index of the first candidate at which every short QGIS toolbar
+    name fits `length` pixels: the size labels share (the smallest if none
+    fits; longer names are then cut). The few five letter names would
+    shrink every label for their sake, so they only shrink themselves."""
+    names = {name for name in ABBREVIATIONS.values() if len(name) <= 4}
+    candidates = _candidates(sizes)
+    for index, (size, spacing) in enumerate(candidates):
+        metrics = QFontMetrics(label_font(size, spacing))
+        if all(metrics.horizontalAdvance(name) <= length for name in names):
+            return index
+    return len(candidates) - 1
+
+
 @functools.lru_cache(maxsize=256)
-def _fit(text, length, _family, sizes):
-    # Largest size first; tighter letter spacing before ever cutting a word.
-    for spacing in (LETTER_SPACING, 0):
-        for size in sizes:
-            if QFontMetrics(label_font(size, spacing)).horizontalAdvance(text) <= length:
-                return size, spacing, text
+def _fit(text, length, family, sizes):
+    # From the shared size down, so other names (plugin toolbars) match it
+    # and only a name that does not fit gets smaller, then cut.
+    candidates = _candidates(sizes)
+    for size, spacing in candidates[_uniform(length, family, sizes):]:
+        if QFontMetrics(label_font(size, spacing)).horizontalAdvance(text) <= length:
+            return size, spacing, text
     metrics = QFontMetrics(label_font(sizes[-1], 0))
     while text and metrics.horizontalAdvance(text) > length:
         text = text[:-1]

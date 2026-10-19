@@ -52,6 +52,10 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Icons** – over 600 QGIS toolbar, menu, panel and dialog icons are
   replaced with a consistent line-icon set based on
   [Tabler Icons](https://tabler.io/icons), coloured for each theme.
+- **Sharp on every screen** – icons are pre-rendered for the exact pixel
+  size each screen draws them at (100%, 125%, 150%... scaling), with their
+  lines snapped to the pixel grid, so they stay crisp instead of blurring
+  on large monitors. Toolbar name labels are hinted and share one size.
 - **Typography** – the bundled Inter typeface is used unless a custom font
   is set in QGIS options. The configured font size is always kept.
 - **Sizes for every screen** – on large, low-density desktop monitors the

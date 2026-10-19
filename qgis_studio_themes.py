@@ -24,7 +24,7 @@ from qgis.PyQt.QtCore import (
 )
 from qgis.PyQt.QtGui import (
     QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
-    QStandardItemModel,
+    QPixmap, QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
@@ -47,7 +47,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "9"
+BUILD_FORMAT = "10"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -100,7 +100,54 @@ def icon_file(name):
     return Path(name).with_suffix(".svg")
 
 
-PNG_SIZES = (16, 24, 32, 48)
+# Icon sizes (logical px) that get pixel-snapped PNGs: menus and trees (16),
+# panel toolbars (20), toolbars (24, or QGIS's configured toolbar size,
+# added at runtime) and the larger toolbar sizes QGIS offers.
+PNG_SIZES = (16, 20, 24, 32, 48)
+# On scaled screens every PNG is loaded up front (see IconSwapper._icon),
+# so only the sizes in common use are kept there.
+SCALED_PNG_SIZES = (16, 20, 24)
+
+
+def screen_ratios():
+    """The device pixel ratios of all screens (1.0, 1.25, 1.5...)."""
+    return frozenset(round(screen.devicePixelRatio(), 2) for screen in QGuiApplication.screens()) or {1.0}
+
+
+def logical_sizes(ratios, toolbar_size):
+    """The logical icon sizes to provide PNGs for on these screens."""
+    sizes = set(PNG_SIZES if ratios == {1.0} else SCALED_PNG_SIZES)
+    if 8 <= toolbar_size <= 96:
+        sizes.add(toolbar_size)
+    return tuple(sorted(sizes))
+
+
+def device_sizes(ratios, sizes):
+    """Pixel sizes of the PNGs needed for `sizes` on screens at `ratios`."""
+    return frozenset(round(size * ratio) for size in sizes for ratio in ratios)
+
+
+def icon_colors(tokens):
+    """Colours of the normal and the disabled icons of a theme."""
+    colors = {
+        "icon": tokens["@icon"],
+        "accent": tokens["@icon_accent"],
+        "danger": tokens["@danger"],
+    }
+    # Disabled state: glyph and badge both in the theme's disabled colour.
+    return colors, dict.fromkeys(colors, tokens["@text_disabled"])
+
+
+def png_marker(icons_dir):
+    return icons_dir / "png" / ".done"
+
+
+def rendered_sizes(icons_dir):
+    """Pixel sizes whose PNGs are complete for a built theme."""
+    try:
+        return frozenset(json.loads(png_marker(icons_dir).read_text(encoding="utf-8")))
+    except (OSError, ValueError, TypeError):
+        return frozenset()
 
 
 def disabled_path(icons_dir, name):
@@ -116,21 +163,25 @@ def png_path(icons_dir, name, size, disabled=False):
     return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}{suffix}.png"
 
 
-def render_pngs(icons_dir, name):
-    """Pre-render one icon at the common sizes: decoding a small PNG is
-    about 2.5x cheaper than drawing the SVG the first time it is shown.
-    Safe in a worker thread (QImage painting needs no GUI thread)."""
-    for disabled, source in (
-        (False, icons_dir / icon_file(name)), (True, disabled_path(icons_dir, name)),
-    ):
-        renderer = QSvgRenderer(str(source))
-        for size in PNG_SIZES:
+def render_pngs(icons_dir, name, sizes, colors, scale):
+    """Pre-render one icon at each pixel size, drawn for that exact size
+    with its lines on the pixel grid (studio_icons.render_icon_px), so it
+    is shown 1:1, never resampled. Decoding a small PNG is also cheaper
+    than drawing an SVG. `colors` is (normal, disabled). Safe in a worker
+    thread (QImage painting needs no GUI thread)."""
+    spec = studio_icons.ICON_MAP[name]
+    for disabled, state_colors in zip((False, True), colors):
+        for size in sizes:
+            path = png_path(icons_dir, name, size, disabled)
+            if path.exists():
+                continue
+            svg = studio_icons.render_icon_px(spec, state_colors, size, scale)
+            renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
             image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
             image.fill(Qt.GlobalColor.transparent)
             painter = QPainter(image)
             renderer.render(painter)
             painter.end()
-            path = png_path(icons_dir, name, size, disabled)
             path.parent.mkdir(parents=True, exist_ok=True)
             image.save(str(path))
 
@@ -150,16 +201,20 @@ def load_tokens(folder):
     ))
 
 
-def prerender_pngs(icons_dir, stop):
-    """Pre-render every distinct icon of a built theme (worker thread).
-    Returns True once all are written, False if stopped or failed."""
+def prerender_pngs(icons_dir, sizes, colors, scale, stop):
+    """Pre-render every distinct icon of a built theme at the pixel sizes
+    `sizes` that are not done yet (worker thread). Returns True once all
+    are written, False if stopped or failed."""
+    done = rendered_sizes(icons_dir)
+    missing = sorted(set(sizes) - done)
     try:
         for name in studio_icons.unique_icons():
             if stop.is_set():
                 return False
-            render_pngs(icons_dir, name)
+            render_pngs(icons_dir, name, missing, colors, scale)
             time.sleep(0.002)  # yield Python's lock to the GUI thread
-        (icons_dir / "png" / ".done").write_bytes(b"")
+        png_marker(icons_dir).parent.mkdir(parents=True, exist_ok=True)
+        png_marker(icons_dir).write_text(json.dumps(sorted(done | set(sizes))), encoding="utf-8")
     except OSError:
         return False
     return True
@@ -194,13 +249,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
         QgsMessageLog.logMessage(
             f"{folder}: unresolved tokens {sorted(unknown)}", LOG_TAG, Qgis.MessageLevel.Warning
         )
-    colors = {
-        "icon": tokens["@icon"],
-        "accent": tokens["@icon_accent"],
-        "danger": tokens["@danger"],
-    }
-    # Disabled state: glyph and badge both in the theme's disabled colour.
-    disabled_colors = dict.fromkeys(colors, tokens["@text_disabled"])
+    colors, disabled_colors = icon_colors(tokens)
     folders = set()
     svgs = {}
     for name, spec in studio_icons.ICON_MAP.items():
@@ -350,7 +399,14 @@ class IconSwapper(QObject):
         self._delegates = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
-        self._png = False
+        # (screen ratios, logical sizes) while the active theme's PNGs are
+        # used, else None (see _pngs_usable).
+        self._png = None
+        # Loaded PNGs per (spec, pixel size, disabled, ratio), shared by
+        # every icon name with the same drawing.
+        self._pixmaps = {}
+        # QGIS's toolbar icon size, which gets PNGs of its own.
+        self._toolbar_size = 24
         self._scanned = []
         self._names = {}
         self._base_names = {}
@@ -380,6 +436,8 @@ class IconSwapper(QObject):
         self._ours = {}
         self._names = {}
         self._icons_dir = icons_dir
+        self._pixmaps = {}
+        self._toolbar_size = main_window.iconSize().width()
         self._png = self._pngs_usable(icons_dir)
         self._base_names = {
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
@@ -406,6 +464,7 @@ class IconSwapper(QObject):
         self._compact()
         self._theme = theme
         self._icons = {}
+        self._pixmaps = {}
         self._icons_dir = icons_dir
         self._png = self._pngs_usable(icons_dir)
         # Each setIcon repaints its toolbar or menu: suspend painting and
@@ -445,21 +504,26 @@ class IconSwapper(QObject):
         return None if name is None else self._icon(name)
 
     def use_pngs(self, icons_dir):
-        """The active theme's PNGs are ready: icons handed out from now on
-        use them. Icons already shown keep their (rendered) SVG versions."""
+        """The active theme's PNGs are ready: every icon handed out so far
+        (drawn from the SVGs meanwhile) moves to its pixel-snapped version
+        in place, with a single repaint."""
         if self._theme is not None and icons_dir == self._icons_dir and not self._png:
-            self._png = self._pngs_usable(icons_dir)
-            if self._png:
-                self._icons = {}
+            if self._pngs_usable(icons_dir):
+                self._retheme(self._theme, icons_dir)
 
-    @staticmethod
-    def _pngs_usable(icons_dir):
-        """Pre-rendered PNGs only on 100% scaled screens: at 125-200% Qt
-        would stretch the fixed 16/24/32/48 px images (soft, chunky icons),
-        while the SVG renders sharp at the exact device size."""
-        if not (icons_dir / "png" / ".done").exists():
-            return False
-        return all(screen.devicePixelRatio() == 1 for screen in QGuiApplication.screens())
+    def needed_png_sizes(self):
+        """Pixel sizes of the PNGs these screens need."""
+        ratios = screen_ratios()
+        return device_sizes(ratios, logical_sizes(ratios, self._toolbar_size))
+
+    def _pngs_usable(self, icons_dir):
+        """(screen ratios, logical sizes) when the theme's PNGs cover every
+        size on every screen, else None: the SVGs are used until then."""
+        ratios = screen_ratios()
+        sizes = logical_sizes(ratios, self._toolbar_size)
+        if device_sizes(ratios, sizes) <= rendered_sizes(icons_dir):
+            return ratios, sizes
+        return None
 
     def _compact(self):
         """Forget deleted widgets, actions and the icons of closed dialogs,
@@ -655,13 +719,24 @@ class IconSwapper(QObject):
         if name not in self._icons:
             disabled = str(disabled_path(self._icons_dir, name))
             if self._png:
+                ratios, sizes = self._png
                 ours = QIcon()
-                for size in PNG_SIZES:
-                    ours.addFile(str(png_path(self._icons_dir, name, size)), QSize(size, size))
-                    ours.addFile(
-                        str(png_path(self._icons_dir, name, size, True)), QSize(size, size),
-                        QIcon.Mode.Disabled,
-                    )
+                if ratios == {1.0}:
+                    # Loaded lazily, only at the sizes actually drawn.
+                    for size in sizes:
+                        ours.addFile(str(png_path(self._icons_dir, name, size)), QSize(size, size))
+                        ours.addFile(
+                            str(png_path(self._icons_dir, name, size, True)), QSize(size, size),
+                            QIcon.Mode.Disabled,
+                        )
+                else:
+                    # Qt matches lazily loaded files by size alone and would
+                    # stretch them on scaled screens; pixmaps tagged with
+                    # their ratio are picked at exactly the device size.
+                    for ratio in sorted(ratios):
+                        for size in sizes:
+                            for disabled, mode in ((False, QIcon.Mode.Normal), (True, QIcon.Mode.Disabled)):
+                                ours.addPixmap(self._pixmap(name, round(size * ratio), disabled, ratio), mode)
             else:
                 ours = QIcon(str(self._icons_dir / icon_file(name)))
                 ours.addFile(disabled, QSize(), QIcon.Mode.Disabled)
@@ -670,6 +745,15 @@ class IconSwapper(QObject):
             self._names[ours.cacheKey()] = None
             self._ours[ours.cacheKey()] = name
         return self._icons[name]
+
+    def _pixmap(self, name, size, disabled, ratio):
+        key = (studio_icons.ICON_MAP[name], size, disabled, ratio)
+        pixmap = self._pixmaps.get(key)
+        if pixmap is None:
+            pixmap = QPixmap(str(png_path(self._icons_dir, name, size, disabled)))
+            pixmap.setDevicePixelRatio(ratio)
+            self._pixmaps[key] = pixmap
+        return pixmap
 
     def _builtin(self, icon):
         """The stock icon for one of our icons (used when restoring)."""
@@ -1446,17 +1530,20 @@ class QgisStudioThemesPlugin:
             self._labels.attach(designer.window(), self._label_color())
 
     def _prerender(self, icons_dir):
-        """Pre-render the theme's icons as PNGs in a worker thread, off
-        startup's critical path; icons requested afterwards use them."""
-        if icons_dir in self._rendering or (icons_dir / "png" / ".done").exists():
+        """Pre-render the theme's icons as pixel-snapped PNGs for these
+        screens in a worker thread, off startup's critical path; icons
+        shown meanwhile move to them once they are ready."""
+        sizes = self._icons.needed_png_sizes()
+        if icons_dir in self._rendering or sizes <= rendered_sizes(icons_dir):
             return
-        if any(screen.devicePixelRatio() != 1 for screen in QGuiApplication.screens()):
-            return  # scaled screens use the SVGs (see IconSwapper._pngs_usable)
         self._rendering.add(icons_dir)
+        colors = icon_colors(self._tokens)
+        scale = studio_icons.COMPACT_SCALE if self._compact else studio_icons.SCALE
 
         def work():
-            if prerender_pngs(icons_dir, self._stop):
+            if prerender_pngs(icons_dir, sizes, colors, scale, self._stop):
                 self._relay.pngs_ready.emit(icons_dir)
+            self._rendering.discard(icons_dir)
 
         QTimer.singleShot(3000, lambda: self._start(work))
 
