@@ -123,6 +123,8 @@ ICON_MAP = {
     "mIconVectorTileLayer.svg": "layout-grid",
     "mIconGeometryCollectionLayer.svg": "shape",
     "mIconFolder.svg": "folder",
+    # Layer tree groups.
+    "mActionFolder.svg": "folder",
     "mIconFolderOpen.svg": "folder-open",
     "mIconFolderHome.svg": "home",
     "mIconFavorites.svg": "star",

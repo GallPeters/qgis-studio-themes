@@ -24,13 +24,13 @@ from qgis.PyQt.QtCore import (
 )
 from qgis.PyQt.QtGui import (
     QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
-    QPixmap, QStandardItemModel,
+    QPixmap, QRegion, QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDockWidget,
-    QListWidget, QMenu, QMenuBar, QStackedWidget, QStyledItemDelegate, QTabBar, QToolBar,
-    QToolButton,
+    QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
+    QStyleOptionViewItem, QTabBar, QToolBar, QToolButton,
 )
 
 from . import studio_icons
@@ -312,24 +312,73 @@ class _IconDelegate(QStyledItemDelegate):
     """Draws a view's rows with the theme's icons, for views whose model
     cannot be edited: the Processing Toolbox, whose icons come from QGIS's
     icon cache (filled before the Studio themes were registered) or from
-    the Processing plugin's own image files."""
+    the Processing plugin's own image files, and the Browser, whose rows
+    would otherwise show the theme's SVGs (not pixel-snapped, so heavier
+    than the toolbar icons on screens at 100 percent)."""
 
-    def __init__(self, swapper, parent):
+    def __init__(self, swapper, parent, by_row=True):
         super().__init__(parent)
         self._swapper = swapper
+        self._by_row = by_row
 
     def initStyleOption(self, option, index):  # pylint: disable=invalid-name
         super().initStyleOption(option, index)
         if option.icon.isNull():
             return
-        # Keyed by the row (tool and its group), not by the icon object:
-        # Processing plugin tools create a new QIcon on every paint.
-        parent = index.parent()
-        row = (index.data(), parent.data(), parent.parent().data())
-        group = index.model().hasChildren(index)
-        icon = self._swapper.row_icon(row, option.icon, group)
+        if self._by_row:
+            # Keyed by the row (tool and its group), not by the icon object:
+            # Processing plugin tools create a new QIcon on every paint.
+            parent = index.parent()
+            row = (index.data(), parent.data(), parent.parent().data())
+            icon = self._swapper.row_icon(row, option.icon, index.model().hasChildren(index))
+        else:
+            # Keyed by the icon: a Browser row changes its icon (folder
+            # open or closed, loading).
+            icon = self._swapper.row_icon(("icon", option.icon.cacheKey()), option.icon)
         if icon is not None:
             option.icon = icon
+
+
+class _LayerTreeDelegate(QStyledItemDelegate):
+    """Draws the Layers panel's rows with the theme's icons. Its own
+    delegate (QgsLayerTreeViewItemDelegate, not available to Python) draws
+    the layer indicators and handles their clicks and tooltips, so it still
+    draws every row; only the icon square is drawn again, here, with our
+    icon (same background and state, so the two parts match)."""
+
+    def __init__(self, swapper, parent, original):
+        super().__init__(parent)
+        self._swapper = swapper
+        self._original = original
+
+    def paint(self, painter, option, index):
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        icon = None
+        if not opt.icon.isNull():
+            icon = self._swapper.row_icon(("icon", opt.icon.cacheKey()), opt.icon)
+        if icon is None:
+            self._original.paint(painter, option, index)
+            return
+        widget = opt.widget
+        style = widget.style() if widget is not None else QApplication.style()
+        square = style.subElementRect(QStyle.SubElement.SE_ItemViewItemDecoration, opt, widget)
+        painter.save()
+        painter.setClipRegion(QRegion(option.rect).subtracted(QRegion(square)), Qt.ClipOperation.IntersectClip)
+        self._original.paint(painter, option, index)
+        painter.restore()
+        painter.save()
+        painter.setClipRect(square, Qt.ClipOperation.IntersectClip)
+        opt.icon = icon
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, widget)
+        painter.restore()
+
+    def sizeHint(self, option, index):  # pylint: disable=invalid-name
+        return self._original.sizeHint(option, index)
+
+    def helpEvent(self, event, view, option, index):  # pylint: disable=invalid-name
+        # Indicator tooltips.
+        return self._original.helpEvent(event, view, option, index)
 
 
 class IconSwapper(QObject):
@@ -701,15 +750,19 @@ class IconSwapper(QObject):
             self._view_names[row] = name
         return None if name is None else self._icon(name)
 
-    def _delegate_view(self, view):
+    def _delegate_view(self, view, by_row=True):
         """Draw `view`'s rows with our icons (only over Qt's plain
-        delegate, so no custom drawing is lost)."""
+        delegate, or the Layers panel's, so no custom drawing is lost)."""
         if id(view) in self._delegates:
             return
         original = view.itemDelegate()
-        if original is None or original.metaObject().className() != "QStyledItemDelegate":
+        kind = None if original is None else original.metaObject().className()
+        if kind == "QStyledItemDelegate":
+            delegate = _IconDelegate(self, view, by_row)
+        elif kind == "QgsLayerTreeViewItemDelegate":
+            delegate = _LayerTreeDelegate(self, view, original)
+        else:
             return
-        delegate = _IconDelegate(self, view)
         view.setItemDelegate(delegate)
         self._delegates[id(view)] = (view, original, delegate)
 
@@ -945,6 +998,8 @@ class IconSwapper(QObject):
                 # the Browser: it is filled lazily, and a row measured while
                 # it is still empty collapses every row to nothing.)
                 widget.setUniformRowHeights(True)
+            elif widget.inherits("QgsBrowserTreeView") or widget.inherits("QgsLayerTreeView"):
+                self._delegate_view(widget, by_row=False)
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
                 model = model.sourceModel()

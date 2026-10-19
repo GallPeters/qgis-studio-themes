@@ -28,8 +28,8 @@ changelog=
             keeps its red dot.
           - Stronger Identify "i" and larger SQL letters.
           - Toolbar titles: each toolbar's name is shown centred above its
-            buttons between two hairlines whose ends turn down, marking where
-            each toolbar starts and ends (Project, Map Navigation, Data
+            buttons between two hairlines whose ends turn down to the icons,
+            marking where each toolbar starts and ends (Project, Map Navigation, Data
             Sources...), as sharp as the rest of the UI text; vertical
             toolbars show a three-letter name on their handle.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
@@ -50,6 +50,9 @@ changelog=
           - Fixed missing modern icons in the Processing Toolbox (group
             folders and tool icons) and in search boxes on QGIS builds where
             these panels are built natively, such as recent Linux builds.
+          - Browser and Layers panels use the same sharp, pixel-snapped icons
+            as the toolbars (their lines looked heavier before); Layers groups
+            get a folder icon.
 
      ** v0.9 (18.10.2026):
           - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,

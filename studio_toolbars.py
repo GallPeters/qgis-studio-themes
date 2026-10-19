@@ -42,6 +42,9 @@ TITLE_SIZE = 11
 TITLE_SPACING = 0.5
 # Gap between the name and its hairlines.
 RULE_GAP = 6
+# How far the end ticks reach below the strip: down to the top of the
+# icons (the buttons' padding), so the strip's overlay is this much taller.
+TICK_DROP = 3
 # Items the stylesheet pushes down itself (box model); any other widget in
 # a titled toolbar gets a top contents margin instead.
 STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
@@ -166,11 +169,13 @@ class _Label(QWidget):
         metrics = QFontMetricsF(self.font())
         rect = self.rect()
         width = metrics.horizontalAdvance(self.text)
+        # The strip, without the ticks' extra reach below it.
+        height = TITLE_HEIGHT if self.titled else rect.height()
         # Capitals centred (centring the full line height would push them
         # up by the descender); baseline and start on whole device pixels,
         # where hinting keeps stems sharp.
         x = _snap((rect.width() - width) / 2, ratio)
-        baseline = _snap((rect.height() + metrics.capHeight()) / 2, ratio)
+        baseline = _snap((height + metrics.capHeight()) / 2, ratio)
         painter.setFont(self.font())
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
@@ -184,10 +189,10 @@ class _Label(QWidget):
             painter.setPen(pen)
             # Each end turns down into a tick, so the toolbar's edges show
             # without a separator: ┌── Name ──┐. Ticks on device pixel
-            # columns, ending a pixel above the buttons.
+            # columns, ending level with the top of the icons.
             left = (round(1 * ratio) + 0.5) / ratio
             right = (round((rect.width() - 1) * ratio) - 0.5) / ratio
-            bottom = (round(rect.height() * ratio) - 1.5) / ratio
+            bottom = (round(rect.height() * ratio) - 0.5) / ratio
             if x - RULE_GAP > left + 4:
                 painter.drawLine(QPointF(left, y), QPointF(x - RULE_GAP, y))
                 painter.drawLine(QPointF(left, y), QPointF(left, bottom))
@@ -394,7 +399,9 @@ class ToolbarLabels(QObject):
             # toolbar of a row is stretched to the window's edge: the strip
             # spans its items, not the empty rest.
             handle = extent if toolbar.isMovable() else 0
-            rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
+            rect = QRect(
+                frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT + TICK_DROP,
+            )
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
                 rect.moveLeft(frame)
             items = self._items_span(toolbar)
