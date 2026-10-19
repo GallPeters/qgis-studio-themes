@@ -26,6 +26,10 @@
 /* ---- Hairlines ---------------------------------------------------------- */
 @divider:                mix(@bg_window, @text, 0.09);
 @divider_strong:         mix(@bg_window, @text, 0.16);
+/* Structural lines: the menu bar's underline, the lines under toolbar rows
+ * and the dividers between toolbars share this one colour, about 1.5:1 on
+ * the window (dark themes mix less of the text for the same contrast). */
+@line:                   mix(@bg_window, @text, 0.22);
 @field_border:           mix(@bg_base, @text, 0.20);
 @field_border_hover:     mix(@bg_base, @text, 0.34);
 

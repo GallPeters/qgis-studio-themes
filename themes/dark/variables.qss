@@ -60,3 +60,10 @@
 
 /* ---- Scrollbar ---------------------------------------------------------- */
 @scrollbar_handle_hover: #484848;
+
+/* Structural lines and checked tool buttons, tuned for a dark window: the
+ * shared line at about 1.6:1, and a checked tint strong enough to read as
+ * the accent rather than a muddy shade of the window. */
+@line:                   mix(@bg_window, @text, 0.17);
+@tool_checked:           mix(@bg_window, @accent, 0.36);
+@tool_checked_hover:     mix(@bg_window, @accent, 0.44);

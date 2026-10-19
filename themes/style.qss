@@ -96,7 +96,7 @@ QSizeGrip {
 
 QMenuBar {
     background-color: @bg_window;
-    border-bottom: 1px solid @divider;
+    border-bottom: 1px solid @line;
     padding: 3px 6px;
 }
 /* Main menu above the UI font (size filled in by the plugin);
@@ -199,11 +199,42 @@ QgsProcessingToolboxTreeView::item {
     padding-top: 2px;
     padding-bottom: 2px;
 }
+/* Expand arrows of the main panels as outline chevrons, like every other
+ * arrow. Only these trees: their rows already go through the stylesheet
+ * (the rule above), while a ::branch rule on every tree would send all of
+ * QGIS's lists through Qt's slower stylesheet drawing. */
+QgsBrowserTreeView::branch:has-children:!has-siblings:closed,
+QgsBrowserTreeView::branch:closed:has-children:has-siblings,
+QgsLayerTreeView::branch:has-children:!has-siblings:closed,
+QgsLayerTreeView::branch:closed:has-children:has-siblings,
+QgsProcessingToolboxTreeView::branch:has-children:!has-siblings:closed,
+QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings {
+    border-image: none;
+    image: url(@theme_path/icons/studio/branch-closed.svg);
+}
+QgsBrowserTreeView::branch:open:has-children:!has-siblings,
+QgsBrowserTreeView::branch:open:has-children:has-siblings,
+QgsLayerTreeView::branch:open:has-children:!has-siblings,
+QgsLayerTreeView::branch:open:has-children:has-siblings,
+QgsProcessingToolboxTreeView::branch:open:has-children:!has-siblings,
+QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings {
+    border-image: none;
+    image: url(@theme_path/icons/studio/branch-open.svg);
+}
+/* Separators inside a toolbar are lighter than the dividers between
+ * toolbars (@line), so a group inside a toolbar never reads as its edge. */
 QToolBar::separator {
-    background-color: @divider_strong;
+    background-color: @divider;
     width: 1px;
     height: 1px;
     margin: 6px 5px;
+}
+/* Spin boxes and combo boxes in toolbars (snapping tolerance and units,
+ * scale) share one height, so their edges line up. */
+QToolBar QComboBox,
+QToolBar QAbstractSpinBox {
+    min-height: 20px;
+    max-height: 20px;
 }
 /* Toolbar names (studio_toolbars.py). A docked horizontal toolbar gets a
  * title strip above its buttons: every item gets a top margin of the
@@ -278,13 +309,15 @@ QToolButton::menu-button {
 QToolButton::menu-button:hover {
     background-color: @tool_hover;
 }
+/* Drop-down chevrons beside the icon, vertically centred, inside the
+ * button's hover and checked fill (not hanging below the icon). */
 QToolButton::menu-indicator,
 QToolButton::menu-arrow {
     image: url(@theme_path/icons/studio/chevron-down-small.svg);
     width: 10px;
     height: 10px;
     subcontrol-origin: padding;
-    subcontrol-position: bottom right;
+    subcontrol-position: right center;
 }
 QToolButton::menu-indicator:disabled,
 QToolButton::menu-arrow:disabled {
@@ -424,6 +457,7 @@ QAbstractSpinBox::up-button:pressed,
 QAbstractSpinBox::down-button:pressed {
     background-color: @tool_checked;
 }
+/* Outline chevrons, like the combo boxes' and menus' arrows. */
 QAbstractSpinBox::up-arrow {
     image: url(@theme_path/icons/studio/arrow-up.svg);
     width: 8px;

@@ -1646,14 +1646,14 @@ class QgisStudioThemesPlugin:
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _label_rule(self):
-        """The dividers between titled toolbars: the separators' colour."""
-        r, g, b, a = parse_color(self._tokens["@divider_strong"])
+        """The dividers between titled toolbars: the shared line colour (@line)."""
+        r, g, b, a = parse_color(self._tokens["@line"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _label_row_rule(self):
-        """The lines between rows of toolbars: the colour of the line under
-        the menu bar."""
-        r, g, b, a = parse_color(self._tokens["@divider"])
+        """The lines under rows of toolbars: the colour of the line under
+        the menu bar (the dividers' too)."""
+        r, g, b, a = parse_color(self._tokens["@line"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _apply_labels(self):
