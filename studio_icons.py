@@ -751,6 +751,9 @@ EXTERNAL = {
 # larger) keep Tabler's own size, which matches the footprint of QGIS's
 # native toolbar icons there.
 STROKE = 1.5
+# Extra width (device pixels) of pixel-snapped lines, beyond their whole
+# pixels (see render_icon_px).
+STROKE_EXTRA = 0.25
 SCALE = 1.15
 COMPACT_SCALE = 1.0
 # Glyphs with a badge are shrunk towards the top-left instead; less so in
@@ -1168,7 +1171,11 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    parts.append(f'<g{mask} stroke="{icon}" stroke-width="{width}">{paths}</g>')
+    # Lines stay centred on the pixel grid for `width`; STROKE_EXTRA widens
+    # them by a fraction of a pixel, a faint edge either side of the solid
+    # core, for a touch more weight without blurring the line.
+    drawn = _num(width + STROKE_EXTRA)
+    parts.append(f'<g{mask} stroke="{icon}" stroke-width="{drawn}">{paths}</g>')
     if badge in BADGE_MARKS:
         # On the same pixel grid as the glyph's lines, with square ends so
         # straight marks end on whole pixels.
@@ -1177,7 +1184,7 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
         arm = max(2, round(MARK_ARM * px))
         cap = "round" if mark == "check" else "square"
         parts.append(
-            f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{width}" '
+            f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{drawn}" '
             f'stroke-linecap="{cap}"/>'
         )
     elif badge:

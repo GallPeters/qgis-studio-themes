@@ -46,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "17"
+BUILD_FORMAT = "18"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -138,8 +138,9 @@ def icon_colors(tokens):
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
     }
-    # Disabled state: glyph and badge both in the theme's disabled colour.
-    return colors, dict.fromkeys(colors, tokens["@text_disabled"])
+    # Disabled state: glyph and badge both in the theme's disabled icon
+    # colour (dimmer than disabled text: clearly unavailable).
+    return colors, dict.fromkeys(colors, tokens["@icon_disabled"])
 
 
 def png_marker(icons_dir):

@@ -60,6 +60,10 @@
 
 /* ---- Icons (QGIS icon set and widget glyphs) ---------------------------- */
 @icon:                   mix(@text, @bg_window, 0.08);
+/* Disabled icons and arrows, about 2:1 on the window: clearly unavailable,
+ * not a thinner version of the icon (dark themes mix less, same contrast).
+ * Disabled text keeps @text_disabled, which stays readable. */
+@icon_disabled:          mix(@bg_window, @icon, 0.40);
 @icon_accent:            @accent;
 
 /* ---- Message bar -------------------------------------------------------- */
@@ -79,7 +83,7 @@
 
 /* ---- Widget glyph colours (themes/icons templates) ---------------------- */
 @arrow_normal:           mix(@text, @bg_window, 0.25);
-@arrow_disabled:         @text_disabled;
+@arrow_disabled:         @icon_disabled;
 @arrow_hover:            @accent;
 @branch_hover:           @text_bright;
 @checkmark:              @on_accent;
