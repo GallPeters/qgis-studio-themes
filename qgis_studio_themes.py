@@ -34,7 +34,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons
-from .studio_toolbars import TITLE_HEIGHT, ToolbarLabels
+from .studio_toolbars import TITLE_SPACE, ToolbarLabels
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
 
 PLUGIN_DIR = Path(__file__).parent
@@ -60,8 +60,8 @@ COMPACT_SETTING = "studio_themes/compactSizes"
 # Below this many (logical) pixels per inch every pixel is physically large,
 # e.g. a 1920x1200 desktop monitor (~95 PPI) against a 14" laptop (~160).
 COMPACT_MAX_PPI = 120
-MENU_BAR_EXTRA_PT = 2
-COMPACT_MENU_BAR_EXTRA_PT = 1
+MENU_BAR_EXTRA_PT = 1
+COMPACT_MENU_BAR_EXTRA_PT = 0.5
 # Icon size of toolbars inside panels (QGIS uses 16 px there).
 DOCK_ICON_SIZE = 20
 PANEL_ICON_RULES = (
@@ -1390,8 +1390,8 @@ class QgisStudioThemesPlugin:
             "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
             # Toolbar title strips (see studio_toolbars); separators keep
             # their 6 px top margin below the strip.
-            "@toolbar_title_height": f"{TITLE_HEIGHT}px",
-            "@toolbar_title_separator_margin": f"{6 + TITLE_HEIGHT}px 5px 6px 5px",
+            "@toolbar_title_height": f"{TITLE_SPACE}px",
+            "@toolbar_title_separator_margin": f"{6 + TITLE_SPACE}px 5px 6px 5px",
         }
         self._shared_stamp = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"

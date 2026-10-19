@@ -3,7 +3,7 @@
 A docked horizontal toolbar gets a title strip above its buttons, its name
 centred over them. The strip is
 made by a top margin on every item of the toolbar (QToolBar[studioLabel=
-"title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
+"title"] in style.qss, @toolbar_title_height = TITLE_SPACE), so the items
 keep their own layout and the toolbar simply grows by the strip; widgets
 the stylesheet cannot push down (containers such as the snapping widget)
 get the same space as a top contents margin, undone on detach. A
@@ -39,8 +39,13 @@ from qgis.PyQt.QtWidgets import (
 )
 
 PROPERTY = "studioLabel"
-# Height of the title strip (logical px), shared with style.qss.
+# Height of the title strip (logical px), and the gap between it and the
+# buttons, so a hovered or checked button's fill keeps clear of the name.
+# Their sum is the room the buttons are pushed down by (TITLE_SPACE,
+# shared with style.qss).
 TITLE_HEIGHT = 15
+TITLE_GAP = 3
+TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
 TITLE_SIZE = 11
 # Regular weight, slightly spaced: SemiBold letters ran together,
 # especially at 150 %.
@@ -465,7 +470,7 @@ class ToolbarLabels(QObject):
                 continue
             margins = widget.contentsMargins()
             shifted[widget] = margins
-            widget.setContentsMargins(margins + QMargins(0, TITLE_HEIGHT, 0, 0))
+            widget.setContentsMargins(margins + QMargins(0, TITLE_SPACE, 0, 0))
 
     def _unshift(self, toolbar):
         for widget, margins in self._shifted.pop(toolbar, {}).items():
