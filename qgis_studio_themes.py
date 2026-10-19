@@ -1309,8 +1309,6 @@ class QgisStudioThemesPlugin:
         self._relay = _Relay()
         self._relay.pngs_ready.connect(self._icons.use_pngs)
         self._labels = ToolbarLabels()
-        self._labels_action = None
-        self._compact_action = None
         self._compact = False
         self._extra_tokens = {}
         self._dock_icon_sizes = {}
@@ -1349,24 +1347,7 @@ class QgisStudioThemesPlugin:
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self.iface.layoutDesignerOpened.connect(self._label_designer)
         self._connected = True
-        self._labels_action = QAction("Studio Toolbar Labels", self.iface.mainWindow())
-        self._labels_action.setObjectName("mActionStudioToolbarLabels")
-        self._labels_action.setCheckable(True)
-        self._labels_action.setChecked(QgsSettings().value(LABELS_SETTING, True, type=bool))
-        self._labels_action.setToolTip("Show each toolbar's name above its buttons (Studio themes)")
-        self._labels_action.toggled.connect(self._toggle_labels)
-        self.iface.viewMenu().addAction(self._labels_action)
         self._compact = self._compact_sizes()
-        self._compact_action = QAction("Studio Compact Sizes", self.iface.mainWindow())
-        self._compact_action.setObjectName("mActionStudioCompactSizes")
-        self._compact_action.setCheckable(True)
-        self._compact_action.setChecked(self._compact)
-        self._compact_action.setToolTip(
-            "Smaller menu, panel icons and toolbar icons for large desktop monitors"
-            " (chosen automatically by the screen; applies after restarting QGIS)"
-        )
-        self._compact_action.toggled.connect(self._toggle_compact)
-        self.iface.viewMenu().addAction(self._compact_action)
         # The main menu is one point larger than the UI font, so it reads as
         # the top level. The size goes into the theme stylesheet (a widget
         # stylesheet on the bar would give every menu, all children of the
@@ -1503,11 +1484,6 @@ class QgisStudioThemesPlugin:
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self.iface.layoutDesignerOpened.disconnect(self._label_designer)
             self._connected = False
-        for action in (self._labels_action, self._compact_action):
-            if action is not None:
-                self.iface.viewMenu().removeAction(action)
-                action.deleteLater()
-        self._labels_action = self._compact_action = None
         self._deactivate()
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
@@ -1617,10 +1593,13 @@ class QgisStudioThemesPlugin:
     # ---- Compact sizes ----------------------------------------------------
 
     def _compact_sizes(self):
-        """Compact sizes on screens with large pixels (low density), unless
-        the user chose otherwise. In logical pixels per inch, a 14 inch
-        1920x1200 laptop has ~160 and a 24 inch monitor at the same
-        resolution ~95: the same UI is ~1.7x larger there."""
+        """Compact sizes on screens with large pixels (low density). In
+        logical pixels per inch, a 14 inch 1920x1200 laptop has ~160 and a
+        24 inch monitor at the same resolution ~95: the same UI is ~1.7x
+        larger there. Chosen automatically; a screen that reports a wrong
+        physical size can be overridden by setting COMPACT_SETTING to "on"
+        or "off" (no menu item: the automatic choice suits nearly every
+        screen)."""
         mode = QgsSettings().value(COMPACT_SETTING, "auto", type=str)
         if mode in ("on", "off"):
             return mode == "on"
@@ -1631,16 +1610,13 @@ class QgisStudioThemesPlugin:
         # Screens that report no (or a nonsense) physical size keep the default.
         return 50 <= screen.physicalDotsPerInch() < COMPACT_MAX_PPI
 
-    def _toggle_compact(self, checked):
-        QgsSettings().setValue(COMPACT_SETTING, "on" if checked else "off")
-        self.iface.messageBar().pushMessage(
-            "Studio Themes", "Restart QGIS to apply the new sizes.", Qgis.MessageLevel.Info, 10
-        )
-
     # ---- Toolbar labels ---------------------------------------------------
 
-    def _labels_enabled(self):
-        return self._labels_action is not None and self._labels_action.isChecked()
+    @staticmethod
+    def _labels_enabled():
+        """Toolbar names are part of the design and always shown; the
+        setting (no menu item) can still turn them off by hand."""
+        return QgsSettings().value(LABELS_SETTING, True, type=bool)
 
     def _label_color(self):
         """Halfway from the dimmed to the normal text colour: readable,
@@ -1670,10 +1646,6 @@ class QgisStudioThemesPlugin:
         self._labels.attach(self.iface.mainWindow(), color, rule, row_rule)
         for designer in self.iface.openLayoutDesigners():
             self._labels.attach(designer.window(), color, rule, row_rule)
-
-    def _toggle_labels(self, checked):
-        QgsSettings().setValue(LABELS_SETTING, checked)
-        self._apply_labels()
 
     def _label_designer(self, designer):
         if self._active is not None and self._labels_enabled():

@@ -60,14 +60,14 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   on large monitors. Arrows, check marks and other widget glyphs are drawn
   at their exact size.
 - **Toolbar titles** – each toolbar's name sits centred above its buttons,
-  between two hairlines (vertical toolbars show a short name on their
-  handle). Turn them off with **View → Studio Toolbar Labels**.
+  with a divider between toolbars and a line under each row of toolbars
+  (vertical toolbars show a short name on their handle).
 - **Typography** – the bundled Inter typeface is used unless a custom font
   is set in QGIS options. The configured font size is always kept.
 - **Sizes for every screen** – on large, low-density desktop monitors the
   plugin picks compact sizes (smaller menu and panel icons, toolbar icons
-  the size of QGIS's own), while laptops keep the roomier look. Override it with
-  **View → Studio Compact Sizes** (applies after a restart).
+  the size of QGIS's own), while laptops keep the roomier look. It is chosen
+  automatically from the screen's pixel density.
 - **Layout** – thin dividers, rounded controls, underlined tabs, slim
   scrollbars, accent-coloured selection and a message bar that follows
   the theme.

@@ -46,8 +46,9 @@ changelog=
             check marks, radio dots, tab and panel close/float buttons):
             each drawn for the exact size it is shown at; disabled combo
             arrows now match the enabled chevron.
-          - Compact sizes picked automatically on large, low-density monitors
-            (View > Studio Compact Sizes to override).
+          - Compact sizes picked automatically on large, low-density monitors.
+          - Toolbar names are always shown; the View menu no longer has the
+            Studio Toolbar Labels and Studio Compact Sizes items.
           - Upgrading in a running QGIS keeps the Studio theme and its modern
             Processing Toolbox and provider icons.
           - Fixed missing modern icons in the Processing Toolbox (group
