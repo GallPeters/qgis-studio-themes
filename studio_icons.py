@@ -740,10 +740,11 @@ EXTERNAL = {
 # glyph is enlarged around the centre: Tabler glyphs leave a ~3 unit margin,
 # so 1.15 makes icons read bigger without changing any widget's icon size.
 # Compact sizes (low-density screens, where every pixel is physically
-# larger) enlarge them less.
+# larger) keep Tabler's own size, which matches the footprint of QGIS's
+# native toolbar icons there.
 STROKE = 1.5
 SCALE = 1.15
-COMPACT_SCALE = 1.05
+COMPACT_SCALE = 1.0
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
 # Badges are a small plain dot in the accent colour (red for remove): it
@@ -790,6 +791,10 @@ def render_icon(spec, colors, scale=SCALE):
         # Shrink the glyph towards the top-left to leave room for the badge.
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
     else:
+        # Never enlarged so far that a line would be cut off at the edge.
+        reach = _glyph_reach(glyph)
+        if reach > 0:
+            scale = min(scale, (12 - STROKE / 2) / reach)
         offset = round(12 * (1 - scale), 3)
         transform = f"translate({offset} {offset}) scale({scale})"
     # The stroke is scaled with the glyph: compensate so every icon ends up
@@ -825,11 +830,12 @@ def render_icon(spec, colors, scale=SCALE):
 # ---- Pixel-snapped rendering (pre-rendered PNGs) ---------------------------
 
 def stroke_px(size):
-    """Line width in whole device pixels for an icon of `size` px: the
-    nearest to the scalable icons' weight, ties rounding up (at 24 px a
-    solid 2 px line matches how heavy the smeared 1.5 px one looked;
-    1 px would read faint)."""
-    return max(1, math.floor(STROKE * size / 24 + 0.5))
+    """Line width in whole device pixels for an icon of `size` px: 1 px up
+    to 25 px, 2 px from 28 to 40 px, 3 px at 48 px. That keeps the line
+    about as thick on paper on every screen: 1 px on a ~95 PPI desktop
+    monitor (0.27 mm) is close to 2 px on a laptop at 150 % (0.32 mm),
+    while 2 px there (0.53 mm) looked heavy and crowded detailed glyphs."""
+    return max(1, math.floor(STROKE * size / 24 + 0.25))
 
 
 def _parse(d):
@@ -903,11 +909,27 @@ def _num(value):
     return "0" if text in ("", "-0") else text
 
 
+def _arc_kind(rx, ry, dx, dy):
+    """How an arc may follow its snapped ends: "quarter" (a rounded corner,
+    its ends one radius apart on each axis), "half" (half a circle, its
+    ends a diameter apart) or "other" (any other part of a circle)."""
+    dx, dy = abs(dx), abs(dy)
+    if abs(dx - rx) <= 0.15 * rx and abs(dy - ry) <= 0.15 * ry:
+        return "quarter"
+    if abs(math.hypot(dx, dy) - 2 * rx) <= 0.1 * rx:
+        return "half"
+    return "other"
+
+
 def _snapped_path(segments, place, snap, unit):
     """Path data in device pixels: endpoints moved onto the pixel grid,
-    curve controls moved with their endpoint and arc radii stretched with
-    the arc's ends, so shapes keep their tangents (rounded corners still
-    meet their straight edges)."""
+    curve controls moved with their endpoint. Arcs keep their shape:
+    a rounded corner stretches per axis with its snapped ends (so it still
+    meets its straight edges), half a circle scales evenly with them (so a
+    circle stays round), and any other arc is moved as a whole with its
+    start point. Stretching those by their ends would distort them: the
+    330 degree arc of "history" has ends 0.5 units apart, and stretching it
+    by how much snapping changed that gap collapsed or doubled the circle."""
     out = []
     here = here_snapped = start = start_snapped = (0.0, 0.0)
     for segment in segments:
@@ -922,6 +944,14 @@ def _snapped_path(segments, place, snap, unit):
             out.append(f"M{_num(end_snapped[0])} {_num(end_snapped[1])}")
             start, start_snapped = end, end_snapped
         elif kind == "L":
+            dx, dy = end[0] - here[0], end[1] - here[1]
+            if end_snapped == here_snapped and math.hypot(dx, dy) >= 0.5:
+                # A short tick (a sun ray) snapped onto its own start would
+                # vanish: keep it one pixel long, in its main direction.
+                step = (math.copysign(1, dx), 0) if abs(dx) >= abs(dy) else (0, math.copysign(1, dy))
+                if abs(dx) > 1e-6 and abs(dy) > 1e-6 and 0.5 < abs(dx / dy) < 2:
+                    step = (math.copysign(1, dx), math.copysign(1, dy))
+                end_snapped = (here_snapped[0] + step[0], here_snapped[1] + step[1])
             out.append(f"L{_num(end_snapped[0])} {_num(end_snapped[1])}")
         elif kind == "C":
             c1, c2 = place(segment[1], segment[2]), place(segment[3], segment[4])
@@ -932,23 +962,72 @@ def _snapped_path(segments, place, snap, unit):
             rx, ry, rotation, large, sweep = segment[1:6]
             dx, dy = end[0] - here[0], end[1] - here[1]
             sdx, sdy = end_snapped[0] - here_snapped[0], end_snapped[1] - here_snapped[1]
-            if abs(dx) > 1e-6 and abs(dy) > 1e-6:
-                fx, fy = sdx / dx, sdy / dy
-            elif abs(dx) > 1e-6:
-                fx = fy = sdx / dx
-            elif abs(dy) > 1e-6:
-                fx = fy = sdy / dy
+            arc = _arc_kind(rx * unit, ry * unit, dx, dy)
+            if arc == "quarter":
+                fx = sdx / dx if abs(dx) > 1e-6 else 1.0
+                fy = sdy / dy if abs(dy) > 1e-6 else 1.0
+            elif arc == "half":
+                fx = fy = math.hypot(sdx, sdy) / math.hypot(dx, dy)
             else:
                 fx = fy = 1.0
+                end_snapped = (here_snapped[0] + dx, here_snapped[1] + dy)
             if fx > 0 and fy > 0:
                 out.append("A" + " ".join(_num(v) for v in (
                     rx * unit * fx, ry * unit * fy, rotation, large, sweep, *end_snapped,
                 )))
             else:
-                # Collapsed onto one pixel: a dot (round caps) or nothing.
+                # A tiny corner collapsed onto one pixel: a dot or nothing.
                 out.append(f"L{_num(end_snapped[0])} {_num(end_snapped[1])}")
         here, here_snapped = end, end_snapped
     return "".join(out)
+
+
+def _arc_points(x1, y1, rx, ry, large, sweep, x2, y2, steps=24):
+    """Points along an SVG arc (rotation 0), for measuring a glyph."""
+    hx, hy = (x1 - x2) / 2, (y1 - y2) / 2
+    if (hx == 0 and hy == 0) or rx == 0 or ry == 0:
+        return [(x2, y2)]
+    grow = hx * hx / (rx * rx) + hy * hy / (ry * ry)
+    if grow > 1:
+        rx, ry = rx * math.sqrt(grow), ry * math.sqrt(grow)
+    num = rx * rx * ry * ry - rx * rx * hy * hy - ry * ry * hx * hx
+    den = rx * rx * hy * hy + ry * ry * hx * hx
+    coef = math.sqrt(max(0.0, num / den)) * (-1 if large == sweep else 1)
+    cx = coef * rx * hy / ry + (x1 + x2) / 2
+    cy = -coef * ry * hx / rx + (y1 + y2) / 2
+    a1 = math.atan2((y1 - cy) / ry, (x1 - cx) / rx)
+    a2 = math.atan2((y2 - cy) / ry, (x2 - cx) / rx)
+    span = a2 - a1
+    if sweep and span < 0:
+        span += 2 * math.pi
+    elif not sweep and span > 0:
+        span -= 2 * math.pi
+    return [(cx + rx * math.cos(a1 + span * i / steps), cy + ry * math.sin(a1 + span * i / steps))
+            for i in range(steps + 1)]
+
+
+@functools.lru_cache(maxsize=None)
+def _glyph_reach(name):
+    """How far a glyph's lines reach from the centre (12, 12), in units."""
+    reach = 0.0
+    for segments, _ in _glyph_paths(name):
+        here = start = (12.0, 12.0)
+        for segment in segments:
+            if segment[0] == "Z":
+                here = start
+                continue
+            if segment[0] == "A":
+                points = _arc_points(*here, segment[1], segment[2], *segment[4:8])
+            elif segment[0] == "C":
+                points = [segment[1:3], segment[3:5], segment[5:7]]
+            else:
+                points = [segment[1:3]]
+            for x, y in points:
+                reach = max(reach, abs(x - 12), abs(y - 12))
+            here = (segment[-2], segment[-1])
+            if segment[0] == "M":
+                start = here
+    return reach
 
 
 def _snap_circle(center, radius):
@@ -964,23 +1043,30 @@ def render_icon_px(spec, colors, size, scale=SCALE):
     same glyph enlargement, badge and visible weight, in whole pixels."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
+    width = stroke_px(size)
     if badge:
         unit = BADGED_SCALE * px
 
         def place(x, y):
             return (0.2 + BADGED_SCALE * x) * px, (0.2 + BADGED_SCALE * y) * px
     else:
+        # Enlarged, but never so far that a line (with its round cap)
+        # would be cut off at the icon's edge.
+        reach = _glyph_reach(glyph)
         unit = scale * px
+        if reach > 0:
+            unit = min(unit, (size / 2 - width / 2) / reach)
         middle = size / 2
 
         def place(x, y):
             return middle + (x - 12) * unit, middle + (y - 12) * unit
-    width = stroke_px(size)
-    # Odd widths are centred on pixel centres, even ones on pixel edges.
+    # Odd widths are centred on pixel centres, even ones on pixel edges;
+    # lines stay a half width inside the icon.
     offset = 0.5 if width % 2 else 0.0
+    low, high = width / 2, size - width / 2
 
     def snap(value):
-        return math.floor(value - offset + 0.5) + offset
+        return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
     icon = colors["icon"]
     paths = "".join(

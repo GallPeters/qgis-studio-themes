@@ -34,7 +34,6 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons
-from . import studio_toolbars
 from .studio_toolbars import ToolbarLabels
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -47,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "11"
+BUILD_FORMAT = "12"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -1222,13 +1221,12 @@ class QgisStudioThemesPlugin:
         self._labels_action.toggled.connect(self._toggle_labels)
         self.iface.viewMenu().addAction(self._labels_action)
         self._compact = self._compact_sizes()
-        studio_toolbars.set_compact(self._compact)
         self._compact_action = QAction("Studio Compact Sizes", self.iface.mainWindow())
         self._compact_action.setObjectName("mActionStudioCompactSizes")
         self._compact_action.setCheckable(True)
         self._compact_action.setChecked(self._compact)
         self._compact_action.setToolTip(
-            "Smaller menu, panel icons and toolbar labels for large desktop monitors"
+            "Smaller menu, panel icons and toolbar icons for large desktop monitors"
             " (chosen automatically by the screen; applies after restarting QGIS)"
         )
         self._compact_action.toggled.connect(self._toggle_compact)

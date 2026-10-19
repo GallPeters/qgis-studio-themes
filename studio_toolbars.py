@@ -13,13 +13,13 @@ rotated loses Windows' font hinting and looks blurry at this size, so it is
 drawn upright into an image that is then turned by exactly 90 degrees
 (lossless). Vertical toolbars get the name across the top.
 
-Sharpness at small sizes: bold capitals of 8 px turn into blobs on a
-normal-density monitor, so labels are SemiBold, fully hinted, and the
+Sharpness at small sizes: names are three capitals, so they fit the
+handle at 12 px on standard 24 px toolbars (larger on larger ones), all at
+one shared size. On Windows they use Segoe UI Bold, which is hand-hinted
+for small sizes and keeps solid stems where a font with automatic hinting
+(Inter, the UI font) stays soft; elsewhere the UI font in SemiBold. The
 baseline sits on a whole device pixel with the capitals (not the font's
-full line height) centred on the handle. Labels share one size, the
-largest at which every short (up to four letter) QGIS toolbar name fits the
-handle (10 px on 24 px toolbars, larger on larger ones), so no name looks
-louder than the rest; only a longer name steps down as far as it must.
+full line height) centred on the handle.
 
 ClearType: Windows draws all other UI text with sub-pixel smoothing, which
 places stems at a third of a pixel horizontally; text drawn into a
@@ -38,15 +38,16 @@ import math
 import sys
 
 from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt
-from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QFontMetricsF, QImage, QPainter, QTransform
+from qgis.PyQt.QtGui import (
+    QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QImage, QPainter, QTransform,
+)
 from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWidget
 
 PROPERTY = "studioLabel"
-# Largest first (see _fit); 8 px only where nothing else fits the handle.
-# Compact sizes (see set_compact) start one size smaller.
-FONT_SIZES = (11, 10, 9, 8)
-COMPACT_FONT_SIZES = (10, 9, 8)
-_font_sizes = FONT_SIZES
+# Largest first (see _fit); 9 px only where nothing else fits the handle.
+# The same on every screen: on large low-density monitors, where pixels
+# are physically big, a smaller size only makes the letters coarser.
+FONT_SIZES = (12, 11, 10, 9)
 LETTER_SPACING = 1.0
 # Whole pixels only: fractional spacing puts letters between pixels.
 SPACINGS = (LETTER_SPACING, 0)
@@ -77,37 +78,38 @@ def subpixel_order():
     except (AttributeError, OSError):
         return None
 
-# QGIS's own toolbars (main window and layout designer): short, plain words
-# (shrunk to fit if needed). Others, such as plugin toolbars, get the first
-# four letters of their title.
+# QGIS's own toolbars (main window and layout designer): three-letter
+# names, so every label fits the handle at one, larger size. Others, such
+# as plugin toolbars, get the first three letters of their title.
 ABBREVIATIONS = {
-    "mFileToolBar": "PROJ",
-    "mLayerToolBar": "LAYER",
-    "mDataSourceManagerToolBar": "DATA",
-    "mDigitizeToolBar": "EDIT",
+    "mFileToolBar": "PRJ",
+    "mLayerToolBar": "LYR",
+    "mDataSourceManagerToolBar": "DAT",
+    "mDigitizeToolBar": "EDT",
     "mAdvancedDigitizeToolBar": "ADV",
-    "mShapeDigitizeToolBar": "SHAPE",
-    "mMeshToolBar": "MESH",
-    "mSnappingToolBar": "SNAP",
+    "mShapeDigitizeToolBar": "SHP",
+    "mMeshToolBar": "MSH",
+    "mSnappingToolBar": "SNP",
     "mMapNavToolBar": "NAV",
-    "mAttributesToolBar": "ATTR",
+    "mAttributesToolBar": "ATR",
     "mSelectionToolBar": "SEL",
-    "mLabelToolBar": "LABEL",
-    "mAnnotationsToolBar": "NOTE",
-    "mPluginToolBar": "PLUG",
-    "mHelpToolBar": "HELP",
-    "mRasterToolBar": "RAST",
-    "mVectorToolBar": "VECT",
-    "mDatabaseToolBar": "DB",
+    "mLabelToolBar": "LBL",
+    "mAnnotationsToolBar": "ANN",
+    "mPluginToolBar": "PLG",
+    "mHelpToolBar": "HLP",
+    "mRasterToolBar": "RST",
+    "mVectorToolBar": "VEC",
+    "mDatabaseToolBar": "DBS",
     "mWebToolBar": "WEB",
     "mGpsToolBar": "GPS",
-    "mLayoutToolbar": "PAGE",
-    "mToolsToolbar": "TOOL",
+    "mLayoutToolbar": "LYT",
+    "mToolsToolbar": "TLS",
     "mNavigationToolbar": "NAV",
-    "mActionsToolbar": "ALIGN",
-    "mAtlasToolbar": "ATLAS",
-    "mReportToolbar": "REPT",
+    "mActionsToolbar": "ALN",
+    "mAtlasToolbar": "ATL",
+    "mReportToolbar": "RPT",
 }
+NAME_LENGTH = 3
 
 
 def abbreviation(toolbar):
@@ -115,7 +117,7 @@ def abbreviation(toolbar):
     if known:
         return known
     words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
-    return words[0][:4].upper() if words else ""
+    return words[0][:NAME_LENGTH].upper() if words else ""
 
 
 class _Label(QWidget):
@@ -130,7 +132,7 @@ class _Label(QWidget):
         # The toolbar's background, for ClearType blending (see _render).
         self.background = background
         self.text = ""
-        self.setFont(label_font(_font_sizes[0]))
+        self.setFont(label_font(FONT_SIZES[0]))
         # The rotated text image, rendered once per text/size/colour/scale.
         self._image = None
         self._image_key = None
@@ -252,16 +254,23 @@ class _Label(QWidget):
         return image
 
 
-def set_compact(compact):
-    """Use the smaller label sizes of compact mode."""
-    global _font_sizes  # pylint: disable=global-statement
-    _font_sizes = COMPACT_FONT_SIZES if compact else FONT_SIZES
+@functools.lru_cache(maxsize=1)
+def _label_face():
+    """(family, weight) of the labels: Segoe UI Bold where installed
+    (Windows), else the UI font in SemiBold (the bundled Inter has no
+    Bold, and a synthesised one is smeared)."""
+    if "Segoe UI" in QFontDatabase.families():
+        return "Segoe UI", QFont.Weight.Bold
+    return None, QFont.Weight.DemiBold
 
 
 def label_font(size, spacing=LETTER_SPACING):
     font = QFont(QApplication.font())
+    family, weight = _label_face()
+    if family:
+        font.setFamily(family)
     font.setPixelSize(size)
-    font.setWeight(QFont.Weight.DemiBold)
+    font.setWeight(weight)
     font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
     # Snap outlines to the pixel grid: crisp stems at 9-11 px.
     font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
@@ -272,7 +281,7 @@ def fit(text, length):
     """The label font for `text` on a handle `length` pixels long (the
     size all labels share, see _uniform), and the text (shortened only if
     it does not fit even at the smallest size)."""
-    size, spacing, text = _fit(text, length, QApplication.font().family(), _font_sizes)
+    size, spacing, text = _fit(text, length, QApplication.font().family(), FONT_SIZES)
     return label_font(size, spacing), text
 
 
@@ -286,9 +295,9 @@ def _candidates(sizes):
 def _uniform(length, _family, sizes):
     """Index of the first candidate at which every short QGIS toolbar
     name fits `length` pixels: the size labels share (the smallest if none
-    fits; longer names are then cut). The few five letter names would
-    shrink every label for their sake, so they only shrink themselves."""
-    names = {name for name in ABBREVIATIONS.values() if len(name) <= 4}
+    fits; longer names are then cut). A longer name (a plugin toolbar
+    titled with an abbreviation) shrinks only itself."""
+    names = {name for name in ABBREVIATIONS.values() if len(name) <= NAME_LENGTH}
     candidates = _candidates(sizes)
     for index, (size, spacing) in enumerate(candidates):
         metrics = QFontMetrics(label_font(size, spacing))
