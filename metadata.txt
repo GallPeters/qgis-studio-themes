@@ -67,6 +67,9 @@ changelog=
             stays on the pixel grid), larger glyphs with + and - badges in
             menus and trees, and new Zoom Full, raster, vertex snapping and
             topological editing icons.
+          - Lighter UI text: Inter Regular and Italic at weight 350 instead
+            of 400 (from Inter's variable font), which no longer reads as
+            bold, especially light on dark.
           - Disabled icons and arrows are clearly dimmed, so an unavailable
             tool no longer looks like a thinner version of the icon.
           - Browser and Layers panels use the same sharp, pixel-snapped icons
