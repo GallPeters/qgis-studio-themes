@@ -1,7 +1,7 @@
 """Toolbar names: a title above each toolbar's buttons.
 
-A docked horizontal toolbar gets a title strip above its buttons, the name
-centred between two hairlines:  ───── Map Navigation ─────. The strip is
+A docked horizontal toolbar gets a title strip above its buttons, its name
+centred over them. The strip is
 made by a top margin on every item of the toolbar (QToolBar[studioLabel=
 "title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
 keep their own layout and the toolbar simply grows by the strip; widgets
@@ -11,13 +11,13 @@ transparent overlay paints the strip. It ignores the mouse, so the buttons
 and dragging work as before, and it is not a toolbar action, so QGIS,
 plugins and Interface Customization never see it. Toolbars side by side
 are told apart by a divider line in the handle gap between them, the
-height of the toolbar:  ── Project ── │ ── Map Navigation ──.
+height of the toolbar less a small gap at each end:
+Project │ Map Navigation.
 
 The title is horizontal text, drawn straight onto the window: Windows
 smooths it with ClearType like all other UI text. The capitals are centred
-in the strip with the baseline on a whole device pixel, and the hairlines
-and dividers are one device pixel thick, so the strip stays sharp at every
-scaling.
+in the strip with the baseline on a whole device pixel, and the dividers
+are one device pixel thick, so both stay sharp at every scaling.
 
 A vertical toolbar (docked left or right) has no room for a strip; it gets
 a short three-letter name across the top of a taller handle
@@ -41,8 +41,6 @@ TITLE_SIZE = 11
 # Regular weight, slightly spaced: SemiBold letters ran together,
 # especially at 150 %.
 TITLE_SPACING = 0.5
-# Gap between the name and its hairlines.
-RULE_GAP = 6
 # Space left above and below a divider between toolbars.
 DIVIDER_INSET = 3
 # Items the stylesheet pushes down itself (box model); any other widget in
@@ -149,15 +147,13 @@ class _Label(QWidget):
     """The overlay painting one toolbar's name: a title strip above the
     buttons, or a short name across the top of a vertical toolbar."""
 
-    def __init__(self, toolbar, color, rule):
+    def __init__(self, toolbar, color):
         super().__init__(toolbar)
         self.setObjectName("studioToolbarLabel")
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.color = color
-        self.rule = rule
         self.text = ""
-        self.titled = True
         # What _place last applied, so unchanged layout requests are free.
         self.placed = None
 
@@ -177,25 +173,12 @@ class _Label(QWidget):
         painter.setFont(self.font())
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
-        if self.titled:
-            # Hairlines either side, one device pixel through the middle
-            # of the capitals.
-            y = (int((baseline - metrics.capHeight() / 2) * ratio) + 0.5) / ratio
-            pen = QPen(self.rule)
-            pen.setCosmetic(True)
-            pen.setWidth(1)
-            painter.setPen(pen)
-            left, right = 1, rect.width() - 1
-            if x - RULE_GAP > left + 4:
-                painter.drawLine(QPointF(left, y), QPointF(x - RULE_GAP, y))
-            if x + width + RULE_GAP < right - 4:
-                painter.drawLine(QPointF(x + width + RULE_GAP, y), QPointF(right, y))
         painter.end()
 
 
 class _Divider(QWidget):
     """The line between a titled toolbar and the one to its left, drawn in
-    this toolbar's handle gap: one device pixel wide, in the hairlines'
+    this toolbar's handle gap: one device pixel wide, in the separators'
     colour."""
 
     def __init__(self, toolbar, rule):
@@ -279,7 +262,7 @@ class ToolbarLabels(QObject):
 
     def attach(self, window, color, rule):
         """Name every toolbar of `window` (a QMainWindow): text in
-        `color`, hairlines in `rule`."""
+        `color`, dividers between toolbars in `rule`."""
         self._color = QColor(color)
         self._rule = QColor(rule)
         if window not in self._windows:
@@ -295,7 +278,6 @@ class ToolbarLabels(QObject):
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
-                label.rule = self._rule
                 label.update()
         for divider in self._dividers.values():
             if not sip.isdeleted(divider):
@@ -330,7 +312,7 @@ class ToolbarLabels(QObject):
     def _add(self, toolbar):
         if toolbar in self._labels:
             return
-        label = _Label(toolbar, self._color, self._rule)
+        label = _Label(toolbar, self._color)
         self._labels[toolbar] = label
         self._dividers[toolbar] = _Divider(toolbar, self._rule)
         toolbar.installEventFilter(self)
@@ -449,8 +431,7 @@ class ToolbarLabels(QObject):
         if placed == label.placed and label.isVisible():
             return
         label.placed = placed
-        label.titled = mode == "title"
-        if label.titled:
+        if mode == "title":
             font = title_font()
             text = QFontMetrics(font).elidedText(title(toolbar), Qt.TextElideMode.ElideRight, rect.width() - 2)
         else:

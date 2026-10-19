@@ -28,10 +28,10 @@ changelog=
             keeps its red dot.
           - Stronger Identify "i" and larger SQL letters.
           - Toolbar titles: each toolbar's name is shown centred above its
-            buttons between two hairlines (Project, Map Navigation, Data
-            Sources...), with a divider line between toolbars side by side,
-            as sharp as the rest of the UI text; vertical toolbars show a
-            three-letter name on their handle.
+            buttons (Project, Map Navigation, Data Sources...), with a divider
+            line between toolbars side by side, as sharp as the rest of the
+            UI text; vertical toolbars show a three-letter name on their
+            handle.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.

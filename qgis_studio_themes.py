@@ -1592,7 +1592,7 @@ class QgisStudioThemesPlugin:
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _label_rule(self):
-        """The hairlines beside toolbar titles: the separators' colour."""
+        """The dividers between titled toolbars: the separators' colour."""
         r, g, b, a = parse_color(self._tokens["@divider_strong"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
