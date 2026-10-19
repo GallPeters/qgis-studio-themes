@@ -100,14 +100,13 @@ def icon_file(name):
 
 
 # Icon sizes (logical px) that get pixel-snapped PNGs: menus and trees (16),
-# panel toolbars (20), toolbars (24, or QGIS's configured toolbar size,
-# added at runtime), dialog page lists (28: the toolbar size plus 4, also
-# added at runtime as QGIS scales it) and the larger toolbar sizes QGIS
-# offers.
-PNG_SIZES = (16, 20, 24, 28, 32, 48)
-# On scaled screens every PNG is loaded up front (see IconSwapper._icon),
-# so only the sizes in common use are kept there.
-SCALED_PNG_SIZES = (16, 20, 24, 28)
+# panel toolbars (20), toolbars (24) and dialog page lists (28: the toolbar
+# size plus 4). QGIS's configured toolbar size and its dialog page list
+# size are added at runtime (see IconSwapper._extra_sizes), so the larger
+# toolbar sizes QGIS offers are only rendered when chosen.
+PNG_SIZES = (16, 20, 24, 28)
+# On scaled screens every PNG is loaded up front (see IconSwapper._icon).
+SCALED_PNG_SIZES = PNG_SIZES
 
 
 def screen_ratios():
@@ -344,7 +343,7 @@ class _IconDelegate(QStyledItemDelegate):
         else:
             # Keyed by the icon: a Browser row changes its icon (folder
             # open or closed, loading).
-            icon = self._swapper.row_icon(("icon", option.icon.cacheKey()), option.icon)
+            icon = self._swapper.keyed_icon(option.icon)
         if icon is not None:
             option.icon = icon
 
@@ -362,14 +361,15 @@ class _LayerTreeDelegate(QStyledItemDelegate):
         self._original = original
 
     def paint(self, painter, option, index):
-        opt = QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        icon = None
-        if not opt.icon.isNull():
-            icon = self._swapper.row_icon(("icon", opt.icon.cacheKey()), opt.icon)
+        # Most rows show a symbol or legend pixmap, not one of our icons:
+        # those are handed straight to the original delegate.
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+        icon = self._swapper.keyed_icon(icon) if isinstance(icon, QIcon) else None
         if icon is None:
             self._original.paint(painter, option, index)
             return
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
         widget = opt.widget
         style = widget.style() if widget is not None else QApplication.style()
         square = style.subElementRect(QStyle.SubElement.SE_ItemViewItemDecoration, opt, widget)
@@ -466,6 +466,7 @@ class IconSwapper(QObject):
         # QGIS's toolbar and dialog page list icon sizes, which get PNGs of
         # their own.
         self._extra_sizes = (24, 28)
+        self._main_window = None
         self._scanned = []
         self._names = {}
         self._base_names = {}
@@ -480,6 +481,12 @@ class IconSwapper(QObject):
         # availableSizes() signatures of the built-in PNG icons: the only
         # pixmap-based icons worth fingerprinting (see _replacement).
         self._png_signatures = None
+        # The same for just the built-in PNG icons, read on first need
+        # while the full table is not ready (see _png_signature_set).
+        self._quick_png_signatures = None
+        # Icon names of icons drawn by the Browser and Layers delegates,
+        # by cacheKey (bounded; pixmap icons are never remembered).
+        self._key_names = {}
         self._icons = {}
         self._pending = []
         self._theme = None
@@ -496,7 +503,8 @@ class IconSwapper(QObject):
         self._names = {}
         self._icons_dir = icons_dir
         self._pixmaps = {}
-        self._extra_sizes = (main_window.iconSize().width(), self._list_size())
+        self._main_window = main_window
+        self._extra_sizes = self._current_extra_sizes()
         self._png = self._pngs_usable(icons_dir)
         self._base_names = {
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
@@ -525,6 +533,7 @@ class IconSwapper(QObject):
         self._icons = {}
         self._pixmaps = {}
         self._icons_dir = icons_dir
+        self._extra_sizes = self._current_extra_sizes()
         self._png = self._pngs_usable(icons_dir)
         # Each setIcon repaints its toolbar or menu: suspend painting and
         # repaint every window once at the end.
@@ -569,6 +578,12 @@ class IconSwapper(QObject):
         if self._theme is not None and icons_dir == self._icons_dir and not self._png:
             if self._pngs_usable(icons_dir):
                 self._retheme(self._theme, icons_dir)
+
+    def _current_extra_sizes(self):
+        """QGIS's toolbar icon size and dialog page list size, as now set."""
+        window = self._main_window
+        toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
+        return toolbar, self._list_size()
 
     @staticmethod
     def _list_size():
@@ -737,17 +752,55 @@ class IconSwapper(QObject):
             return None
         return self._icon(name)
 
+    def _png_signature_set(self):
+        """Pixmap size signatures of the built-in PNG icons: from the
+        fingerprint table once it is ready, else from just those icons
+        (two dozen small files), so turning down a pixmap icon never makes
+        the whole table be built on the spot."""
+        if self._load_reference():
+            return self._png_signatures
+        if self._quick_png_signatures is None:
+            signatures = set()
+            for name in studio_icons.ICON_MAP:
+                if not name.lower().endswith(".svg"):
+                    source = self._source(name)
+                    if source is not None:
+                        signatures.add(self._signature(QIcon(source)))
+            self._quick_png_signatures = signatures
+        return self._quick_png_signatures
+
     def _identify(self, icon):
         """The QGIS icon name of `icon` by its data (None if not ours)."""
-        table = self._reference()
         # Pixmap-based icons (symbol previews, colour swatches, legend
         # items) list their pixmap sizes; fingerprinting them would
         # PNG-encode every pixmap. Only the few built-in PNG icons share
         # such a signature, so anything else is not ours to replace.
         signature = self._signature(icon)
-        if signature and signature not in self._png_signatures:
+        if signature and signature not in self._png_signature_set():
             return None
-        return table.get(self._digest(icon))
+        return self._reference().get(self._digest(icon))
+
+    def keyed_icon(self, icon):
+        """Our version of an icon the Browser or Layers delegate draws,
+        identified by the icon itself, or None to keep it. Pixmap icons
+        (layer symbols, legend items, the editing pencil composited onto a
+        layer icon) are new on every paint: they are turned down at once
+        and not remembered."""
+        if self._theme is None or icon.isNull():
+            return None
+        key = icon.cacheKey()
+        name = self._names.get(key, self._UNKNOWN)
+        if name is self._UNKNOWN:
+            name = self._key_names.get(key, self._UNKNOWN)
+        if name is self._UNKNOWN:
+            signature = self._signature(icon)
+            if signature and signature not in self._png_signature_set():
+                return None
+            name = self._identify(icon)
+            if len(self._key_names) > 4096:
+                self._key_names.clear()
+            self._key_names[key] = name
+        return None if name is None else self._icon(name)
 
     def row_icon(self, row, icon, group=False):
         """Our version of the icon a delegated view draws for `row` (a
@@ -1174,6 +1227,7 @@ class IconSwapper(QObject):
                 delegate.deleteLater()
         self._delegates = {}
         self._view_names = {}
+        self._key_names = {}
         for model, inserted in self._models.values():
             if not sip.isdeleted(model):
                 model.rowsInserted.disconnect(inserted)
