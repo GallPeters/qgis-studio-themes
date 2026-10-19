@@ -24,7 +24,14 @@ changelog=
             125-200% scaling alike; icons shown before they are ready switch
             over in place.
           - Crisper toolbar name labels: SemiBold, hinted, larger (10 px on
-            standard toolbars) and one shared size for all toolbars.
+            standard toolbars), higher contrast and one shared size for all
+            toolbars; with ClearType on (Windows) they get the same
+            sub-pixel smoothing as the rest of the UI text, and are placed on
+            whole device pixels at 125-175% scaling.
+          - Sharper widget glyphs (combo, spin box, menu and header arrows,
+            check marks, radio dots, tab and panel close/float buttons):
+            each drawn for the exact size it is shown at; disabled combo
+            arrows now match the enabled chevron.
           - Compact sizes picked automatically on large, low-density monitors
             (View > Studio Compact Sizes to override).
           - Upgrading in a running QGIS keeps the Studio theme and its modern

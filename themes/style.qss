@@ -149,6 +149,9 @@ QMenu::section {
     padding: 6px 10px 4px 10px;
     font-weight: 600;
 }
+/* Widget glyphs (themes/icons) are drawn on a grid of the exact size they
+ * are shown at here, with straight edges on whole pixels: keep a glyph's
+ * width/height in sync with its file when changing either. */
 QMenu::right-arrow {
     image: url(@theme_path/icons/studio/chevron-right.svg);
     width: 12px;
@@ -264,7 +267,7 @@ QToolButton::menu-button:hover {
 }
 QToolButton::menu-indicator,
 QToolButton::menu-arrow {
-    image: url(@theme_path/icons/studio/chevron-down.svg);
+    image: url(@theme_path/icons/studio/chevron-down-small.svg);
     width: 10px;
     height: 10px;
     subcontrol-origin: padding;
@@ -272,7 +275,7 @@ QToolButton::menu-arrow {
 }
 QToolButton::menu-indicator:disabled,
 QToolButton::menu-arrow:disabled {
-    image: url(@theme_path/icons/studio/arrow-down-disabled.svg);
+    image: url(@theme_path/icons/studio/chevron-down-small-disabled.svg);
 }
 
 QPushButton {
@@ -316,7 +319,7 @@ QPushButton:disabled {
     color: @text_disabled;
 }
 QPushButton::menu-indicator {
-    image: url(@theme_path/icons/studio/chevron-down.svg);
+    image: url(@theme_path/icons/studio/chevron-down-small.svg);
     width: 10px;
     height: 10px;
     subcontrol-position: right center;
@@ -443,7 +446,7 @@ QComboBox::down-arrow {
     height: 12px;
 }
 QComboBox::down-arrow:disabled {
-    image: url(@theme_path/icons/studio/arrow-down-disabled.svg);
+    image: url(@theme_path/icons/studio/chevron-down-disabled.svg);
 }
 QComboBox QAbstractItemView {
     background-color: @bg_menu;

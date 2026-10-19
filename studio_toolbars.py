@@ -20,12 +20,24 @@ full line height) centred on the handle. Labels share one size, the
 largest at which every short (up to four letter) QGIS toolbar name fits the
 handle (10 px on 24 px toolbars, larger on larger ones), so no name looks
 louder than the rest; only a longer name steps down as far as it must.
+
+ClearType: Windows draws all other UI text with sub-pixel smoothing, which
+places stems at a third of a pixel horizontally; text drawn into a
+transparent image (as the turned label must be) only gets greyscale
+smoothing and looks soft next to it. When ClearType is on, the label is
+therefore drawn upright at three samples per device pixel across the
+handle (the axis that turns horizontal), filtered like ClearType and
+blended per colour channel onto the toolbar's background, so it matches
+the rest of the UI. The finished image is blitted 1:1 onto whole device
+pixels: at 125 % a widget can start between two, and Qt would resample.
 """
 from qgis.PyQt import sip
+import ctypes
 import functools
 import math
+import sys
 
-from qgis.PyQt.QtCore import QEvent, QObject, QPointF, QRect, Qt
+from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt
 from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QFontMetricsF, QImage, QPainter, QTransform
 from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWidget
 
@@ -38,6 +50,32 @@ _font_sizes = FONT_SIZES
 LETTER_SPACING = 1.0
 # Whole pixels only: fractional spacing puts letters between pixels.
 SPACINGS = (LETTER_SPACING, 0)
+# FreeType's default LCD filter (weights out of 256): spreads each sample
+# over its neighbours so stems get no colour fringes.
+LCD_FILTER = (8, 77, 86, 77, 8)
+
+
+@functools.lru_cache(maxsize=1)
+def subpixel_order():
+    """"rgb" or "bgr" when Windows smooths text with ClearType (the
+    order of the screen's colour stripes), else None: greyscale smoothing,
+    as on other systems by default."""
+    if sys.platform != "win32":
+        return None
+    try:
+        user32 = ctypes.windll.user32
+        value = ctypes.c_uint(0)
+        # SPI_GETFONTSMOOTHING, SPI_GETFONTSMOOTHINGTYPE (2 = ClearType),
+        # SPI_GETFONTSMOOTHINGORIENTATION (0 = BGR, 1 = RGB).
+        if not user32.SystemParametersInfoW(0x004A, 0, ctypes.byref(value), 0) or not value.value:
+            return None
+        if not user32.SystemParametersInfoW(0x200A, 0, ctypes.byref(value), 0) or value.value != 2:
+            return None
+        if user32.SystemParametersInfoW(0x2012, 0, ctypes.byref(value), 0) and value.value == 0:
+            return "bgr"
+        return "rgb"
+    except (AttributeError, OSError):
+        return None
 
 # QGIS's own toolbars (main window and layout designer): short, plain words
 # (shrunk to fit if needed). Others, such as plugin toolbars, get the first
@@ -83,12 +121,14 @@ def abbreviation(toolbar):
 class _Label(QWidget):
     """The overlay painted over one toolbar's handle."""
 
-    def __init__(self, toolbar, color):
+    def __init__(self, toolbar, color, background):
         super().__init__(toolbar)
         self.setObjectName("studioToolbarLabel")
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.color = color
+        # The toolbar's background, for ClearType blending (see _render).
+        self.background = background
         self.text = ""
         self.setFont(label_font(_font_sizes[0]))
         # The rotated text image, rendered once per text/size/colour/scale.
@@ -109,11 +149,21 @@ class _Label(QWidget):
             painter.drawText(self._origin(rect.width(), rect.height(), ratio), self.text)
             painter.end()
             return
-        key = (self.text, self.font().pixelSize(), self.color.rgba(), rect.size(), ratio)
+        key = (
+            self.text, self.font().pixelSize(), self.color.rgba(), self.background.rgba(),
+            rect.size(), ratio,
+        )
         if key != self._image_key:
             self._image = self._render(rect, ratio)
             self._image_key = key
-        painter.drawImage(rect.topLeft(), self._image)
+        # Onto whole device pixels: shift by the fraction of a pixel this
+        # widget starts at in its window (only at fractional scaling).
+        origin = self.mapTo(self.window(), QPoint(0, 0))
+        painter.translate(
+            (round(origin.x() * ratio) - origin.x() * ratio) / ratio,
+            (round(origin.y() * ratio) - origin.y() * ratio) / ratio,
+        )
+        painter.drawImage(QPointF(0, 0), self._image)
         painter.end()
 
     def _origin(self, width, height, ratio):
@@ -129,6 +179,9 @@ class _Label(QWidget):
     def _render(self, rect, ratio):
         """Draw the text upright (hinted, sharp), then turn the image
         anticlockwise by exactly 90 degrees so it reads bottom to top."""
+        order = subpixel_order()
+        if order is not None and self.background.alpha() == 255:
+            return self._render_subpixel(rect, ratio, order)
         image = QImage(
             math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio),
             QImage.Format.Format_ARGB32_Premultiplied,
@@ -140,6 +193,60 @@ class _Label(QWidget):
         upright.setPen(self.color)
         upright.drawText(self._origin(rect.height(), rect.width(), ratio), self.text)
         upright.end()
+        image = image.transformed(QTransform().rotate(-90))
+        image.setDevicePixelRatio(ratio)
+        return image
+
+    def _render_subpixel(self, rect, ratio, order):
+        """The label with ClearType-style smoothing (see the module
+        docstring), as an opaque image on the toolbar's background."""
+        width, height = math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio)
+        # Upright text coverage at three samples per pixel vertically; the
+        # top of the upright image becomes the left of the turned one.
+        coverage = QImage(width, 3 * height, QImage.Format.Format_ARGB32_Premultiplied)
+        coverage.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(coverage)
+        painter.setFont(self.font())
+        painter.setPen(QColor(255, 255, 255))
+        painter.scale(ratio, 3 * ratio)
+        painter.drawText(self._origin(rect.height(), rect.width(), ratio), self.text)
+        painter.end()
+        stride = coverage.bytesPerLine()
+        data = coverage.constBits().asstring(coverage.sizeInBytes())
+        # Alpha (byte 3 of each little-endian ARGB pixel) per sample row,
+        # padded for the filter.
+        blank = bytes(width)
+        rows = [blank, blank] + [
+            data[y * stride + 3:y * stride + 4 * width:4] for y in range(3 * height)
+        ] + [blank, blank]
+        a, b, c, d, e = LCD_FILTER
+        filtered = [
+            bytes((a * p + b * q + c * r + d * s + e * t) >> 8 for p, q, r, s, t in zip(*rows[y:y + 5]))
+            for y in range(3 * height)
+        ]
+        # Per channel: the background blended towards the text colour by its
+        # sample's coverage, through lookup tables.
+        alpha = self.color.alphaF()
+        luts = [
+            bytes(round(back + (fore - back) * alpha * v / 255) for v in range(256))
+            for fore, back in (
+                (self.color.red(), self.background.red()),
+                (self.color.green(), self.background.green()),
+                (self.color.blue(), self.background.blue()),
+            )
+        ]
+        red, green, blue = (0, 1, 2) if order == "rgb" else (2, 1, 0)
+        pixels = bytearray(4 * width * height)
+        opaque = b"\xff" * width
+        for y in range(height):
+            start, end = 4 * width * y, 4 * width * (y + 1)
+            samples = filtered[3 * y:3 * y + 3]
+            # Format_RGB32 is stored as B, G, R, X.
+            pixels[start + 2:end:4] = samples[red].translate(luts[0])
+            pixels[start + 1:end:4] = samples[green].translate(luts[1])
+            pixels[start:end:4] = samples[blue].translate(luts[2])
+            pixels[start + 3:end:4] = opaque
+        image = QImage(bytes(pixels), width, height, 4 * width, QImage.Format.Format_RGB32).copy()
         image = image.transformed(QTransform().rotate(-90))
         image.setDevicePixelRatio(ratio)
         return image
@@ -211,15 +318,18 @@ class ToolbarLabels(QObject):
     def __init__(self):
         super().__init__()
         self._color = QColor()
+        self._background = QColor()
         self._windows = []
         self._labels = {}
         self._tooltips = {}
         # Signal connections per toolbar, undone on detach.
         self._slots = {}
 
-    def attach(self, window, color):
-        """Label every toolbar of `window` (a QMainWindow)."""
+    def attach(self, window, color, background):
+        """Label every toolbar of `window` (a QMainWindow); `background`
+        is the toolbars' background colour."""
         self._color = QColor(color)
+        self._background = QColor(background)
         if window not in self._windows:
             self._windows.append(window)
             window.installEventFilter(self)
@@ -227,11 +337,13 @@ class ToolbarLabels(QObject):
             if toolbar.parent() is window:
                 self._add(toolbar)
 
-    def set_color(self, color):
+    def set_color(self, color, background):
         self._color = QColor(color)
+        self._background = QColor(background)
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
+                label.background = self._background
                 label.update()
 
     def detach(self):
@@ -258,7 +370,7 @@ class ToolbarLabels(QObject):
     def _add(self, toolbar):
         if toolbar in self._labels:
             return
-        label = _Label(toolbar, self._color)
+        label = _Label(toolbar, self._color, self._background)
         self._labels[toolbar] = label
         toolbar.setProperty(PROPERTY, True)
         self._repolish(toolbar)
