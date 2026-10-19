@@ -1,86 +1,59 @@
-"""Small labels on toolbar handles, naming each toolbar.
+"""Toolbar names: a title above each toolbar's buttons.
 
-A transparent overlay is laid over the drag handle on the left (or top,
-for vertical toolbars) of every toolbar of a main window. It ignores the
-mouse, so dragging the toolbar works as before, and it is not a toolbar
-action, so QGIS, plugins and Interface Customization never see it. The
-handle is widened through the stylesheet only while a label is attached
-(QToolBar[studioLabel="true"]).
+A docked horizontal toolbar gets a title strip above its buttons, the name
+centred between two hairlines:  ───── Map Navigation ─────. The strip is
+made by a top margin on every item of the toolbar (QToolBar[studioLabel=
+"title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
+keep their own layout and the toolbar simply grows by the strip; widgets
+the stylesheet cannot push down (containers such as the snapping widget)
+get the same space as a top contents margin, undone on detach. A
+transparent overlay paints the strip. It ignores the mouse, so the buttons
+and dragging work as before, and it is not a toolbar action, so QGIS,
+plugins and Interface Customization never see it.
 
-Horizontal toolbars get the name rotated to read bottom to top, like a
-chart's y-axis title: the baseline faces the toolbar's icons. Text drawn
-rotated loses Windows' font hinting and looks blurry at this size, so it is
-drawn upright into an image that is then turned by exactly 90 degrees
-(lossless). Vertical toolbars get the name across the top.
+The title is horizontal text, drawn straight onto the window: Windows
+smooths it with ClearType like all other UI text. The capitals are centred
+in the strip with the baseline on a whole device pixel, and the hairlines
+are one device pixel thick, so the strip stays sharp at every scaling.
 
-Sharpness at small sizes: names are three capitals, so they fit the
-handle at 12 px on standard 24 px toolbars (larger on larger ones), all at
-one shared size. On Windows they use Segoe UI Bold, which is hand-hinted
-for small sizes and keeps solid stems where a font with automatic hinting
-(Inter, the UI font) stays soft; elsewhere the UI font in SemiBold. The
-baseline sits on a whole device pixel with the capitals (not the font's
-full line height) centred on the handle.
-
-ClearType: Windows draws all other UI text with sub-pixel smoothing, which
-places stems at a third of a pixel horizontally; text drawn into a
-transparent image (as the turned label must be) only gets greyscale
-smoothing and looks soft next to it. When ClearType is on, the label is
-therefore drawn upright at three samples per device pixel across the
-handle (the axis that turns horizontal), filtered like ClearType and
-blended per colour channel onto the toolbar's background, so it matches
-the rest of the UI. The finished image is blitted 1:1 onto whole device
-pixels: at 125 % a widget can start between two, and Qt would resample.
+A vertical toolbar (docked left or right) has no room for a strip; it gets
+a short three-letter name across the top of a taller handle
+(QToolBar[studioLabel="handle"]). Floating toolbars show their name in
+their own title bar and get nothing.
 """
 from qgis.PyQt import sip
-import ctypes
 import functools
-import math
-import sys
 
-from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt
-from qgis.PyQt.QtGui import (
-    QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QImage, QPainter, QTransform,
+from qgis.PyQt.QtCore import QEvent, QMargins, QObject, QPointF, QRect, Qt, QTimer
+from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen
+from qgis.PyQt.QtWidgets import (
+    QAbstractSpinBox, QApplication, QComboBox, QLabel, QLineEdit, QMainWindow, QStyle, QToolBar,
+    QToolButton, QWidget,
 )
-from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWidget
 
 PROPERTY = "studioLabel"
-# Largest first (see _fit); 9 px only where nothing else fits the handle.
-# The same on every screen: on large low-density monitors, where pixels
-# are physically big, a smaller size only makes the letters coarser.
-FONT_SIZES = (12, 11, 10, 9)
-LETTER_SPACING = 1.0
-# Whole pixels only: fractional spacing puts letters between pixels.
-SPACINGS = (LETTER_SPACING, 0)
-# FreeType's default LCD filter (weights out of 256): spreads each sample
-# over its neighbours so stems get no colour fringes.
-LCD_FILTER = (8, 77, 86, 77, 8)
+# Height of the title strip (logical px), shared with style.qss.
+TITLE_HEIGHT = 15
+TITLE_SIZE = 11
+# Gap between the name and its hairlines.
+RULE_GAP = 6
+# Items the stylesheet pushes down itself (box model); any other widget in
+# a titled toolbar gets a top contents margin instead.
+STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
 
+# Shorter English names for QGIS's own toolbars, by their title without
+# "Toolbar". Translated titles are used as they are.
+SHORT_TITLES = {
+    "Data Source Manager": "Data Sources",
+    "Manage Layers": "Layers",
+    "Label": "Labels",
+    "Mesh Digitizing": "Mesh",
+    "Shape Digitizing": "Shapes",
+}
 
-@functools.lru_cache(maxsize=1)
-def subpixel_order():
-    """"rgb" or "bgr" when Windows smooths text with ClearType (the
-    order of the screen's colour stripes), else None: greyscale smoothing,
-    as on other systems by default."""
-    if sys.platform != "win32":
-        return None
-    try:
-        user32 = ctypes.windll.user32
-        value = ctypes.c_uint(0)
-        # SPI_GETFONTSMOOTHING, SPI_GETFONTSMOOTHINGTYPE (2 = ClearType),
-        # SPI_GETFONTSMOOTHINGORIENTATION (0 = BGR, 1 = RGB).
-        if not user32.SystemParametersInfoW(0x004A, 0, ctypes.byref(value), 0) or not value.value:
-            return None
-        if not user32.SystemParametersInfoW(0x200A, 0, ctypes.byref(value), 0) or value.value != 2:
-            return None
-        if user32.SystemParametersInfoW(0x2012, 0, ctypes.byref(value), 0) and value.value == 0:
-            return "bgr"
-        return "rgb"
-    except (AttributeError, OSError):
-        return None
-
-# QGIS's own toolbars (main window and layout designer): three-letter
-# names, so every label fits the handle at one, larger size. Others, such
-# as plugin toolbars, get the first three letters of their title.
+# Vertical toolbars: three-letter names across the top of the handle.
+# Others, such as plugin toolbars, get the first three letters of their
+# title.
 ABBREVIATIONS = {
     "mFileToolBar": "PRJ",
     "mLayerToolBar": "LYR",
@@ -110,6 +83,18 @@ ABBREVIATIONS = {
     "mReportToolbar": "RPT",
 }
 NAME_LENGTH = 3
+# Handle names: largest first (see _fit), one shared size.
+HANDLE_SIZES = (12, 11, 10, 9)
+LETTER_SPACING = 1.0
+# Whole pixels only: fractional spacing puts letters between pixels.
+SPACINGS = (LETTER_SPACING, 0)
+
+
+def title(toolbar):
+    """The name shown above a toolbar: its title without "Toolbar"."""
+    words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
+    text = " ".join(words)
+    return SHORT_TITLES.get(text, text)
 
 
 def abbreviation(toolbar):
@@ -120,22 +105,51 @@ def abbreviation(toolbar):
     return words[0][:NAME_LENGTH].upper() if words else ""
 
 
-class _Label(QWidget):
-    """The overlay painted over one toolbar's handle."""
+@functools.lru_cache(maxsize=1)
+def _face():
+    """Segoe UI where installed (Windows): hand-hinted for small sizes,
+    so small text keeps solid stems where a font with automatic hinting
+    (Inter, the UI font) stays soft. Elsewhere the UI font."""
+    return "Segoe UI" if "Segoe UI" in QFontDatabase.families() else None
 
-    def __init__(self, toolbar, color, background):
+
+def _font(size, weight, spacing=0.0):
+    font = QFont(QApplication.font())
+    if _face():
+        font.setFamily(_face())
+    font.setPixelSize(size)
+    font.setWeight(weight)
+    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
+    font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+    return font
+
+
+def title_font():
+    return _font(TITLE_SIZE, QFont.Weight.DemiBold)
+
+
+def handle_font(size, spacing=LETTER_SPACING):
+    # The bundled Inter has no Bold (a synthesised one is smeared).
+    return _font(size, QFont.Weight.Bold if _face() else QFont.Weight.DemiBold, spacing)
+
+
+def _snap(value, ratio):
+    return round(value * ratio) / ratio
+
+
+class _Label(QWidget):
+    """The overlay painting one toolbar's name: a title strip above the
+    buttons, or a short name across the top of a vertical toolbar."""
+
+    def __init__(self, toolbar, color, rule):
         super().__init__(toolbar)
         self.setObjectName("studioToolbarLabel")
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.color = color
-        # The toolbar's background, for ClearType blending (see _render).
-        self.background = background
+        self.rule = rule
         self.text = ""
-        self.setFont(label_font(FONT_SIZES[0]))
-        # The rotated text image, rendered once per text/size/colour/scale.
-        self._image = None
-        self._image_key = None
+        self.titled = True
         # What _place last applied, so unchanged layout requests are free.
         self.placed = None
 
@@ -143,146 +157,40 @@ class _Label(QWidget):
         if not self.text:
             return
         painter = QPainter(self)
-        rect = self.rect()
         ratio = self.devicePixelRatioF()
-        if rect.height() < rect.width():
-            # Vertical toolbar: the name runs across the top.
-            painter.setPen(self.color)
-            painter.drawText(self._origin(rect.width(), rect.height(), ratio), self.text)
-            painter.end()
-            return
-        key = (
-            self.text, self.font().pixelSize(), self.color.rgba(), self.background.rgba(),
-            rect.size(), ratio,
-        )
-        if key != self._image_key:
-            self._image = self._render(rect, ratio)
-            self._image_key = key
-        # Onto whole device pixels: shift by the fraction of a pixel this
-        # widget starts at in its window (only at fractional scaling).
-        origin = self.mapTo(self.window(), QPoint(0, 0))
-        painter.translate(
-            (round(origin.x() * ratio) - origin.x() * ratio) / ratio,
-            (round(origin.y() * ratio) - origin.y() * ratio) / ratio,
-        )
-        painter.drawImage(QPointF(0, 0), self._image)
-        painter.end()
-
-    def _origin(self, width, height, ratio):
-        """Where to draw the text so it is centred in width x height:
-        capitals centred vertically (centring the full line height would
-        push them up by the descender) and the baseline and the start on
-        whole device pixels, where hinting keeps stems sharp."""
         metrics = QFontMetricsF(self.font())
-        x = (width - metrics.horizontalAdvance(self.text)) / 2
-        baseline = (height + metrics.capHeight()) / 2
-        return QPointF(round(x * ratio) / ratio, round(baseline * ratio) / ratio)
-
-    def _render(self, rect, ratio):
-        """Draw the text upright (hinted, sharp), then turn the image
-        anticlockwise by exactly 90 degrees so it reads bottom to top."""
-        order = subpixel_order()
-        if order is not None and self.background.alpha() == 255:
-            return self._render_subpixel(rect, ratio, order)
-        image = QImage(
-            math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio),
-            QImage.Format.Format_ARGB32_Premultiplied,
-        )
-        image.setDevicePixelRatio(ratio)
-        image.fill(Qt.GlobalColor.transparent)
-        upright = QPainter(image)
-        upright.setFont(self.font())
-        upright.setPen(self.color)
-        upright.drawText(self._origin(rect.height(), rect.width(), ratio), self.text)
-        upright.end()
-        image = image.transformed(QTransform().rotate(-90))
-        image.setDevicePixelRatio(ratio)
-        return image
-
-    def _render_subpixel(self, rect, ratio, order):
-        """The label with ClearType-style smoothing (see the module
-        docstring), as an opaque image on the toolbar's background."""
-        width, height = math.ceil(rect.height() * ratio), math.ceil(rect.width() * ratio)
-        # Upright text coverage at three samples per pixel vertically; the
-        # top of the upright image becomes the left of the turned one.
-        coverage = QImage(width, 3 * height, QImage.Format.Format_ARGB32_Premultiplied)
-        coverage.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(coverage)
+        rect = self.rect()
+        width = metrics.horizontalAdvance(self.text)
+        # Capitals centred (centring the full line height would push them
+        # up by the descender); baseline and start on whole device pixels,
+        # where hinting keeps stems sharp.
+        x = _snap((rect.width() - width) / 2, ratio)
+        baseline = _snap((rect.height() + metrics.capHeight()) / 2, ratio)
         painter.setFont(self.font())
-        painter.setPen(QColor(255, 255, 255))
-        painter.scale(ratio, 3 * ratio)
-        painter.drawText(self._origin(rect.height(), rect.width(), ratio), self.text)
+        painter.setPen(self.color)
+        painter.drawText(QPointF(x, baseline), self.text)
+        if self.titled:
+            # Hairlines either side, one device pixel through the middle
+            # of the capitals.
+            y = (int((baseline - metrics.capHeight() / 2) * ratio) + 0.5) / ratio
+            pen = QPen(self.rule)
+            pen.setCosmetic(True)
+            pen.setWidth(1)
+            painter.setPen(pen)
+            left, right = 1, rect.width() - 1
+            if x - RULE_GAP > left + 4:
+                painter.drawLine(QPointF(left, y), QPointF(x - RULE_GAP, y))
+            if x + width + RULE_GAP < right - 4:
+                painter.drawLine(QPointF(x + width + RULE_GAP, y), QPointF(right, y))
         painter.end()
-        stride = coverage.bytesPerLine()
-        data = coverage.constBits().asstring(coverage.sizeInBytes())
-        # Alpha (byte 3 of each little-endian ARGB pixel) per sample row,
-        # padded for the filter.
-        blank = bytes(width)
-        rows = [blank, blank] + [
-            data[y * stride + 3:y * stride + 4 * width:4] for y in range(3 * height)
-        ] + [blank, blank]
-        a, b, c, d, e = LCD_FILTER
-        filtered = [
-            bytes((a * p + b * q + c * r + d * s + e * t) >> 8 for p, q, r, s, t in zip(*rows[y:y + 5]))
-            for y in range(3 * height)
-        ]
-        # Per channel: the background blended towards the text colour by its
-        # sample's coverage, through lookup tables.
-        alpha = self.color.alphaF()
-        luts = [
-            bytes(round(back + (fore - back) * alpha * v / 255) for v in range(256))
-            for fore, back in (
-                (self.color.red(), self.background.red()),
-                (self.color.green(), self.background.green()),
-                (self.color.blue(), self.background.blue()),
-            )
-        ]
-        red, green, blue = (0, 1, 2) if order == "rgb" else (2, 1, 0)
-        pixels = bytearray(4 * width * height)
-        opaque = b"\xff" * width
-        for y in range(height):
-            start, end = 4 * width * y, 4 * width * (y + 1)
-            samples = filtered[3 * y:3 * y + 3]
-            # Format_RGB32 is stored as B, G, R, X.
-            pixels[start + 2:end:4] = samples[red].translate(luts[0])
-            pixels[start + 1:end:4] = samples[green].translate(luts[1])
-            pixels[start:end:4] = samples[blue].translate(luts[2])
-            pixels[start + 3:end:4] = opaque
-        image = QImage(bytes(pixels), width, height, 4 * width, QImage.Format.Format_RGB32).copy()
-        image = image.transformed(QTransform().rotate(-90))
-        image.setDevicePixelRatio(ratio)
-        return image
-
-
-@functools.lru_cache(maxsize=1)
-def _label_face():
-    """(family, weight) of the labels: Segoe UI Bold where installed
-    (Windows), else the UI font in SemiBold (the bundled Inter has no
-    Bold, and a synthesised one is smeared)."""
-    if "Segoe UI" in QFontDatabase.families():
-        return "Segoe UI", QFont.Weight.Bold
-    return None, QFont.Weight.DemiBold
-
-
-def label_font(size, spacing=LETTER_SPACING):
-    font = QFont(QApplication.font())
-    family, weight = _label_face()
-    if family:
-        font.setFamily(family)
-    font.setPixelSize(size)
-    font.setWeight(weight)
-    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
-    # Snap outlines to the pixel grid: crisp stems at 9-11 px.
-    font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
-    return font
 
 
 def fit(text, length):
-    """The label font for `text` on a handle `length` pixels long (the
-    size all labels share, see _uniform), and the text (shortened only if
-    it does not fit even at the smallest size)."""
-    size, spacing, text = _fit(text, length, QApplication.font().family(), FONT_SIZES)
-    return label_font(size, spacing), text
+    """The handle font for `text` across a handle `length` pixels wide
+    (the size all handle names share, see _uniform), and the text
+    (shortened only if it does not fit even at the smallest size)."""
+    size, spacing, text = _fit(text, length, QApplication.font().family(), HANDLE_SIZES)
+    return handle_font(size, spacing), text
 
 
 def _candidates(sizes):
@@ -293,14 +201,13 @@ def _candidates(sizes):
 
 @functools.lru_cache(maxsize=64)
 def _uniform(length, _family, sizes):
-    """Index of the first candidate at which every short QGIS toolbar
-    name fits `length` pixels: the size labels share (the smallest if none
-    fits; longer names are then cut). A longer name (a plugin toolbar
-    titled with an abbreviation) shrinks only itself."""
+    """Index of the first candidate at which every QGIS toolbar's short
+    name fits `length` pixels: the size handle names share (the smallest if
+    none fits; longer names are then cut)."""
     names = {name for name in ABBREVIATIONS.values() if len(name) <= NAME_LENGTH}
     candidates = _candidates(sizes)
     for index, (size, spacing) in enumerate(candidates):
-        metrics = QFontMetrics(label_font(size, spacing))
+        metrics = QFontMetrics(handle_font(size, spacing))
         if all(metrics.horizontalAdvance(name) <= length for name in names):
             return index
     return len(candidates) - 1
@@ -312,33 +219,36 @@ def _fit(text, length, family, sizes):
     # and only a name that does not fit gets smaller, then cut.
     candidates = _candidates(sizes)
     for size, spacing in candidates[_uniform(length, family, sizes):]:
-        if QFontMetrics(label_font(size, spacing)).horizontalAdvance(text) <= length:
+        if QFontMetrics(handle_font(size, spacing)).horizontalAdvance(text) <= length:
             return size, spacing, text
-    metrics = QFontMetrics(label_font(sizes[-1], 0))
+    metrics = QFontMetrics(handle_font(sizes[-1], 0))
     while text and metrics.horizontalAdvance(text) > length:
         text = text[:-1]
     return sizes[-1], 0, text
 
 
 class ToolbarLabels(QObject):
-    """Attaches labels to the toolbars of main windows, including toolbars
-    added later (plugins), and keeps them placed on the handle."""
+    """Attaches names to the toolbars of main windows, including toolbars
+    added later (plugins), and keeps them placed."""
 
     def __init__(self):
         super().__init__()
         self._color = QColor()
-        self._background = QColor()
+        self._rule = QColor()
         self._windows = []
         self._labels = {}
         self._tooltips = {}
         # Signal connections per toolbar, undone on detach.
         self._slots = {}
+        # Widgets given a top contents margin in titled toolbars, with
+        # their own margins to restore: {toolbar: {widget: QMargins}}.
+        self._shifted = {}
 
-    def attach(self, window, color, background):
-        """Label every toolbar of `window` (a QMainWindow); `background`
-        is the toolbars' background colour."""
+    def attach(self, window, color, rule):
+        """Name every toolbar of `window` (a QMainWindow): text in
+        `color`, hairlines in `rule`."""
         self._color = QColor(color)
-        self._background = QColor(background)
+        self._rule = QColor(rule)
         if window not in self._windows:
             self._windows.append(window)
             window.installEventFilter(self)
@@ -346,13 +256,13 @@ class ToolbarLabels(QObject):
             if toolbar.parent() is window:
                 self._add(toolbar)
 
-    def set_color(self, color, background):
+    def set_color(self, color, rule):
         self._color = QColor(color)
-        self._background = QColor(background)
+        self._rule = QColor(rule)
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
-                label.background = self._background
+                label.rule = self._rule
                 label.update()
 
     def detach(self):
@@ -366,23 +276,21 @@ class ToolbarLabels(QObject):
             toolbar.removeEventFilter(self)
             for signal, slot in self._slots.pop(toolbar, ()):
                 signal.disconnect(slot)
-            toolbar.setProperty(PROPERTY, None)
+            self._set_mode(toolbar, None)
             if toolbar in self._tooltips:
                 toolbar.setToolTip(self._tooltips[toolbar])
-            self._repolish(toolbar)
             if not sip.isdeleted(label):
                 label.deleteLater()
         self._labels = {}
         self._tooltips = {}
         self._slots = {}
+        self._shifted = {}
 
     def _add(self, toolbar):
         if toolbar in self._labels:
             return
-        label = _Label(toolbar, self._color, self._background)
+        label = _Label(toolbar, self._color, self._rule)
         self._labels[toolbar] = label
-        toolbar.setProperty(PROPERTY, True)
-        self._repolish(toolbar)
         toolbar.installEventFilter(self)
         place = lambda *_args, toolbar=toolbar: self._place(toolbar)  # noqa: E731
         forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
@@ -399,54 +307,133 @@ class ToolbarLabels(QObject):
         self._labels.pop(toolbar, None)
         self._tooltips.pop(toolbar, None)
         self._slots.pop(toolbar, None)
+        self._shifted.pop(toolbar, None)
+
+    # ---- Modes ------------------------------------------------------------
 
     @staticmethod
-    def _repolish(toolbar):
-        """Apply the (un)widened handle rule and relayout the toolbar."""
+    def _mode(toolbar):
+        """"title" (docked horizontal), "handle" (docked vertical, movable)
+        or None (floating, or a fixed vertical toolbar: no handle)."""
+        if toolbar.isFloating():
+            return None
+        if toolbar.orientation() == Qt.Orientation.Horizontal:
+            return "title"
+        return "handle" if toolbar.isMovable() else None
+
+    def _set_mode(self, toolbar, mode):
+        """Apply a mode's stylesheet rules (title strip or taller handle)
+        and contents margins, and relayout the toolbar."""
+        if toolbar.property(PROPERTY) == mode:
+            if mode == "title":
+                self._shift(toolbar)
+            return
+        toolbar.setProperty(PROPERTY, mode)
+        if mode != "title":
+            self._unshift(toolbar)
+        # The rules select on the toolbar's property: its items need
+        # repolishing too, and a style change event drops the size hints
+        # they cache (combo boxes), so the toolbar relayouts with the strip.
         style = toolbar.style()
-        style.unpolish(toolbar)
-        style.polish(toolbar)
-        QApplication.sendEvent(toolbar, QEvent(QEvent.Type.StyleChange))
+        for widget in [toolbar] + [c for c in toolbar.children() if isinstance(c, QWidget)]:
+            if widget is self._labels.get(toolbar):
+                continue
+            style.unpolish(widget)
+            style.polish(widget)
+            QApplication.sendEvent(widget, QEvent(QEvent.Type.StyleChange))
+        if mode == "title":
+            self._shift(toolbar)
+
+    def _shift(self, toolbar):
+        """Give items the stylesheet cannot push down (containers) the
+        title strip as a top contents margin."""
+        shifted = self._shifted.setdefault(toolbar, {})
+        for action in toolbar.actions():
+            widget = toolbar.widgetForAction(action)
+            if (widget is None or widget in shifted or isinstance(widget, STYLED_ITEMS)
+                    or widget.metaObject().className() == "QToolBarSeparator"):
+                continue
+            margins = widget.contentsMargins()
+            shifted[widget] = margins
+            widget.setContentsMargins(margins + QMargins(0, TITLE_HEIGHT, 0, 0))
+
+    def _unshift(self, toolbar):
+        for widget, margins in self._shifted.pop(toolbar, {}).items():
+            if not sip.isdeleted(widget):
+                widget.setContentsMargins(margins)
+
+    # ---- Placing ----------------------------------------------------------
 
     def _place(self, toolbar):
         label = self._labels.get(toolbar)
         if label is None or sip.isdeleted(label) or sip.isdeleted(toolbar):
             return
-        # The handle only exists on a movable, docked toolbar.
-        if not toolbar.isMovable() or toolbar.isFloating():
+        mode = self._mode(toolbar)
+        self._set_mode(toolbar, mode)
+        if mode is None:
             label.hide()
+            label.placed = None
             return
         style = toolbar.style()
         frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
         extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
-        if toolbar.orientation() == Qt.Orientation.Horizontal:
-            rect = QRect(frame, frame, extent, toolbar.height() - 2 * frame)
+        if mode == "title":
+            # Above the buttons, beside the handle (if any). The last
+            # toolbar of a row is stretched to the window's edge: the strip
+            # spans its items, not the empty rest.
+            handle = extent if toolbar.isMovable() else 0
+            rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
-                rect.moveRight(toolbar.width() - frame - 1)
-            length = rect.height()
+                rect.moveLeft(frame)
+            items = self._items_span(toolbar)
+            if items is not None:
+                # A name wider than few buttons (one-button toolbars) may
+                # spread into the toolbar's own room, if it has any:
+                # centred on the buttons, shifted where an edge is near.
+                need = QFontMetrics(title_font()).horizontalAdvance(title(toolbar)) + 2
+                width = max(items[1] - items[0] + 1, need)
+                left = (items[0] + items[1] + 1 - width) // 2
+                left = max(rect.left(), min(left, rect.right() + 1 - width))
+                rect.setLeft(max(rect.left(), left))
+                rect.setRight(min(rect.right(), left + width - 1))
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
-            length = rect.width()
-        title = toolbar.windowTitle()
-        placed = (rect, title, toolbar.objectName(), QApplication.font().family())
+        name = toolbar.windowTitle()
+        placed = (mode, rect, name, toolbar.objectName(), QApplication.font().family())
         # Toolbars send layout requests often; only redo the work when the
-        # handle or the name actually changed.
+        # strip or the name actually changed.
         if placed == label.placed and label.isVisible():
             return
         label.placed = placed
-        font, text = fit(abbreviation(toolbar), length - 4)
+        label.titled = mode == "title"
+        if label.titled:
+            font = title_font()
+            text = QFontMetrics(font).elidedText(title(toolbar), Qt.TextElideMode.ElideRight, rect.width() - 2)
+        else:
+            font, text = fit(abbreviation(toolbar), rect.width() - 4)
+            # The full name on hovering the handle (unless the toolbar has a
+            # tooltip of its own).
+            if toolbar not in self._tooltips:
+                self._tooltips[toolbar] = toolbar.toolTip()
+            if not self._tooltips[toolbar]:
+                toolbar.setToolTip(name)
         label.setFont(font)
         label.text = text
         label.setGeometry(rect)
-        # The label ignores the mouse; the toolbar shows the full name when
-        # hovering its handle (unless it already has a tooltip of its own).
-        if toolbar not in self._tooltips:
-            self._tooltips[toolbar] = toolbar.toolTip()
-        if not self._tooltips[toolbar]:
-            toolbar.setToolTip(title)
         label.show()
         label.raise_()
         label.update()
+
+    @staticmethod
+    def _items_span(toolbar):
+        """(left, right) of a toolbar's visible items (and its overflow
+        button), or None before it is laid out."""
+        widgets = [toolbar.widgetForAction(a) for a in toolbar.actions()]
+        widgets.append(toolbar.findChild(QToolButton, "qt_toolbar_ext_button"))
+        spans = [(w.x(), w.x() + w.width() - 1) for w in widgets if w is not None and w.isVisible()]
+        if not spans:
+            return None
+        return min(s[0] for s in spans), max(s[1] for s in spans)
 
     def eventFilter(self, watched, event):  # pylint: disable=invalid-name
         kind = event.type()
@@ -455,7 +442,15 @@ class ToolbarLabels(QObject):
                 child = event.child()
                 if isinstance(child, QToolBar) and child.parent() is watched:
                     self._add(child)
+        elif kind == QEvent.Type.ActionAdded:
+            # A widget added later (a plugin's) exists once the toolbar has
+            # handled the event.
+            QTimer.singleShot(0, lambda toolbar=watched: self._refresh(toolbar))
         elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange,
                       QEvent.Type.LayoutRequest):
             self._place(watched)
         return False
+
+    def _refresh(self, toolbar):
+        if toolbar in self._labels and not sip.isdeleted(toolbar) and toolbar.property(PROPERTY) == "title":
+            self._shift(toolbar)

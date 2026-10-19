@@ -34,7 +34,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons
-from .studio_toolbars import ToolbarLabels
+from .studio_toolbars import TITLE_HEIGHT, ToolbarLabels
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
 
 PLUGIN_DIR = Path(__file__).parent
@@ -46,7 +46,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "12"
+BUILD_FORMAT = "13"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -1217,7 +1217,7 @@ class QgisStudioThemesPlugin:
         self._labels_action.setObjectName("mActionStudioToolbarLabels")
         self._labels_action.setCheckable(True)
         self._labels_action.setChecked(QgsSettings().value(LABELS_SETTING, True, type=bool))
-        self._labels_action.setToolTip("Show each toolbar's name on its handle (Studio themes)")
+        self._labels_action.setToolTip("Show each toolbar's name above its buttons (Studio themes)")
         self._labels_action.toggled.connect(self._toggle_labels)
         self.iface.viewMenu().addAction(self._labels_action)
         self._compact = self._compact_sizes()
@@ -1252,6 +1252,10 @@ class QgisStudioThemesPlugin:
             "@ui_font_size": f"{base_size:g}pt",
             "@menu_item_padding_x": "11px" if compact else "14px",
             "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
+            # Toolbar title strips (see studio_toolbars); separators keep
+            # their 6 px top margin below the strip.
+            "@toolbar_title_height": f"{TITLE_HEIGHT}px",
+            "@toolbar_title_separator_margin": f"{6 + TITLE_HEIGHT}px 5px 6px 5px",
         }
         self._shared_stamp = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
@@ -1503,16 +1507,15 @@ class QgisStudioThemesPlugin:
         return self._labels_action is not None and self._labels_action.isChecked()
 
     def _label_color(self):
-        """Halfway from the dimmed to the normal text colour: crisp and
-        readable at 10 px, still quieter than the icons."""
+        """Halfway from the dimmed to the normal text colour: readable,
+        still quieter than the icons."""
         dim, text = parse_color(self._tokens["@text_dim"]), parse_color(self._tokens["@text"])
         r, g, b, a = (x + (y - x) / 2 for x, y in zip(dim, text))
         return QColor(round(r), round(g), round(b), round(a * 255))
 
-    def _label_background(self):
-        """The toolbars' background (QToolBar in style.qss), which the
-        labels blend their ClearType smoothing onto."""
-        r, g, b, a = parse_color(self._tokens["@bg_window"])
+    def _label_rule(self):
+        """The hairlines beside toolbar titles: the separators' colour."""
+        r, g, b, a = parse_color(self._tokens["@divider_strong"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _apply_labels(self):
@@ -1520,11 +1523,11 @@ class QgisStudioThemesPlugin:
         if self._active is None or not self._labels_enabled():
             self._labels.detach()
             return
-        color, background = self._label_color(), self._label_background()
-        self._labels.set_color(color, background)
-        self._labels.attach(self.iface.mainWindow(), color, background)
+        color, rule = self._label_color(), self._label_rule()
+        self._labels.set_color(color, rule)
+        self._labels.attach(self.iface.mainWindow(), color, rule)
         for designer in self.iface.openLayoutDesigners():
-            self._labels.attach(designer.window(), color, background)
+            self._labels.attach(designer.window(), color, rule)
 
     def _toggle_labels(self, checked):
         QgsSettings().setValue(LABELS_SETTING, checked)
@@ -1532,7 +1535,7 @@ class QgisStudioThemesPlugin:
 
     def _label_designer(self, designer):
         if self._active is not None and self._labels_enabled():
-            self._labels.attach(designer.window(), self._label_color(), self._label_background())
+            self._labels.attach(designer.window(), self._label_color(), self._label_rule())
 
     def _prerender(self, icons_dir):
         """Pre-render the theme's icons as pixel-snapped PNGs for these

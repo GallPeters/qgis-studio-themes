@@ -199,16 +199,29 @@ QgsProcessingToolboxTreeView::item {
     padding-top: 2px;
     padding-bottom: 2px;
 }
-/* Room for the toolbar name label the plugin paints over the handle. */
-QToolBar[studioLabel="true"]::handle {
-    width: 16px;
-    height: 16px;
-}
 QToolBar::separator {
     background-color: @divider_strong;
     width: 1px;
     height: 1px;
     margin: 6px 5px;
+}
+/* Toolbar names (studio_toolbars.py). A docked horizontal toolbar gets a
+ * title strip above its buttons: every item gets a top margin of the
+ * strip's height (from the plugin), so the toolbar grows by the strip and
+ * its items keep their own layout. A vertical toolbar gets its short name
+ * across the top of a taller handle. */
+QToolBar[studioLabel="title"] > QToolButton,
+QToolBar[studioLabel="title"] > QComboBox,
+QToolBar[studioLabel="title"] > QAbstractSpinBox,
+QToolBar[studioLabel="title"] > QLineEdit,
+QToolBar[studioLabel="title"] > QLabel {
+    margin-top: @toolbar_title_height;
+}
+QToolBar[studioLabel="title"]::separator {
+    margin: @toolbar_title_separator_margin;
+}
+QToolBar[studioLabel="handle"]::handle {
+    height: 16px;
 }
 QToolBar::extension-button,
 QToolButton#qt_toolbar_ext_button {

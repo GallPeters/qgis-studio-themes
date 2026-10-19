@@ -56,8 +56,10 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   size each screen draws them at (100%, 125%, 150%... scaling), with their
   lines snapped to the pixel grid, so they stay crisp instead of blurring
   on large monitors. Arrows, check marks and other widget glyphs are drawn
-  at their exact size, and the three-letter toolbar names use ClearType
-  smoothing on Windows, like the rest of the UI text.
+  at their exact size.
+- **Toolbar titles** – each toolbar's name sits centred above its buttons,
+  between two hairlines (vertical toolbars show a short name on their
+  handle). Turn them off with **View → Studio Toolbar Labels**.
 - **Typography** – the bundled Inter typeface is used unless a custom font
   is set in QGIS options. The configured font size is always kept.
 - **Sizes for every screen** – on large, low-density desktop monitors the

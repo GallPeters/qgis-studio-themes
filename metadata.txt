@@ -23,11 +23,10 @@ changelog=
             (solid 1-2 px lines instead of blurred ones), at 100% and at
             125-200% scaling alike; icons shown before they are ready switch
             over in place.
-          - Toolbar names are three letters (PRJ, DAT, EDT, ATR, LBL...) and
-            crisper: 12 px on standard toolbars, one shared size, Segoe UI
-            Bold on Windows (hand-hinted for small text), the same ClearType
-            smoothing as the rest of the UI text, and placed on whole device
-            pixels at 125-175% scaling.
+          - Toolbar titles: each toolbar's name is shown centred above its
+            buttons between two hairlines (Project, Map Navigation, Data
+            Sources...), as sharp as the rest of the UI text; vertical
+            toolbars show a three-letter name on their handle.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.
