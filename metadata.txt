@@ -45,6 +45,10 @@ changelog=
             runtime, and in mode buttons such as snapping overlap.
           - Sharp icons on scaled (HiDPI) screens; DB Manager, Oracle and more
             provider icons modernised; dialog page lists fit when collapsed.
+          - Compact sizes picked automatically on large, low-density monitors
+            (View > Studio Compact Sizes to override).
+          - Upgrading in a running QGIS keeps the Studio theme and its modern
+            Processing Toolbox and provider icons.
           - Stable memory use and theme switching over long sessions.
           - Smaller, faster-loading fonts.
 

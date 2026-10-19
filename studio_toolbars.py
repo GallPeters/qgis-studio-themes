@@ -23,7 +23,10 @@ from qgis.PyQt.QtWidgets import QApplication, QMainWindow, QStyle, QToolBar, QWi
 
 PROPERTY = "studioLabel"
 # Largest first; the first size at which the name fits the handle wins.
+# Compact sizes (see set_compact) start one size smaller.
 FONT_SIZES = (10, 9, 8)
+COMPACT_FONT_SIZES = (9, 8)
+_font_sizes = FONT_SIZES
 LETTER_SPACING = 1.0
 
 # QGIS's own toolbars (main window and layout designer): short, plain words
@@ -77,7 +80,7 @@ class _Label(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.color = color
         self.text = ""
-        self.setFont(label_font(FONT_SIZES[0]))
+        self.setFont(label_font(_font_sizes[0]))
         # The rotated text image, rendered once per text/size/colour/scale.
         self._image = None
         self._image_key = None
@@ -122,6 +125,12 @@ class _Label(QWidget):
         return image
 
 
+def set_compact(compact):
+    """Use the smaller label sizes of compact mode."""
+    global _font_sizes  # pylint: disable=global-statement
+    _font_sizes = COMPACT_FONT_SIZES if compact else FONT_SIZES
+
+
 def label_font(size, spacing=LETTER_SPACING):
     font = QFont(QApplication.font())
     font.setPixelSize(size)
@@ -133,21 +142,21 @@ def label_font(size, spacing=LETTER_SPACING):
 def fit(text, length):
     """The largest label font at which `text` fits `length` pixels, and the
     text (shortened only if it does not fit even at the smallest size)."""
-    size, spacing, text = _fit(text, length, QApplication.font().family())
+    size, spacing, text = _fit(text, length, QApplication.font().family(), _font_sizes)
     return label_font(size, spacing), text
 
 
 @functools.lru_cache(maxsize=256)
-def _fit(text, length, _family):
+def _fit(text, length, _family, sizes):
     # Largest size first; tighter letter spacing before ever cutting a word.
     for spacing in (LETTER_SPACING, 0):
-        for size in FONT_SIZES:
+        for size in sizes:
             if QFontMetrics(label_font(size, spacing)).horizontalAdvance(text) <= length:
                 return size, spacing, text
-    metrics = QFontMetrics(label_font(FONT_SIZES[-1], 0))
+    metrics = QFontMetrics(label_font(sizes[-1], 0))
     while text and metrics.horizontalAdvance(text) > length:
         text = text[:-1]
-    return FONT_SIZES[-1], 0, text
+    return sizes[-1], 0, text
 
 
 class ToolbarLabels(QObject):

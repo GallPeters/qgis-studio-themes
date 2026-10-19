@@ -54,6 +54,10 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   [Tabler Icons](https://tabler.io/icons), coloured for each theme.
 - **Typography** – the bundled Inter typeface is used unless a custom font
   is set in QGIS options. The configured font size is always kept.
+- **Sizes for every screen** – on large, low-density desktop monitors the
+  plugin picks compact sizes (smaller menu, panel icons and toolbar
+  labels), while laptops keep the roomier look. Override it with
+  **View → Studio Compact Sizes** (applies after a restart).
 - **Layout** – thin dividers, rounded controls, underlined tabs, slim
   scrollbars, accent-coloured selection and a message bar that follows
   the theme.

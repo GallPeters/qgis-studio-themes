@@ -38,8 +38,8 @@ QDockWidget {
     titlebar-close-icon: url(@theme_path/icons/studio/close.svg);
     titlebar-normal-icon: url(@theme_path/icons/studio/float.svg);
 }
-/* Panel titles: one point larger and semibold, so panels are easy to find
- * and tell apart. The (title-less) font goes on the dock, the contents get
+/* Panel titles: one point larger (compact sizes: same size) and semibold,
+ * so panels are easy to find and tell apart. The (title-less) font goes on the dock, the contents get
  * the normal UI font back (sizes filled in by the plugin). */
 QMainWindow > QDockWidget {
     font-size: @panel_title_font_size;
@@ -99,14 +99,14 @@ QMenuBar {
     border-bottom: 1px solid @divider;
     padding: 3px 6px;
 }
-/* Main menu one point above the UI font (size filled in by the plugin);
+/* Main menu above the UI font (size filled in by the plugin);
  * the child selector outranks QGIS's own application-wide font rule. */
 QMainWindow > QMenuBar {
     font-size: @menu_font_size;
 }
 QMenuBar::item {
     background: transparent;
-    padding: 5px 14px;
+    padding: 5px @menu_item_padding_x;
     border-radius: @radius_sm;
 }
 QMenuBar::item:selected {
@@ -182,20 +182,14 @@ QToolBar::handle {
     width: 6px;
     height: 6px;
 }
-/* Toolbars inside panels (Browser, Layers, Processing Toolbox...) get
- * slightly larger icons than QGIS's small dock default. */
-QDockWidget QToolBar {
-    qproperty-iconSize: 20px 20px;
-}
-/* The main panels share one rhythm: 20 px icons and roomy rows. Padding
- * (not a fixed height) keeps taller legend entries in the Layers panel
- * intact; the item rule holds nothing drawable, so Qt keeps drawing the
- * rows natively. */
-QgsBrowserTreeView,
-QgsLayerTreeView,
-QgsProcessingToolboxTreeView {
-    qproperty-iconSize: 20px 20px;
-}
+/* Toolbars inside panels (Browser, Layers, Processing Toolbox...) and the
+ * main panel trees get 20 px icons instead of QGIS's small dock default;
+ * filled in by the plugin, empty with compact sizes (low-density screens),
+ * where they keep QGIS's own size. */
+@panel_icon_rules
+/* The main panels share one rhythm: roomy rows. Padding (not a fixed
+ * height) keeps taller legend entries in the Layers panel intact; the item
+ * rule holds nothing drawable, so Qt keeps drawing the rows natively. */
 QgsBrowserTreeView::item,
 QgsLayerTreeView::item,
 QgsProcessingToolboxTreeView::item {

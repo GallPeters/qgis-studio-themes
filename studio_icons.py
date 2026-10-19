@@ -730,8 +730,11 @@ EXTERNAL = {
 # Visible stroke width (in 24x24 icon units) of every glyph, and how much a
 # glyph is enlarged around the centre: Tabler glyphs leave a ~3 unit margin,
 # so 1.15 makes icons read bigger without changing any widget's icon size.
+# Compact sizes (low-density screens, where every pixel is physically
+# larger) enlarge them less.
 STROKE = 1.5
 SCALE = 1.15
+COMPACT_SCALE = 1.05
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
 # Badges are a small plain dot in the accent colour (red for remove): it
@@ -766,17 +769,17 @@ def _glyph_body(name):
     return _FRAME.sub("", _BODY.search(svg).group(1)).strip()
 
 
-def render_icon(spec, colors):
+def render_icon(spec, colors, scale=SCALE):
     """Compose one icon. ``colors`` provides icon, accent and danger (used
-    for remove badges)."""
+    for remove badges); ``scale`` enlarges unbadged glyphs."""
     glyph, _, badge = spec.partition("+")
     body = _glyph_body(glyph).replace("currentColor", colors["icon"])
     if badge:
         # Shrink the glyph towards the top-left to leave room for the badge.
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
     else:
-        offset = round(12 * (1 - SCALE), 3)
-        scale, transform = SCALE, f"translate({offset} {offset}) scale({SCALE})"
+        offset = round(12 * (1 - scale), 3)
+        transform = f"translate({offset} {offset}) scale({scale})"
     # The stroke is scaled with the glyph: compensate so every icon ends up
     # with the same visible line weight.
     stroke = round(STROKE / scale, 3)

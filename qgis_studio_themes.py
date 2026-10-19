@@ -34,6 +34,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons
+from . import studio_toolbars
 from .studio_toolbars import ToolbarLabels
 from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -46,7 +47,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "8"
+BUILD_FORMAT = "9"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -55,9 +56,20 @@ FULL_STYLE = "style.full.qss"
 STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
 LABELS_SETTING = "studio_themes/toolbarLabels"
+# Compact sizes: "auto" (by the screen's pixel density), "on" or "off".
+COMPACT_SETTING = "studio_themes/compactSizes"
+# Below this many (logical) pixels per inch every pixel is physically large,
+# e.g. a 1920x1200 desktop monitor (~95 PPI) against a 14" laptop (~160).
+COMPACT_MAX_PPI = 120
 MENU_BAR_EXTRA_PT = 2
+COMPACT_MENU_BAR_EXTRA_PT = 1
 # Icon size of toolbars inside panels (QGIS uses 16 px there).
 DOCK_ICON_SIZE = 20
+PANEL_ICON_RULES = (
+    "QDockWidget QToolBar { qproperty-iconSize: 20px 20px; }\n"
+    "QgsBrowserTreeView, QgsLayerTreeView, QgsProcessingToolboxTreeView"
+    " { qproperty-iconSize: 20px 20px; }"
+)
 
 # QGIS adds these rules to the main window's own stylesheet when it starts
 # with a theme that is not registered yet (ours register a moment later).
@@ -153,15 +165,17 @@ def prerender_pngs(icons_dir, stop):
     return True
 
 
-def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
+def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
+                icon_scale=studio_icons.SCALE):
     """Write the resolved stylesheet and all icons for one theme into
     `target`; style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
-    startup costs only a few stat() calls. Thread-safe (no Qt calls)."""
+    startup costs only a few stat() calls. Thread-safe (no Qt calls).
+    Returns True when it (re)built the theme."""
     stamp = build_stamp([THEMES_DIR / folder / "variables.qss"]) + shared_stamp
     stamp_file = target / STAMP
     if stamp_file.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
-        return
+        return False
     tokens = load_tokens(folder)
     # Forward slashes: Windows backslashes would break url() parsing.
     tokens["@theme_path"] = target.as_posix()
@@ -195,12 +209,14 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
             path.parent.mkdir(parents=True, exist_ok=True)
             folders.add(path.parent)
         if spec not in svgs:
-            svgs[spec] = studio_icons.render_icon(spec, colors)
+            svgs[spec] = studio_icons.render_icon(spec, colors, icon_scale)
             disabled = target / "icons" / "disabled" / f"{spec}.svg"
             if disabled.parent not in folders:
                 disabled.parent.mkdir(parents=True, exist_ok=True)
                 folders.add(disabled.parent)
-            disabled.write_text(studio_icons.render_icon(spec, disabled_colors), encoding="utf-8")
+            disabled.write_text(
+                studio_icons.render_icon(spec, disabled_colors, icon_scale), encoding="utf-8"
+            )
         path.write_text(svgs[spec], encoding="utf-8")
     (target / FULL_STYLE).write_text(style, encoding="utf-8")
     if active:
@@ -208,6 +224,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None):
     else:
         (target / "style.qss").write_bytes(STUB_STYLE)
     stamp_file.write_text(stamp, encoding="utf-8")
+    return True
 
 
 def make_palette(tokens):
@@ -1074,8 +1091,12 @@ class QgisStudioThemesPlugin:
         self._relay.pngs_ready.connect(self._icons.use_pngs)
         self._labels = ToolbarLabels()
         self._labels_action = None
+        self._compact_action = None
+        self._compact = False
         self._extra_tokens = {}
         self._dock_icon_sizes = {}
+        # Themes (re)built by this plugin load, i.e. new or updated.
+        self._rebuilt = set()
 
     @staticmethod
     def theme_target(name):
@@ -1087,9 +1108,18 @@ class QgisStudioThemesPlugin:
         # already sees them (no second, full repolish at startup).
         settings = QgsSettings()
         configured = settings.value("UI/UITheme", "", type=str)
+        # The theme QGIS already shows: a Studio theme when the plugin is
+        # installed or upgraded in a running QGIS (Plugin Manager), and its
+        # icons, cached by QGIS, come from that theme's current files.
+        running = QgsApplication.themeName()
+        renamed_running = None
         for old_name, new_name in self.RENAMED.items():
             old_target = Path(QgsApplication.userThemesFolder()) / old_name
-            if (old_target / STAMP).exists():
+            if running == old_name:
+                # Removed at the next start instead: deleting the files now
+                # would blank the icons QGIS cached from them.
+                renamed_running = new_name
+            elif (old_target / STAMP).exists():
                 shutil.rmtree(old_target, ignore_errors=True)
             if configured == old_name:
                 configured = new_name
@@ -1107,6 +1137,18 @@ class QgisStudioThemesPlugin:
         self._labels_action.setToolTip("Show each toolbar's name on its handle (Studio themes)")
         self._labels_action.toggled.connect(self._toggle_labels)
         self.iface.viewMenu().addAction(self._labels_action)
+        self._compact = self._compact_sizes()
+        studio_toolbars.set_compact(self._compact)
+        self._compact_action = QAction("Studio Compact Sizes", self.iface.mainWindow())
+        self._compact_action.setObjectName("mActionStudioCompactSizes")
+        self._compact_action.setCheckable(True)
+        self._compact_action.setChecked(self._compact)
+        self._compact_action.setToolTip(
+            "Smaller menu, panel icons and toolbar labels for large desktop monitors"
+            " (chosen automatically by the screen; applies after restarting QGIS)"
+        )
+        self._compact_action.toggled.connect(self._toggle_compact)
+        self.iface.viewMenu().addAction(self._compact_action)
         # The main menu is one point larger than the UI font, so it reads as
         # the top level. The size goes into the theme stylesheet (a widget
         # stylesheet on the bar would give every menu, all children of the
@@ -1118,14 +1160,20 @@ class QgisStudioThemesPlugin:
         base_size = QgsSettings().value(
             "qgis/stylesheet/fontPointSize", self._original_font.pointSizeF(), type=float
         )
-        menu_size = base_size + MENU_BAR_EXTRA_PT
+        # Compact sizes: the menu and panel titles stay closer to the UI
+        # font, panels keep QGIS's own icon size and icons are enlarged less.
+        compact = self._compact
+        menu_size = base_size + (COMPACT_MENU_BAR_EXTRA_PT if compact else MENU_BAR_EXTRA_PT)
         self._extra_tokens = {
             "@menu_font_size": f"{menu_size:g}pt",
-            "@panel_title_font_size": f"{base_size + 1:g}pt",
+            "@panel_title_font_size": f"{base_size + (0 if compact else 1):g}pt",
             "@ui_font_size": f"{base_size:g}pt",
+            "@menu_item_padding_x": "11px" if compact else "14px",
+            "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
         }
         self._shared_stamp = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
+            + ("|compact" if compact else "")
         )
         # Only the configured theme is built now; the others only need a
         # placeholder style.qss to be registered and are built in the
@@ -1150,20 +1198,36 @@ class QgisStudioThemesPlugin:
             QgsApplication.applicationThemeRegistry().addTheme(
                 f"Studio {name}", self.theme_target(name).as_posix()
             )
+        if renamed_running is not None and renamed_running == configured:
+            # Upgraded while QGIS shows a theme under its former name: move
+            # QGIS to the new name now, not only at the next start.
+            QgsApplication.setUITheme(configured)
         # When the configured theme is applied later, themeChanged syncs;
         # syncing now would undo the preparation above.
-        if QgsApplication.themeName() in self._studio_themes():
+        studio = self._studio_themes()
+        if QgsApplication.themeName() in studio:
             self._sync()
+        if (running in studio or running in self.RENAMED) and configured in studio and (
+            studio[configured][0] in self._rebuilt
+        ):
+            # QGIS cached some icons from the previous version's files
+            # (e.g. Browser provider icons) and offers no way to drop them.
+            self.iface.messageBar().pushMessage(
+                "Studio Themes", "Updated. Restart QGIS once so every icon shows the new version.",
+                Qgis.MessageLevel.Info, 30,
+            )
         QTimer.singleShot(2000, lambda: self._start(self._build_pending, pending))
 
     def _build(self, name, active=False):
         """Build one theme (no-op when up to date); False if it failed."""
+        scale = studio_icons.COMPACT_SCALE if self._compact else studio_icons.SCALE
         with self._locks[name]:
             try:
-                build_theme(
+                if build_theme(
                     self.THEMES[name], self.theme_target(name), self._shared_stamp, active,
-                    self._extra_tokens,
-                )
+                    self._extra_tokens, scale,
+                ):
+                    self._rebuilt.add(name)
             except Exception as error:  # pylint: disable=broad-except
                 QgsMessageLog.logMessage(
                     f"Could not build Studio {name}: {error}", LOG_TAG, Qgis.MessageLevel.Critical
@@ -1217,10 +1281,11 @@ class QgisStudioThemesPlugin:
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self.iface.layoutDesignerOpened.disconnect(self._label_designer)
             self._connected = False
-        if self._labels_action is not None:
-            self.iface.viewMenu().removeAction(self._labels_action)
-            self._labels_action.deleteLater()
-            self._labels_action = None
+        for action in (self._labels_action, self._compact_action):
+            if action is not None:
+                self.iface.viewMenu().removeAction(action)
+                action.deleteLater()
+        self._labels_action = self._compact_action = None
         self._deactivate()
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
@@ -1318,7 +1383,7 @@ class QgisStudioThemesPlugin:
         """Panel toolbars (Browser, Layers, Processing Toolbox...) get
         slightly larger icons. The stylesheet rule covers panels polished
         later; existing ones are resized here and restored on leaving."""
-        if self._active is None:
+        if self._active is None or self._compact:
             return
         size = QSize(DOCK_ICON_SIZE, DOCK_ICON_SIZE)
         for dock in self.iface.mainWindow().findChildren(QDockWidget):
@@ -1326,6 +1391,29 @@ class QgisStudioThemesPlugin:
                 if toolbar.iconSize().width() < DOCK_ICON_SIZE:
                     self._dock_icon_sizes.setdefault(toolbar, toolbar.iconSize())
                     toolbar.setIconSize(size)
+
+    # ---- Compact sizes ----------------------------------------------------
+
+    def _compact_sizes(self):
+        """Compact sizes on screens with large pixels (low density), unless
+        the user chose otherwise. In logical pixels per inch, a 14 inch
+        1920x1200 laptop has ~160 and a 24 inch monitor at the same
+        resolution ~95: the same UI is ~1.7x larger there."""
+        mode = QgsSettings().value(COMPACT_SETTING, "auto", type=str)
+        if mode in ("on", "off"):
+            return mode == "on"
+        window = self.iface.mainWindow()
+        screen = (window.screen() if window is not None else None) or QGuiApplication.primaryScreen()
+        if screen is None:
+            return False
+        # Screens that report no (or a nonsense) physical size keep the default.
+        return 50 <= screen.physicalDotsPerInch() < COMPACT_MAX_PPI
+
+    def _toggle_compact(self, checked):
+        QgsSettings().setValue(COMPACT_SETTING, "on" if checked else "off")
+        self.iface.messageBar().pushMessage(
+            "Studio Themes", "Restart QGIS to apply the new sizes.", Qgis.MessageLevel.Info, 10
+        )
 
     # ---- Toolbar labels ---------------------------------------------------
 
