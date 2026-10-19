@@ -46,13 +46,33 @@ changelog=
             check marks, radio dots, tab and panel close/float buttons):
             each drawn for the exact size it is shown at; disabled combo
             arrows now match the enabled chevron.
-          - Compact sizes picked automatically on large, low-density monitors
-            (View > Studio Compact Sizes to override).
+          - Compact sizes picked automatically on large, low-density monitors.
+          - Toolbar names are always shown; the View menu no longer has the
+            Studio Toolbar Labels and Studio Compact Sizes items.
           - Upgrading in a running QGIS keeps the Studio theme and its modern
             Processing Toolbox and provider icons.
           - Fixed missing modern icons in the Processing Toolbox (group
             folders and tool icons) and in search boxes on QGIS builds where
             these panels are built natively, such as recent Linux builds.
+          - Smoother, faster toolbars: centred toolbars no longer flicker when
+            tools are switched, and toolbar names add a third of the work
+            they did to every selection or layer change; toolbar names are
+            never cut short.
+          - One line colour for the menu bar, toolbar rows and dividers,
+            clearly visible in dark themes; lighter separators inside a
+            toolbar; drop-down arrows centred beside the icon; one outline
+            chevron style for spin boxes, menus and the panels' expand arrows;
+            even heights for the snapping fields; stronger checked buttons in
+            dark themes.
+          - Clearer icons: a touch more line weight on every icon (the line
+            stays on the pixel grid), larger glyphs with + and - badges in
+            menus and trees, and new Zoom Full, raster, vertex snapping and
+            topological editing icons.
+          - Lighter UI text: Inter Regular and Italic at weight 350 instead
+            of 400 (from Inter's variable font), which no longer reads as
+            bold, especially light on dark.
+          - Disabled icons and arrows are clearly dimmed, so an unavailable
+            tool no longer looks like a thinner version of the icon.
           - Browser and Layers panels use the same sharp, pixel-snapped icons
             as the toolbars (their lines looked heavier before); Layers groups
             get a folder icon.

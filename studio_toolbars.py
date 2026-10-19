@@ -3,7 +3,7 @@
 A docked horizontal toolbar gets a title strip above its buttons, its name
 centred over them. The strip is
 made by a top margin on every item of the toolbar (QToolBar[studioLabel=
-"title"] in style.qss, @toolbar_title_height = TITLE_HEIGHT), so the items
+"title"] in style.qss, @toolbar_title_height = TITLE_SPACE), so the items
 keep their own layout and the toolbar simply grows by the strip; widgets
 the stylesheet cannot push down (containers such as the snapping widget)
 get the same space as a top contents margin, undone on detach. A
@@ -39,12 +39,19 @@ from qgis.PyQt.QtWidgets import (
 )
 
 PROPERTY = "studioLabel"
-# Height of the title strip (logical px), shared with style.qss.
+# Height of the title strip (logical px), and the gap between it and the
+# buttons, so a hovered or checked button's fill keeps clear of the name.
+# Their sum is the room the buttons are pushed down by (TITLE_SPACE,
+# shared with style.qss).
 TITLE_HEIGHT = 15
+TITLE_GAP = 3
+TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
 TITLE_SIZE = 11
 # Regular weight, slightly spaced: SemiBold letters ran together,
 # especially at 150 %.
 TITLE_SPACING = 0.5
+# Room either side of a name when a toolbar is widened to fit it.
+RULE_ROOM = 6
 # Items the stylesheet pushes down itself (box model); any other widget in
 # a titled toolbar gets a top contents margin instead.
 STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
@@ -133,7 +140,23 @@ def _font(size, weight, spacing=0.0):
 
 
 def title_font():
+    return _title_font(QApplication.font().key())
+
+
+@functools.lru_cache(maxsize=4)
+def _title_font(_app_font):
+    # Keyed by the application font, which the themes change.
     return _font(TITLE_SIZE, QFont.Weight.Normal, TITLE_SPACING)
+
+
+@functools.lru_cache(maxsize=256)
+def _title_width(text, _app_font):
+    return QFontMetrics(_title_font(_app_font)).horizontalAdvance(text)
+
+
+def title_width(text):
+    """Width of a toolbar name in the title font (cached)."""
+    return _title_width(text, QApplication.font().key())
 
 
 def handle_font(size, spacing=LETTER_SPACING):
@@ -252,7 +275,15 @@ def _fit(text, length, family, sizes):
 
 class ToolbarLabels(QObject):
     """Attaches names to the toolbars of main windows, including toolbars
-    added later (plugins), and keeps them placed."""
+    added later (plugins), and keeps them placed.
+
+    Toolbars relayout often (QGIS enables and disables actions on every
+    selection or layer change), so the work per layout request is kept
+    small: the strip, the dividers and the centring of one toolbar, done
+    at once (Qt has laid the toolbar out before an event filter sees the
+    request, so centred buttons never show at the left first). Which
+    toolbars share a row, and which is the last of it, is worked out once
+    per window after toolbars move, show, hide or resize."""
 
     def __init__(self):
         super().__init__()
@@ -265,7 +296,21 @@ class ToolbarLabels(QObject):
         self._row_lines = {}
         # Dividers closing a row after its last toolbar's buttons.
         self._ends = {}
-        # Windows whose row lines are re-placed on the next event-loop pass.
+        # Toolbars that are the last of their row (see _arrange_rows).
+        self._last = {}
+        # Overflow buttons, looked up once per toolbar.
+        self._extensions = {}
+        # Item widgets per toolbar, with its layout and the item count they
+        # were read at, and frame and handle metrics: read once, not on
+        # every layout request.
+        self._widgets = {}
+        self._frames = {}
+        # Centring applied per toolbar: (offset, the items' x positions it
+        # left), so it can be undone while the layout has not reset them.
+        self._offsets = {}
+        # Minimum widths raised so a name fits, with the toolbar's own.
+        self._min_widths = {}
+        # Windows whose rows are arranged on the next event-loop pass.
         self._rows_pending = set()
         self._tooltips = {}
         # Signal connections per toolbar, undone on detach.
@@ -276,7 +321,7 @@ class ToolbarLabels(QObject):
 
     def attach(self, window, color, rule, row_rule=None):
         """Name every toolbar of `window` (a QMainWindow): text in
-        `color`, dividers between toolbars in `rule`, lines between rows of
+        `color`, dividers between toolbars in `rule`, lines under rows of
         toolbars in `row_rule` (by default `rule`)."""
         self._color = QColor(color)
         self._rule = QColor(rule)
@@ -284,30 +329,32 @@ class ToolbarLabels(QObject):
         if window not in self._windows:
             self._windows.append(window)
             window.installEventFilter(self)
+            # Layout designers close: forget them, not loop over them.
+            window.destroyed.connect(lambda _obj=None, window=window: self._drop_window(window))
         for toolbar in window.findChildren(QToolBar):
             if toolbar.parent() is window:
                 self._add(toolbar)
+
+    def _drop_window(self, window):
+        if window in self._windows:
+            self._windows.remove(window)
+        self._rows_pending.discard(window)
 
     def set_color(self, color, rule, row_rule=None):
         self._color = QColor(color)
         self._rule = QColor(rule)
         self._row_rule = QColor(rule if row_rule is None else row_rule)
+        self._frames = {}  # another theme, other metrics
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
                 label.update()
-        for divider in self._dividers.values():
-            if not sip.isdeleted(divider):
-                divider.rule = self._rule
-                divider.update()
-        for line in self._row_lines.values():
-            if not sip.isdeleted(line):
-                line.rule = self._row_rule
-                line.update()
-        for end in self._ends.values():
-            if not sip.isdeleted(end):
-                end.rule = self._rule
-                end.update()
+        for lines, color in ((self._dividers, self._rule), (self._ends, self._rule),
+                             (self._row_lines, self._row_rule)):
+            for line in lines.values():
+                if not sip.isdeleted(line):
+                    line.rule = color
+                    line.update()
 
     def detach(self):
         for window in self._windows:
@@ -321,17 +368,27 @@ class ToolbarLabels(QObject):
             for signal, slot in self._slots.pop(toolbar, ()):
                 signal.disconnect(slot)
             self._set_mode(toolbar, None)
+            self._fit_name(toolbar, None)
             if toolbar in self._tooltips:
                 toolbar.setToolTip(self._tooltips[toolbar])
-            if not sip.isdeleted(label):
-                label.deleteLater()
-            for line in (self._dividers.get(toolbar), self._row_lines.get(toolbar), self._ends.get(toolbar)):
-                if line is not None and not sip.isdeleted(line):
-                    line.deleteLater()
+            for widget in (label, self._dividers.get(toolbar), self._row_lines.get(toolbar),
+                           self._ends.get(toolbar)):
+                if widget is not None and not sip.isdeleted(widget):
+                    widget.deleteLater()
+            # Buttons centred by hand go back to where the layout puts them.
+            toolbar.updateGeometry()
+            if toolbar.layout() is not None:
+                toolbar.layout().invalidate()
         self._labels = {}
         self._dividers = {}
         self._row_lines = {}
         self._ends = {}
+        self._last = {}
+        self._extensions = {}
+        self._widgets = {}
+        self._frames = {}
+        self._offsets = {}
+        self._min_widths = {}
         self._rows_pending = set()
         self._tooltips = {}
         self._slots = {}
@@ -345,26 +402,28 @@ class ToolbarLabels(QObject):
         self._dividers[toolbar] = _Divider(toolbar, self._rule)
         self._row_lines[toolbar] = _Divider(toolbar, self._row_rule, row=True)
         self._ends[toolbar] = _Divider(toolbar, self._rule)
+        self._extensions[toolbar] = toolbar.findChild(QToolButton, "qt_toolbar_ext_button")
         toolbar.installEventFilter(self)
-        place = lambda *_args, toolbar=toolbar: self._place(toolbar)  # noqa: E731
+        moved = lambda *_args, toolbar=toolbar: self._moved(toolbar)  # noqa: E731
         forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
-        slots = [(signal, place) for signal in (
+        slots = [(signal, moved) for signal in (
             toolbar.windowTitleChanged, toolbar.topLevelChanged,
             toolbar.movableChanged, toolbar.orientationChanged,
         )] + [(toolbar.destroyed, forget)]
         for signal, slot in slots:
             signal.connect(slot)
         self._slots[toolbar] = slots
-        self._place(toolbar)
+        self._moved(toolbar)
 
     def _forget(self, toolbar):
-        self._labels.pop(toolbar, None)
-        self._dividers.pop(toolbar, None)
-        self._row_lines.pop(toolbar, None)
-        self._ends.pop(toolbar, None)
-        self._tooltips.pop(toolbar, None)
-        self._slots.pop(toolbar, None)
-        self._shifted.pop(toolbar, None)
+        for table in (self._labels, self._dividers, self._row_lines, self._ends, self._last,
+                      self._extensions, self._widgets, self._frames, self._offsets, self._min_widths,
+                      self._tooltips, self._slots, self._shifted):
+            table.pop(toolbar, None)
+
+    def _overlays(self, toolbar):
+        return (self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar),
+                self._ends.get(toolbar))
 
     # ---- Modes ------------------------------------------------------------
 
@@ -382,21 +441,18 @@ class ToolbarLabels(QObject):
         """Apply a mode's stylesheet rules (title strip or taller handle)
         and contents margins, and relayout the toolbar."""
         if toolbar.property(PROPERTY) == mode:
-            if mode == "title":
-                self._shift(toolbar)
             return
         toolbar.setProperty(PROPERTY, mode)
+        self._frames.pop(toolbar, None)
         if mode != "title":
             self._unshift(toolbar)
         # The rules select on the toolbar's property: its items need
         # repolishing too, and a style change event drops the size hints
         # they cache (combo boxes), so the toolbar relayouts with the strip.
         style = toolbar.style()
+        overlays = self._overlays(toolbar)
         for widget in [toolbar] + [c for c in toolbar.children() if isinstance(c, QWidget)]:
-            if widget in (
-                self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar),
-                self._ends.get(toolbar),
-            ):
+            if widget in overlays:
                 continue
             style.unpolish(widget)
             style.polish(widget)
@@ -408,33 +464,78 @@ class ToolbarLabels(QObject):
         """Give items the stylesheet cannot push down (containers) the
         title strip as a top contents margin."""
         shifted = self._shifted.setdefault(toolbar, {})
-        for action in toolbar.actions():
-            widget = toolbar.widgetForAction(action)
-            if (widget is None or widget in shifted or isinstance(widget, STYLED_ITEMS)
+        for widget in self._layout_widgets(toolbar):
+            if (widget in shifted or isinstance(widget, STYLED_ITEMS)
                     or widget.metaObject().className() == "QToolBarSeparator"):
                 continue
             margins = widget.contentsMargins()
             shifted[widget] = margins
-            widget.setContentsMargins(margins + QMargins(0, TITLE_HEIGHT, 0, 0))
+            widget.setContentsMargins(margins + QMargins(0, TITLE_SPACE, 0, 0))
 
     def _unshift(self, toolbar):
         for widget, margins in self._shifted.pop(toolbar, {}).items():
             if not sip.isdeleted(widget):
                 widget.setContentsMargins(margins)
 
+    def _fit_name(self, toolbar, mode):
+        """A titled toolbar at least as wide as its name, so no name is cut
+        short when toolbars with few buttons sit side by side; the
+        toolbar's own minimum width otherwise."""
+        own = self._min_widths.get(toolbar)
+        need = None
+        if mode == "title":
+            frame, extent = self._metrics(toolbar)
+            handle = extent if toolbar.isMovable() else 0
+            need = title_width(title(toolbar)) + 2 * RULE_ROOM + 2 * frame + handle
+        if need is not None and need > (toolbar.minimumWidth() if own is None else own):
+            if own is None:
+                self._min_widths[toolbar] = toolbar.minimumWidth()
+            if toolbar.minimumWidth() != need:
+                toolbar.setMinimumWidth(need)
+        elif own is not None:
+            del self._min_widths[toolbar]
+            toolbar.setMinimumWidth(own)
+
     # ---- Placing ----------------------------------------------------------
 
-    def _place(self, toolbar):
-        label = self._labels.get(toolbar)
-        if label is None or sip.isdeleted(label) or sip.isdeleted(toolbar):
+    def _metrics(self, toolbar):
+        """(frame width, handle extent) of a toolbar, as its style has them."""
+        metrics = self._frames.get(toolbar)
+        if metrics is None:
+            style = toolbar.style()
+            metrics = self._frames[toolbar] = (
+                style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar),
+                style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar),
+            )
+        return metrics
+
+    def _moved(self, toolbar):
+        """The toolbar moved, showed, hid or changed mode: place it, and
+        arrange its window's rows once things settle."""
+        self._update(toolbar)
+        self._schedule_rows(toolbar.parentWidget())
+
+    def _update(self, toolbar):
+        """Place one toolbar's strip and dividers, and centre its buttons:
+        cheap, run on every layout request."""
+        if toolbar not in self._labels or sip.isdeleted(toolbar):
             return
         mode = self._mode(toolbar)
         self._set_mode(toolbar, mode)
-        style = toolbar.style()
-        frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
-        extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
+        self._fit_name(toolbar, mode)
+        frame, extent = self._metrics(toolbar)
+        items = self._items_span(toolbar) if mode == "title" else None
+        items = self._fit_items(toolbar, mode, frame, extent, items)
         self._place_divider(toolbar, mode, frame, extent)
-        self._schedule_rows(toolbar.parentWidget())
+        line = self._row_lines.get(toolbar)
+        if line is not None and not sip.isdeleted(line) and line.isVisible():
+            self._show(line, QRect(0, toolbar.height() - 2, toolbar.width(), 2))
+        self._place(toolbar, mode, frame, extent, items)
+
+    def _place(self, toolbar, mode, frame, extent, items):
+        label = self._labels.get(toolbar)
+        if label is None or sip.isdeleted(label):
+            return
         if mode is None:
             label.hide()
             label.placed = None
@@ -447,12 +548,11 @@ class ToolbarLabels(QObject):
             rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
             if toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
                 rect.moveLeft(frame)
-            items = self._items_span(toolbar)
             if items is not None:
                 # A name wider than few buttons (one-button toolbars) may
                 # spread into the toolbar's own room, if it has any:
                 # centred on the buttons, shifted where an edge is near.
-                need = QFontMetrics(title_font()).horizontalAdvance(title(toolbar)) + 2
+                need = title_width(title(toolbar)) + 2
                 width = max(items[1] - items[0] + 1, need)
                 left = (items[0] + items[1] + 1 - width) // 2
                 left = max(rect.left(), min(left, rect.right() + 1 - width))
@@ -461,7 +561,7 @@ class ToolbarLabels(QObject):
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
         name = toolbar.windowTitle()
-        placed = (mode, rect, name, toolbar.objectName(), QApplication.font().family())
+        placed = (mode, rect, name, toolbar.objectName(), title_font())
         # Toolbars send layout requests often; only redo the work when the
         # strip or the name actually changed.
         if placed == label.placed and label.isVisible():
@@ -505,24 +605,72 @@ class ToolbarLabels(QObject):
         if right_to_left:
             middle = toolbar.width() - 1 - middle
         # The toolbar's full height, title strip included, meeting the lines
-        # between rows: it divides the names too, and is never mistaken for
-        # a separator inside a toolbar.
+        # under the rows: it divides the names too, and is never mistaken
+        # for a separator inside a toolbar.
         self._show(divider, QRect(middle - 1, 0, 3, toolbar.height()))
+
+    def _fit_items(self, toolbar, mode, frame, extent, items):
+        """Centre a toolbar's buttons in its width (not the last of a row,
+        whose extra width is the rest of the window), and close a row after
+        the last toolbar's buttons with a divider. Returns the buttons'
+        span, as moved."""
+        end = self._ends.get(toolbar)
+        if end is None or sip.isdeleted(end):
+            return items
+        if mode != "title" or items is None or toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
+            end.hide()
+            return items
+        middle = frame + extent // 2 if toolbar.isMovable() else 0
+        # Where the layout put the buttons: the current positions, less a
+        # centring still in place (a relayout puts them back at the left).
+        widgets = [w for w in self._layout_widgets(toolbar) if w.isVisible()]
+        offset, moved = self._offsets.get(toolbar, (0, None))
+        if moved != tuple(w.x() for w in widgets):
+            offset = 0
+        items = (items[0] - offset, items[1] - offset)
+        extension = self._extensions.get(toolbar)
+        overflowing = extension is not None and not sip.isdeleted(extension) and extension.isVisible()
+        delta = 0
+        if not self._last.get(toolbar) and not overflowing:
+            room_left = frame + (extent if toolbar.isMovable() else 0)
+            room = toolbar.width() - frame - room_left - (items[1] - items[0] + 1)
+            if room > 1:
+                delta = room_left + room // 2 - items[0]
+        if delta != offset:
+            for widget in widgets:
+                widget.move(widget.x() + delta - offset, widget.y())
+        if delta:
+            self._offsets[toolbar] = (delta, tuple(w.x() for w in widgets))
+        else:
+            self._offsets.pop(toolbar, None)
+        items = (items[0] + delta, items[1] + delta)
+        if not self._last.get(toolbar):
+            end.hide()
+            return items
+        # The space between the start divider and the first button,
+        # mirrored after the last one.
+        x = items[1] + (items[0] - middle)
+        if x >= toolbar.width() - 2:
+            end.hide()
+        else:
+            self._show(end, QRect(x - 1, 0, 3, toolbar.height()))
+        return items
 
     def _schedule_rows(self, window):
         """Arrange `window`'s rows once the current layout changes have
-        settled: one toolbar moving or resizing changes its row for all."""
+        settled: one toolbar moving changes its row for all."""
         if not isinstance(window, QMainWindow) or window in self._rows_pending:
             return
         self._rows_pending.add(window)
         QTimer.singleShot(0, lambda window=window: self._arrange_rows(window))
 
     def _arrange_rows(self, window):
-        """Per row of titled toolbars in the top area: a line along the
-        bottom of every toolbar (they join across the window), the buttons
-        of a toolbar wider than them (QMainWindow gives a toolbar the room
-        left of a neighbour placed further right) centred in it, and a
-        divider closing the row after the last toolbar's buttons."""
+        """Which titled toolbars of the top area share a row, and which is
+        the last of each: each gets a line along its bottom (they join
+        across the window, like the menu bar's), the last a divider closing
+        the row, the others their buttons centred."""
+        if window not in self._rows_pending:
+            return
         self._rows_pending.discard(window)
         if sip.isdeleted(window):
             return
@@ -530,52 +678,18 @@ class ToolbarLabels(QObject):
         for toolbar, line in self._row_lines.items():
             if sip.isdeleted(toolbar) or sip.isdeleted(line) or toolbar.parentWidget() is not window:
                 continue
-            end = self._ends.get(toolbar)
-            if not (toolbar.isVisible() and toolbar.property(PROPERTY) == "title"
+            if (toolbar.isVisible() and toolbar.property(PROPERTY) == "title"
                     and window.toolBarArea(toolbar) == Qt.ToolBarArea.TopToolBarArea):
+                rows.setdefault(toolbar.y(), []).append(toolbar)
+                line.show()
+            else:
                 line.hide()
-                if end is not None and not sip.isdeleted(end):
-                    end.hide()
-                continue
-            rows.setdefault(toolbar.y(), []).append(toolbar)
-            self._show(line, QRect(0, toolbar.height() - 2, toolbar.width(), 2))
+                self._last[toolbar] = False
         for row in rows.values():
-            row.sort(key=lambda toolbar: toolbar.x())
+            last = max(row, key=lambda toolbar: toolbar.x())
             for toolbar in row:
-                self._fit_items(toolbar, last=toolbar is row[-1])
-
-    def _fit_items(self, toolbar, last):
-        """Centre a toolbar's buttons in its width (not the last of a row,
-        whose extra width is the rest of the window), and close the row
-        after the last toolbar's buttons with a divider."""
-        end = self._ends.get(toolbar)
-        if end is None or sip.isdeleted(end):
-            return
-        style = toolbar.style()
-        frame = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarFrameWidth, None, toolbar)
-        extent = style.pixelMetric(QStyle.PixelMetric.PM_ToolBarHandleExtent, None, toolbar)
-        middle = frame + extent // 2 if toolbar.isMovable() else 0
-        items = self._items_span(toolbar)
-        if items is None or toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
-            end.hide()
-            return
-        if not last:
-            end.hide()
-            # The space between the start divider and the first button,
-            # mirrored after the last one.
-            room_left = frame + (extent if toolbar.isMovable() else 0)
-            room = toolbar.width() - frame - room_left - (items[1] - items[0] + 1)
-            delta = room_left + max(0, room) // 2 - items[0]
-            if room > 1 and delta:
-                for widget in self._item_widgets(toolbar):
-                    widget.move(widget.x() + delta, widget.y())
-                self._place(toolbar)
-            return
-        x = items[1] + (items[0] - middle)
-        if x >= toolbar.width() - 2:
-            end.hide()
-            return
-        self._show(end, QRect(x - 1, 0, 3, toolbar.height()))
+                self._last[toolbar] = toolbar is last
+                self._update(toolbar)
 
     @staticmethod
     def _show(line, rect):
@@ -584,18 +698,38 @@ class ToolbarLabels(QObject):
             line.show()
             line.raise_()
 
-    @staticmethod
-    def _item_widgets(toolbar):
-        """A toolbar's visible items and its overflow button."""
-        widgets = [toolbar.widgetForAction(a) for a in toolbar.actions()]
-        widgets.append(toolbar.findChild(QToolButton, "qt_toolbar_ext_button"))
-        return [w for w in widgets if w is not None and w.isVisible()]
+    def _layout_widgets(self, toolbar):
+        """A toolbar's item widgets, read in one pass over its layout
+        (QToolBar.widgetForAction searches the layout for each action) and
+        kept until items are added or removed."""
+        cached = self._widgets.get(toolbar)
+        layout = cached[0] if cached is not None else toolbar.layout()
+        if layout is None or sip.isdeleted(layout):
+            return []
+        count = layout.count()
+        if cached is not None and cached[1] == count and not any(sip.isdeleted(w) for w in cached[2]):
+            return cached[2]
+        widgets = []
+        for index in range(count):
+            item = layout.itemAt(index)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widgets.append(widget)
+        self._widgets[toolbar] = (layout, count, widgets)
+        return widgets
 
-    @classmethod
-    def _items_span(cls, toolbar):
+    def _item_widgets(self, toolbar):
+        """A toolbar's visible items and its overflow button."""
+        widgets = [w for w in self._layout_widgets(toolbar) if w.isVisible()]
+        extension = self._extensions.get(toolbar)
+        if extension is not None and not sip.isdeleted(extension) and extension.isVisible():
+            widgets.append(extension)
+        return widgets
+
+    def _items_span(self, toolbar):
         """(left, right) of a toolbar's visible items (and its overflow
         button), or None before it is laid out."""
-        spans = [(w.x(), w.x() + w.width() - 1) for w in cls._item_widgets(toolbar)]
+        spans = [(w.x(), w.x() + w.width() - 1) for w in self._item_widgets(toolbar)]
         if not spans:
             return None
         return min(s[0] for s in spans), max(s[1] for s in spans)
@@ -607,18 +741,25 @@ class ToolbarLabels(QObject):
                 child = event.child()
                 if isinstance(child, QToolBar) and child.parent() is watched:
                     self._add(child)
-        elif kind == QEvent.Type.ActionAdded:
+        elif kind in (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved):
             # A widget added later (a plugin's) exists once the toolbar has
             # handled the event.
             QTimer.singleShot(0, lambda toolbar=watched: self._refresh(toolbar))
+        elif kind == QEvent.Type.LayoutRequest:
+            # Qt has laid the toolbar out already (layouts see events before
+            # event filters): re-centre now, before anything is painted.
+            self._update(watched)
         elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange,
-                      QEvent.Type.LayoutRequest, QEvent.Type.Move, QEvent.Type.Hide):
+                      QEvent.Type.Move, QEvent.Type.Hide):
             # Move: a toolbar dragged to the start of a row loses its
-            # divider, one dragged away from it gets one. Hide: hiding a
-            # whole row changes which row is the last.
-            self._place(watched)
+            # divider, one dragged away from it gets one. Hide: a whole row
+            # may go. Resize: the last toolbar of a row may change.
+            self._moved(watched)
         return False
 
     def _refresh(self, toolbar):
-        if toolbar in self._labels and not sip.isdeleted(toolbar) and toolbar.property(PROPERTY) == "title":
-            self._shift(toolbar)
+        self._widgets.pop(toolbar, None)
+        if toolbar in self._labels and not sip.isdeleted(toolbar):
+            if toolbar.property(PROPERTY) == "title":
+                self._shift(toolbar)
+            self._update(toolbar)

@@ -60,7 +60,7 @@ ICON_MAP = {
     # ---- Data sources -----------------------------------------------------
     "mActionDataSourceManager.svg": "database",
     "mActionAddOgrLayer.svg": "vector-triangle+plus",
-    "mActionAddRasterLayer.svg": "grid-4x4+plus",
+    "mActionAddRasterLayer.svg": "photo+plus",
     "mActionAddMeshLayer.svg": "triangle-square-circle+plus",
     "mActionAddDelimitedTextLayer.svg": "file-type-csv+plus",
     "mActionAddSpatiaLiteLayer.svg": "feather+plus",
@@ -117,8 +117,9 @@ ICON_MAP = {
     "mIconLineLayer.svg": "line",
     "mIconPolygonLayer.svg": "polygon",
     "mIconTableLayer.svg": "table",
-    "mIconRaster.svg": "grid-4x4",
-    "mIconRasterLayer.svg": "grid-4x4",
+    # A picture, not a pixel grid: a 4x4 grid reads as "#" at 16 px.
+    "mIconRaster.svg": "photo",
+    "mIconRasterLayer.svg": "photo",
     "mIconMeshLayer.svg": "triangle-square-circle",
     "mIconVectorTileLayer.svg": "layout-grid",
     "mIconGeometryCollectionLayer.svg": "shape",
@@ -138,7 +139,8 @@ ICON_MAP = {
     "mActionPanToSelected.svg": "focus-centered",
     "mActionZoomIn.svg": "zoom-in",
     "mActionZoomOut.svg": "zoom-out",
-    "mActionZoomFullExtent.svg": "arrows-maximize",
+    # A magnifier framed, "zoom to everything" (arrows read as fullscreen).
+    "mActionZoomFullExtent.svg": "zoom-scan",
     "mActionZoomToSelected.svg": "zoom-check",
     "mActionZoomToLayer.svg": "zoom-in-area",
     "mActionZoomActual.svg": "zoom-reset",
@@ -240,14 +242,18 @@ ICON_MAP = {
     "mIconSnappingAdvanced.svg": "adjustments-alt",
     "mIconSnappingIntersection.svg": "x",
     "mIconSnappingSelf.svg": "magnet+dot",
-    "mIconSnappingVertex.svg": "point",
+    # A shape's vertices: a lone point read as a tiny circle on the
+    # snapping type button.
+    "mIconSnappingVertex.svg": "vector",
     "mIconSnappingSegment.svg": "line",
     "mIconSnappingArea.svg": "square",
     "mIconSnappingCentroid.svg": "circle-dot",
     "mIconSnappingMiddle.svg": "separator-vertical",
     "mIconSnappingEndpoint.svg": "arrow-bar-to-right",
     "mIconSnappingOnScale.svg": "ruler",
-    "mIconTopologicalEditing.svg": "topology-star-ring-3",
+    # Shared borders, and as light as the other icons (the star ring was a
+    # dense mesh).
+    "mIconTopologicalEditing.svg": "hexagons",
     # ---- Labels / annotations ---------------------------------------------
     "mActionLabeling.svg": "abc",
     "mActionShowPinnedLabels.svg": "pin",
@@ -745,10 +751,15 @@ EXTERNAL = {
 # larger) keep Tabler's own size, which matches the footprint of QGIS's
 # native toolbar icons there.
 STROKE = 1.5
+# Extra width (device pixels) of pixel-snapped lines, beyond their whole
+# pixels (see render_icon_px).
+STROKE_EXTRA = 0.25
 SCALE = 1.15
 COMPACT_SCALE = 1.0
-# Glyphs with a badge are shrunk towards the top-left instead.
+# Glyphs with a badge are shrunk towards the top-left instead; less so in
+# icons of 20 px and below, where 0.9 left a glyph of about 9 px.
 BADGED_SCALE = 0.9
+BADGED_SCALE_SMALL = 1.0
 # Badges sit bottom-right with a transparent ring cut out of the glyph
 # around them, so they read cleanly on any button background, hovered or
 # checked (needs Qt >= 6.7 for SVG masks; older Qt draws them touching).
@@ -1114,10 +1125,11 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
     px = size / 24
     width = stroke_px(size) if width is None else width
     if badge:
-        unit = BADGED_SCALE * px
+        badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
+        unit = badged * px
 
         def place(x, y):
-            return (0.2 + BADGED_SCALE * x) * px, (0.2 + BADGED_SCALE * y) * px
+            return (0.2 + badged * x) * px, (0.2 + badged * y) * px
     else:
         # Enlarged, but never so far that a line (with its round cap)
         # would be cut off at the icon's edge.
@@ -1159,7 +1171,11 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    parts.append(f'<g{mask} stroke="{icon}" stroke-width="{width}">{paths}</g>')
+    # Lines stay centred on the pixel grid for `width`; STROKE_EXTRA widens
+    # them by a fraction of a pixel, a faint edge either side of the solid
+    # core, for a touch more weight without blurring the line.
+    drawn = _num(width + STROKE_EXTRA)
+    parts.append(f'<g{mask} stroke="{icon}" stroke-width="{drawn}">{paths}</g>')
     if badge in BADGE_MARKS:
         # On the same pixel grid as the glyph's lines, with square ends so
         # straight marks end on whole pixels.
@@ -1168,7 +1184,7 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
         arm = max(2, round(MARK_ARM * px))
         cap = "round" if mark == "check" else "square"
         parts.append(
-            f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{width}" '
+            f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{drawn}" '
             f'stroke-linecap="{cap}"/>'
         )
     elif badge:
