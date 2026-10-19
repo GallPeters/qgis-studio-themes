@@ -23,6 +23,10 @@ changelog=
             (solid 1-2 px lines instead of blurred ones), at 100% and at
             125-200% scaling alike; icons shown before they are ready switch
             over in place.
+          - Calmer badges: add and new actions show a small + in the icon's
+            colour, remove-from a -, save and accept a check mark; delete
+            keeps its red dot.
+          - Stronger Identify "i" and larger SQL letters.
           - Toolbar titles: each toolbar's name is shown centred above its
             buttons between two hairlines (Project, Map Navigation, Data
             Sources...), as sharp as the rest of the UI text; vertical

@@ -51,7 +51,9 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 
 - **Icons** – over 600 QGIS toolbar, menu, panel and dialog icons are
   replaced with a consistent line-icon set based on
-  [Tabler Icons](https://tabler.io/icons), coloured for each theme.
+  [Tabler Icons](https://tabler.io/icons), coloured for each theme. Small
+  marks show what an action does: + add or new, - remove from, a check
+  mark for save, a red dot for delete.
 - **Sharp on every screen** – icons are pre-rendered for the exact pixel
   size each screen draws them at (100%, 125%, 150%... scaling), with their
   lines snapped to the pixel grid, so they stay crisp instead of blurring

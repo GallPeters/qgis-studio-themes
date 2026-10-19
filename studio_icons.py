@@ -2,10 +2,10 @@
 
 Every entry maps a QGIS theme icon file name (as passed to
 QgsApplication.getThemeIcon) to a Tabler glyph, optionally followed by a
-badge: ``"glyph+badge"``. Badges are a small dot drawn bottom-right in the
-theme's accent colour (red for remove), so related actions (add / new /
-accept / remove) share one quiet visual cue instead of QGIS's mixed
-per-icon decorations.
+badge: ``"glyph+badge"``, drawn bottom-right in place of QGIS's mixed
+per-icon decorations: a small mark in the icon's own colour for what the
+action does (+ add or new, - remove from, a check mark for save or
+accept), a red dot for delete, and an accent dot for an "active" variant.
 
 Icons are rendered per theme into the profile theme folder, where QGIS's
 own icon lookup (QgsApplication.iconPath) finds them.
@@ -64,7 +64,7 @@ ICON_MAP = {
     "mActionAddMeshLayer.svg": "triangle-square-circle+plus",
     "mActionAddDelimitedTextLayer.svg": "file-type-csv+plus",
     "mActionAddSpatiaLiteLayer.svg": "feather+plus",
-    "mActionAddVirtualLayer.svg": "sql+plus",
+    "mActionAddVirtualLayer.svg": "sql-raised+plus",
     "mActionAddPostgisLayer.svg": "database+plus",
     "mActionAddMssqlLayer.svg": "database+plus",
     "mActionAddHanaLayer.svg": "database+plus",
@@ -80,7 +80,7 @@ ICON_MAP = {
     "mActionNewSpatiaLiteLayer.svg": "feather+star",
     "mActionCreateMemory.svg": "cpu+star",
     "mActionNewMeshLayer.svg": "triangle-square-circle+star",
-    "mActionNewVirtualLayer.svg": "sql+star",
+    "mActionNewVirtualLayer.svg": "sql-raised+star",
     # ---- Layers panel -----------------------------------------------------
     "mActionAddGroup.svg": "folder+plus",
     "mActionRemoveLayer.svg": "stack-2+x",
@@ -747,14 +747,31 @@ SCALE = 1.15
 COMPACT_SCALE = 1.0
 # Glyphs with a badge are shrunk towards the top-left instead.
 BADGED_SCALE = 0.9
-# Badges are a small plain dot in the accent colour (red for remove): it
-# marks the action without covering much of the glyph, and has no inner mark
-# to blur or lose contrast at 16 px. A transparent ring is cut out of the
-# glyph around it, so it reads cleanly on any button background, hovered or
+# Badges sit bottom-right with a transparent ring cut out of the glyph
+# around them, so they read cleanly on any button background, hovered or
 # checked (needs Qt >= 6.7 for SVG masks; older Qt draws them touching).
+# Add, new, remove-from and accept get a mark drawn like the glyph (same
+# colour and line weight), which keeps toolbars calm; delete keeps a red
+# dot so destructive buttons stand out, and "dot" (an active-layer or
+# update variant) an accent dot.
 BADGE_CENTER = 18.7
 BADGE_RADIUS = 3.05
 BADGE_GAP = 2.3
+BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check"}
+# Half the width of a mark, in units.
+MARK_ARM = 3.0
+
+
+def _mark_path(mark, c, arm):
+    """Path data of a badge mark centred on (c, c), `arm` from centre to
+    end, in whatever units the caller draws in."""
+    if mark == "plus":
+        return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}M{_num(c)} {_num(c - arm)}V{_num(c + arm)}"
+    if mark == "minus":
+        return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}"
+    # A check mark: short stroke down to the right, long stroke up.
+    return (f"M{_num(c - arm)} {_num(c + arm * 0.05)}L{_num(c - arm * 0.3)} {_num(c + arm * 0.7)}"
+            f"L{_num(c + arm)} {_num(c - arm * 0.65)}")
 
 _BODY = re.compile(r"<svg[^>]*>(.*)</svg>", re.S)
 _FRAME = re.compile(r'<path stroke="none" d="M0 0h24v24H0z" fill="none"\s*/>')
@@ -776,8 +793,43 @@ def unique_icons():
     return list(first.values())
 
 
+# Glyphs redrawn from their Tabler original (same 24 unit grid and style),
+# where a detail read too weak at toolbar sizes:
+# - info-circle: Tabler's "i" is a 4 unit stem and a dot drawn as a
+#   zero-length line, one pixel at 1 px strokes; here a solid dot and a
+#   taller stem with a foot.
+# - sql: the letters, 8 units tall, stretched to 11.2 (and 5 % wider) so
+#   they fill more of the button; sql-raised (with a badge) sits higher, so
+#   the "L" stays clear of the badge's cut-out.
+CUSTOM_GLYPHS = {
+    "info-circle": (
+        '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/>'
+        '<path d="M11 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" fill="currentColor"/>'
+        '<path d="M10.5 10.5h1.5v6.5h1.5"/>'
+    ),
+    "sql": (
+        '<path d="M12 6.4A2.1 2.8 0 0 1 14.1 9.2L14.1 14.8A2.1 2.8 0 1 1 9.9 14.8L9.9 9.2A2.1 2.8 0 0 1 12 6.4"/>'
+        '<path d="M17.25 6.4L17.25 17.6L21.45 17.6"/>'
+        '<path d="M13.05 16.2L14.1 17.6"/>'
+        '<path d="M2.55 16.2A1.05 1.4 0 0 0 3.6 17.6L5.7 17.6A1.05 1.4 0 0 0 6.75 16.2L6.75 13.4'
+        'A1.05 1.4 0 0 0 5.7 12L3.6 12A1.05 1.4 0 0 1 2.55 10.6L2.55 7.8A1.05 1.4 0 0 1 3.6 6.4'
+        'L5.7 6.4A1.05 1.4 0 0 1 6.75 7.8"/>'
+    ),
+    "sql-raised": (
+        '<path d="M12 3.4A2.1 2.8 0 0 1 14.1 6.2L14.1 11.8A2.1 2.8 0 1 1 9.9 11.8L9.9 6.2A2.1 2.8 0 0 1 12 3.4"/>'
+        '<path d="M17.25 3.4L17.25 14.6L21.45 14.6"/>'
+        '<path d="M13.05 13.2L14.1 14.6"/>'
+        '<path d="M2.55 13.2A1.05 1.4 0 0 0 3.6 14.6L5.7 14.6A1.05 1.4 0 0 0 6.75 13.2L6.75 10.4'
+        'A1.05 1.4 0 0 0 5.7 9L3.6 9A1.05 1.4 0 0 1 2.55 7.6L2.55 4.8A1.05 1.4 0 0 1 3.6 3.4'
+        'L5.7 3.4A1.05 1.4 0 0 1 6.75 4.8"/>'
+    ),
+}
+
+
 @functools.lru_cache(maxsize=None)
 def _glyph_body(name):
+    if name in CUSTOM_GLYPHS:
+        return CUSTOM_GLYPHS[name]
     svg = (GLYPHS_DIR / f"{name}.svg").read_text(encoding="utf-8")
     return _FRAME.sub("", _BODY.search(svg).group(1)).strip()
 
@@ -818,7 +870,12 @@ def render_icon(spec, colors, scale=SCALE):
         f'<g{mask}><g transform="{transform}" stroke="{colors["icon"]}" '
         f'stroke-width="{stroke}">{body}</g></g>'
     )
-    if badge:
+    if badge in BADGE_MARKS:
+        parts.append(
+            f'<path d="{_mark_path(BADGE_MARKS[badge], BADGE_CENTER, MARK_ARM)}" '
+            f'stroke="{colors["icon"]}" stroke-width="{STROKE}"/>'
+        )
+    elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
         parts.append(
             f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>'
@@ -1091,7 +1148,18 @@ def render_icon_px(spec, colors, size, scale=SCALE):
         )
         mask = ' mask="url(#b)"'
     parts.append(f'<g{mask} stroke="{icon}" stroke-width="{width}">{paths}</g>')
-    if badge:
+    if badge in BADGE_MARKS:
+        # On the same pixel grid as the glyph's lines, with square ends so
+        # straight marks end on whole pixels.
+        mark = BADGE_MARKS[badge]
+        middle = snap(BADGE_CENTER * px)
+        arm = max(2, round(MARK_ARM * px))
+        cap = "round" if mark == "check" else "square"
+        parts.append(
+            f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{width}" '
+            f'stroke-linecap="{cap}"/>'
+        )
+    elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
     parts.append("</svg>")
