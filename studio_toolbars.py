@@ -10,9 +10,8 @@ get the same space as a top contents margin, undone on detach. A
 transparent overlay paints the strip. It ignores the mouse, so the buttons
 and dragging work as before, and it is not a toolbar action, so QGIS,
 plugins and Interface Customization never see it. Toolbars side by side
-are told apart by a divider line in the handle gap between them, from
-the middle of the names down to just above the bottom edge:
-Project │ Map Navigation.
+are told apart by a divider line in the handle gap between them, the
+toolbar's full height:  Project │ Map Navigation.
 
 The title is horizontal text, drawn straight onto the window: Windows
 smooths it with ClearType like all other UI text. The capitals are centred
@@ -41,8 +40,6 @@ TITLE_SIZE = 11
 # Regular weight, slightly spaced: SemiBold letters ran together,
 # especially at 150 %.
 TITLE_SPACING = 0.5
-# Gap between a divider between toolbars and the toolbar's bottom edge.
-DIVIDER_GAP = 2
 # Items the stylesheet pushes down itself (box model); any other widget in
 # a titled toolbar gets a top contents margin instead.
 STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
@@ -468,12 +465,9 @@ class ToolbarLabels(QObject):
         middle = frame + extent // 2 if toolbar.isMovable() else 0
         if right_to_left:
             middle = toolbar.width() - 1 - middle
-        # From the middle of the names (it divides them too) down to just
-        # above the bottom edge: longer than the separators inside a
-        # toolbar, so a toolbar's edge is never mistaken for one.
-        top = frame + TITLE_HEIGHT // 2
-        bottom = toolbar.height() - frame - DIVIDER_GAP
-        rect = QRect(middle - 1, top, 3, max(0, bottom - top))
+        # The toolbar's full height, title strip included: it divides the
+        # names too, and is never mistaken for a separator inside a toolbar.
+        rect = QRect(middle - 1, frame, 3, max(0, toolbar.height() - 2 * frame))
         if divider.geometry() != rect or not divider.isVisible():
             divider.setGeometry(rect)
             divider.show()
