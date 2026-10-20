@@ -1208,7 +1208,8 @@ QgsOptionsTreeView {
  * out of. */
 /* The selected page: a straight accent bar on the left of a soft pill. The
  * left corners stay square: a radius there bends the bar into a crescent.
- * Its icon is drawn in the accent (the icons' selected state). */
+ * Its icon is drawn in the selected text's colour (the icons' selected
+ * state). */
 QListWidget#mOptionsListWidget::item,
 QListWidget#mOptListWidget::item,
 QListView#mOptionsListWidget::item,

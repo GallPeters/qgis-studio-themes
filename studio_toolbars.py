@@ -99,11 +99,6 @@ ABBREVIATIONS = {
     "mReportToolbar": "RPT",
 }
 NAME_LENGTH = 3
-# Handle names: largest first (see _fit), one shared size.
-HANDLE_SIZES = (12, 11, 10, 9)
-LETTER_SPACING = 1.0
-# Whole pixels only: fractional spacing puts letters between pixels.
-SPACINGS = (LETTER_SPACING, 0)
 
 
 def title(toolbar):
@@ -165,11 +160,6 @@ def _title_width(text, _app_font):
 def title_width(text):
     """Width of a toolbar name in the title font (cached)."""
     return _title_width(text, QApplication.font().key())
-
-
-def handle_font(size, spacing=LETTER_SPACING):
-    # The bundled Inter has no Bold (a synthesised one is smeared).
-    return _font(size, QFont.Weight.Bold if _face() else QFont.Weight.DemiBold, spacing)
 
 
 def _snap(value, ratio):
@@ -237,48 +227,6 @@ class _Divider(QWidget):
             x = (int(self.width() / 2 * ratio) + 0.5) / ratio
             painter.drawLine(QPointF(x, 0), QPointF(x, self.height()))
         painter.end()
-
-
-def fit(text, length):
-    """The handle font for `text` across a handle `length` pixels wide
-    (the size all handle names share, see _uniform), and the text
-    (shortened only if it does not fit even at the smallest size)."""
-    size, spacing, text = _fit(text, length, QApplication.font().family(), HANDLE_SIZES)
-    return handle_font(size, spacing), text
-
-
-def _candidates(sizes):
-    """(size, spacing) pairs, largest first; tighter letter spacing before
-    a smaller size."""
-    return [(size, spacing) for size in sizes for spacing in SPACINGS]
-
-
-@functools.lru_cache(maxsize=64)
-def _uniform(length, _family, sizes):
-    """Index of the first candidate at which every QGIS toolbar's short
-    name fits `length` pixels: the size handle names share (the smallest if
-    none fits; longer names are then cut)."""
-    names = {name for name in ABBREVIATIONS.values() if len(name) <= NAME_LENGTH}
-    candidates = _candidates(sizes)
-    for index, (size, spacing) in enumerate(candidates):
-        metrics = QFontMetrics(handle_font(size, spacing))
-        if all(metrics.horizontalAdvance(name) <= length for name in names):
-            return index
-    return len(candidates) - 1
-
-
-@functools.lru_cache(maxsize=256)
-def _fit(text, length, family, sizes):
-    # From the shared size down, so other names (plugin toolbars) match it
-    # and only a name that does not fit gets smaller, then cut.
-    candidates = _candidates(sizes)
-    for size, spacing in candidates[_uniform(length, family, sizes):]:
-        if QFontMetrics(handle_font(size, spacing)).horizontalAdvance(text) <= length:
-            return size, spacing, text
-    metrics = QFontMetrics(handle_font(sizes[-1], 0))
-    while text and metrics.horizontalAdvance(text) > length:
-        text = text[:-1]
-    return sizes[-1], 0, text
 
 
 class ToolbarLabels(QObject):
@@ -596,6 +544,14 @@ class ToolbarLabels(QObject):
                 rect.setRight(min(rect.right(), left + width - 1))
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
+            # Centred on the column of buttons (the toolbar can be a few
+            # pixels wider on one side), like a title on its buttons.
+            span = self._items_span(toolbar)
+            if span is not None:
+                centre = (span[0] + span[1] + 1) / 2
+                half = min(centre - rect.left(), rect.right() + 1 - centre)
+                if half > 0:
+                    rect = QRect(round(centre - half), rect.top(), round(2 * half), rect.height())
         name = toolbar.windowTitle()
         placed = (mode, rect, name, toolbar.objectName(), title_font())
         # Toolbars send layout requests often; only redo the work when the
@@ -603,11 +559,16 @@ class ToolbarLabels(QObject):
         if placed == label.placed and label.isVisible():
             return
         label.placed = placed
+        # Vertical toolbars' short names in the same small capitals as the
+        # titles of horizontal ones.
+        font = title_font()
         if mode == "title":
-            font = title_font()
             text = QFontMetrics(font).elidedText(title(toolbar), Qt.TextElideMode.ElideRight, rect.width() - 2)
         else:
-            font, text = fit(abbreviation(toolbar), rect.width() - 4)
+            text = abbreviation(toolbar)
+            metrics = QFontMetrics(font)
+            while text and metrics.horizontalAdvance(text) > rect.width() - 2:
+                text = text[:-1]
             # The full name on hovering the handle (unless the toolbar has a
             # tooltip of its own).
             if toolbar not in self._tooltips:

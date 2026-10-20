@@ -34,7 +34,8 @@ changelog=
             lines between and after toolbars and a line under each row of
             toolbars like the one under the menu bar, as sharp as the rest of
             the UI text; a toolbar wider than its buttons has them centred;
-            vertical toolbars show a three-letter name on their handle.
+            vertical toolbars show a three-letter name on their handle, in
+            the same small capitals, centred on their buttons.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.
@@ -90,9 +91,10 @@ changelog=
           - Icons stay sharp when a monitor is plugged in or out, the display
             scaling changes or the QGIS icon size is changed, without a
             restart.
-          - Selected rows (dialog page lists, Browser, Processing Toolbox)
-            show their icon in the accent colour; the selected page's accent
-            bar is straight instead of curved.
+          - Selected rows (dialog page lists, Layer Styling, Plugins, Browser,
+            Processing Toolbox) show their icon in the selected text's colour
+            (white in the dark themes), like checked tool buttons; the
+            selected page's accent bar is straight instead of curved.
           - Toolbar names in small capitals with a slimmer title strip; empty
             toolbars (Database, Web, Vector without plugins) no longer show
             a labelled empty box: they shrink to a sliver, even where the
@@ -145,6 +147,8 @@ changelog=
           - Fixed: the status bar message kept the previous theme's colour
             (invisible after switching from a dark to a light theme, or back
             to QGIS's own theme).
+          - Fixed: after updating the plugin in a running QGIS, the previous
+            version's stylesheet stayed in use until a restart.
           - Fixed: disabling or uninstalling the plugin while a Studio theme
             was shown left its stylesheet over QGIS's colours until a
             restart; disabling it no longer waits for background work.

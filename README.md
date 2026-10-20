@@ -59,8 +59,8 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   lines snapped to the pixel grid, so they stay crisp instead of blurring
   on large monitors. Arrows, check marks and other widget glyphs are drawn
   at their exact size. Plugging in another monitor or changing the display
-  scaling keeps them sharp. Selected rows show their icon in the accent
-  colour.
+  scaling keeps them sharp. Selected rows show their icon in the colour
+  of their text.
 - **Toolbar titles** – each toolbar's name sits centred above its buttons
   in small capitals, with a divider between toolbars and a line under each
   row of toolbars (vertical toolbars show a short name on their handle).

@@ -1918,17 +1918,19 @@ class QgisStudioThemesPlugin:
             self._deactivate()
             return
         app = QApplication.instance()
-        if self._prepared != theme or not app.styleSheet():
+        full = self.theme_target(studio[theme][0]) / FULL_STYLE
+        sheet = full.read_text(encoding="utf-8")
+        if self._prepared != theme or app.styleSheet() != sheet:
             # Switched at runtime: QGIS has just applied the near-empty
             # placeholder, which already dropped the palette copies Qt kept
             # on widgets styled under the previous theme. The palette goes
             # in before the real stylesheet, so every widget is polished
-            # once, with the right colours. (No stylesheet at all: the
-            # plugin was reloaded or upgraded, and its unload removed it.)
+            # once, with the right colours. (Another stylesheet: the plugin
+            # was upgraded or reloaded in a running QGIS, which still shows
+            # the previous version's, or none after its unload.)
             if self._prepared != theme:
                 self._prepare(theme)
-            full = self.theme_target(studio[theme][0]) / FULL_STYLE
-            app.setStyleSheet(full.read_text(encoding="utf-8"))
+            app.setStyleSheet(sheet)
             self._select_style(theme)
         self._active = theme
         name = studio[theme][0]

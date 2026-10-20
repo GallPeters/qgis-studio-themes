@@ -74,10 +74,10 @@
  * Disabled text keeps @text_disabled, which stays readable. */
 @icon_disabled:          mix(@bg_window, @icon, 0.40);
 @icon_accent:            @accent;
-/* Icons in selected rows (dialog page lists, Browser, Processing Toolbox):
- * the accent, a shade towards the strongest text so it keeps its contrast
- * on the accent-tinted selection. */
-@icon_selected:          mix(@accent, @text_bright, 0.30);
+/* Icons in selected rows (dialog page lists, Layer Styling, Plugins,
+ * Browser, Processing Toolbox): the selected text's colour, like checked
+ * tool buttons, on the accent-tinted selection. */
+@icon_selected:          @text_bright;
 
 /* ---- Message bar -------------------------------------------------------- */
 @info_bg:                mix(@bg_window, @info, 0.14);
