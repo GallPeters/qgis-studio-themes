@@ -110,6 +110,24 @@ changelog=
           - Fixed: after updating or reloading the plugin while a Studio theme
             was shown, switching to another theme kept the Studio palette and
             font.
+          - Visual polish (side build):
+            - Layers, Browser and Processing rows are soft rounded pills
+              with a hover; the selected row has a straight accent bar.
+            - A thin line in the splitters between panels and the map.
+            - Group boxes in dialogs are sections (title above a hairline)
+              instead of nested rounded boxes.
+            - Attribute tables without the column grid, a firm rule under
+              the header and quieter row numbers.
+            - Checkboxes in the Layers and Browser panels and the symbol
+              layer tree match the dialog checkboxes; the symbol layer tree
+              uses outline chevrons.
+            - Status bar: dimmed labels and filled value fields of one
+              height, their border shown on hover and focus.
+            - Push buttons stand slightly raised and press in when clicked;
+              Help in dialog button rows is a quiet text button.
+            - Tabbed panels switch with a segmented control.
+            - A 2 px accent focus ring that does not shift the text.
+            - Slim scrollbar handles that widen on hover.
           - Fixed: one failed background task stopped all later theme builds
             and icon pre-rendering until QGIS was restarted.
           - Fixed: an icon file cut short by a crash or forced exit stayed

@@ -73,3 +73,7 @@
 @menu_edge:              mix(@bg_menu, #000000, 0.55);
 @menu_highlight:         mix(@bg_menu, @text, 0.12);
 @menu_hover:             mix(@bg_menu, @accent, 0.28);
+/* Raised push buttons on a dark window: a faint light top edge, a dark
+ * bottom edge. */
+@button_top:             mix(@control_bg, @text, 0.20);
+@button_bottom:          mix(@control_bg, #000000, 0.50);

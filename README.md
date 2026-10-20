@@ -71,10 +71,12 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   plugin picks compact sizes (smaller menu and panel icons, toolbar icons
   the size of QGIS's own), while laptops keep the roomier look. It is chosen
   automatically from the screen's pixel density.
-- **Layout** – thin dividers, rounded controls of one height, underlined
-  tabs, slim scrollbars, accent-coloured selection, menus lifted off the
-  window, pill-shaped panel search fields and a message bar that follows
-  the theme.
+- **Layout** – thin dividers and splitter lines, rounded controls of one
+  height, raised buttons, underlined dialog tabs and segmented panel tabs,
+  dialog sections instead of nested boxes, soft rounded rows in the main
+  panels, slim scrollbars, a visible focus ring, accent-coloured selection,
+  menus lifted off the window, pill-shaped panel search fields, a quiet
+  status bar and a message bar that follows the theme.
 - **Performance** – base colours are set through the Qt palette rather than
   broad stylesheet rules, icons are loaded from a few pre-rendered atlas
   images, and the panels and toolbars do no heavy work while drawing or

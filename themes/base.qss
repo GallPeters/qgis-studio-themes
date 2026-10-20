@@ -42,9 +42,16 @@
 @tool_checked:           mix(@bg_window, @accent, 0.22);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.30);
 @on_accent:              @text_dark;
+/* Push buttons stand slightly raised: a light top edge and a darker
+ * bottom edge, swapped while pressed (dark themes, see their variables). */
+@button_top:             mix(@divider_strong, #ffffff, 0.60);
+@button_bottom:          mix(@divider_strong, @text, 0.30);
 
 /* ---- Item views --------------------------------------------------------- */
 @row_hover:              mix(@bg_base, @text, 0.05);
+/* Hovered rows of the main panels (Layers, Browser, Processing), whose
+ * background is the dock's, not the base colour. */
+@panel_row_hover:        mix(@bg_dock, @text, 0.07);
 @row_selected:           mix(@bg_base, @accent, 0.24);
 @row_selected_inactive:  mix(@bg_base, @text, 0.09);
 @header_bg:              mix(@bg_base, @text, 0.03);

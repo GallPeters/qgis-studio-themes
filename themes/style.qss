@@ -24,13 +24,19 @@
  * 1. WINDOWS & DOCKS
  * ========================================================================= */
 
+/* Splitters between panels and the map: a 1 px line centred in the 5 px
+ * grip (a 2 px border in the window colour around the line colour, so it
+ * works across and along), so panels, canvas and toolbars read as separate
+ * regions; 3 px of accent while dragged or hovered. */
 QMainWindow::separator {
-    background-color: @bg_window;
-    width: 5px;
-    height: 5px;
+    background-color: @line;
+    border: 2px solid @bg_window;
+    width: 1px;
+    height: 1px;
 }
 QMainWindow::separator:hover {
     background-color: @accent;
+    border-width: 1px;
 }
 
 QDockWidget {
@@ -84,8 +90,42 @@ QStatusBar {
     min-height: 30px;
     padding: 2px 6px;
 }
+/* Labels are dimmed and values sit in borderless chips of one height, their
+ * border shown on hover (they stay recognisably editable) and focus. */
 QStatusBar::item {
     border: none;
+}
+QStatusBar QLabel {
+    color: @text_dim;
+}
+QStatusBar QLineEdit,
+QStatusBar QComboBox,
+QStatusBar QAbstractSpinBox {
+    background-color: @control_bg;
+    border-color: transparent;
+    border-radius: 5px;
+    min-height: 0;
+    padding: 1px 6px;
+}
+QStatusBar QAbstractSpinBox {
+    padding-right: 20px;
+}
+QStatusBar QLineEdit:hover,
+QStatusBar QComboBox:hover,
+QStatusBar QAbstractSpinBox:hover {
+    border-color: @field_border_hover;
+}
+QStatusBar QLineEdit:focus,
+QStatusBar QComboBox:focus,
+QStatusBar QComboBox:on,
+QStatusBar QAbstractSpinBox:focus {
+    background-color: @bg_base;
+    border-width: 1px;
+    border-color: @accent;
+    padding: 1px 6px;
+}
+QStatusBar QAbstractSpinBox:focus {
+    padding-right: 20px;
 }
 QSizeGrip {
     width: 12px;
@@ -195,25 +235,55 @@ QToolBar::handle {
  * filled in by the plugin, empty with compact sizes (low-density screens),
  * where they keep QGIS's own size. */
 @panel_icon_rules
-/* The main panels share one rhythm: roomy rows. Padding (not a fixed
- * height) keeps taller legend entries in the Layers panel intact; the item
- * rule holds nothing drawable, so Qt keeps drawing the rows natively. */
+/* The main panels share one rhythm: roomy rows (the 1 px margin and padding
+ * add up to QGIS's 2 px padding before), drawn as soft pills set in from
+ * the panel's right edge, with a hover and, on the selected row, the
+ * straight accent bar of the dialog page lists (square left corners: a
+ * radius there bends the bar). Padding (not a fixed height) keeps taller
+ * legend entries in the Layers panel intact. Every row reserves the bar's
+ * width, so text does not move when selected. */
 QgsBrowserTreeView::item,
 QgsLayerTreeView::item,
 QgsProcessingToolboxTreeView::item {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    margin: 1px 6px 1px 0;
+    border-left: 3px solid transparent;
+    border-radius: @radius;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
-/* Expand arrows of the main panels as outline chevrons, like every other
- * arrow. Only these trees: their rows already go through the stylesheet
- * (the rule above), while a ::branch rule on every tree would send all of
- * QGIS's lists through Qt's slower stylesheet drawing. */
+QgsBrowserTreeView::item:hover,
+QgsLayerTreeView::item:hover,
+QgsProcessingToolboxTreeView::item:hover {
+    background-color: @panel_row_hover;
+}
+QgsBrowserTreeView::item:selected,
+QgsLayerTreeView::item:selected,
+QgsProcessingToolboxTreeView::item:selected {
+    background-color: @row_selected;
+    border-left-color: @accent;
+    color: @text_bright;
+}
+QgsBrowserTreeView::item:selected:!active,
+QgsLayerTreeView::item:selected:!active,
+QgsProcessingToolboxTreeView::item:selected:!active {
+    background-color: @row_selected_inactive;
+    color: @text;
+}
+/* Expand arrows of the main panels and the symbol layer tree as outline
+ * chevrons, like every other arrow. Only these trees: their rows already go
+ * through the stylesheet (the rules above; the symbol tree is small), while
+ * a ::branch rule on every tree would send all of QGIS's lists through Qt's
+ * slower stylesheet drawing. */
 QgsBrowserTreeView::branch:has-children:!has-siblings:closed,
 QgsBrowserTreeView::branch:closed:has-children:has-siblings,
 QgsLayerTreeView::branch:has-children:!has-siblings:closed,
 QgsLayerTreeView::branch:closed:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:has-children:!has-siblings:closed,
-QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings {
+QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings,
+QTreeView#layersTree::branch:has-children:!has-siblings:closed,
+QTreeView#layersTree::branch:closed:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-closed.svg);
 }
@@ -222,9 +292,53 @@ QgsBrowserTreeView::branch:open:has-children:has-siblings,
 QgsLayerTreeView::branch:open:has-children:!has-siblings,
 QgsLayerTreeView::branch:open:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:open:has-children:!has-siblings,
-QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings {
+QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings,
+QTreeView#layersTree::branch:open:has-children:!has-siblings,
+QTreeView#layersTree::branch:open:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-open.svg);
+}
+/* Checkboxes in these trees (layer and legend visibility, symbol layers)
+ * match the dialog checkboxes instead of the native tick. */
+QgsLayerTreeView::indicator,
+QgsBrowserTreeView::indicator,
+QTreeView#layersTree::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid @field_border_hover;
+    background-color: @bg_base;
+    border-radius: @radius_sm;
+}
+QgsLayerTreeView::indicator:hover,
+QgsBrowserTreeView::indicator:hover,
+QTreeView#layersTree::indicator:hover {
+    border-color: @accent;
+}
+QgsLayerTreeView::indicator:checked,
+QgsBrowserTreeView::indicator:checked,
+QTreeView#layersTree::indicator:checked {
+    background-color: @accent;
+    border-color: @accent;
+    image: url(@theme_path/icons/studio/checkbox-check.svg);
+}
+QgsLayerTreeView::indicator:indeterminate,
+QgsBrowserTreeView::indicator:indeterminate,
+QTreeView#layersTree::indicator:indeterminate {
+    background-color: @accent_indeterminate;
+    border-color: @accent_indeterminate;
+    image: url(@theme_path/icons/studio/checkbox-indeterminate.svg);
+}
+QgsLayerTreeView::indicator:disabled,
+QgsBrowserTreeView::indicator:disabled,
+QTreeView#layersTree::indicator:disabled {
+    background-color: @bg_window;
+    border-color: @divider_strong;
+}
+QgsLayerTreeView::indicator:checked:disabled,
+QgsBrowserTreeView::indicator:checked:disabled,
+QTreeView#layersTree::indicator:checked:disabled {
+    background-color: @accent_disabled;
+    border-color: @accent_disabled;
 }
 /* Separators inside a toolbar are lighter than the dividers between
  * toolbars (@line), so a group inside a toolbar never reads as its edge. */
@@ -240,6 +354,15 @@ QToolBar QComboBox,
 QToolBar QAbstractSpinBox {
     min-height: 20px;
     max-height: 20px;
+}
+/* No 2 px focus ring here: it would make the toolbar change height. */
+QToolBar QComboBox:focus,
+QToolBar QAbstractSpinBox:focus {
+    border-width: 1px;
+    padding: @control_padding_y 8px;
+}
+QToolBar QAbstractSpinBox:focus {
+    padding-right: 20px;
 }
 /* Toolbar names (studio_toolbars.py). A docked horizontal toolbar gets a
  * title strip above its buttons: every item gets a top margin of the
@@ -332,9 +455,13 @@ QToolButton::menu-arrow:disabled {
 /* Push buttons, fields and combo boxes share one height (the padding is
  * filled in by the plugin: 28 px, compact sizes 26 px), so a row of them
  * lines up. */
+/* They stand slightly raised: a light top edge and a darker bottom edge,
+ * swapped while pressed, so a click reads as a press. */
 QPushButton {
     background-color: @control_bg;
     border: 1px solid @divider_strong;
+    border-top-color: @button_top;
+    border-bottom-color: @button_bottom;
     border-radius: @radius;
     padding: @control_padding_y 14px;
     min-height: 18px;
@@ -342,9 +469,13 @@ QPushButton {
 QPushButton:hover {
     background-color: @control_hover;
     border-color: @field_border_hover;
+    border-top-color: @button_top;
+    border-bottom-color: @button_bottom;
 }
 QPushButton:pressed {
     background-color: @control_pressed;
+    border-top-color: @button_bottom;
+    border-bottom-color: @button_top;
 }
 QPushButton:checked {
     background-color: @tool_checked;
@@ -357,20 +488,40 @@ QPushButton:focus {
 QPushButton:default {
     background-color: @accent;
     border-color: @accent;
+    border-bottom-color: @accent_pressed;
     color: @on_accent;
     font-weight: 600;
 }
 QPushButton:default:hover {
     background-color: @accent_hover;
     border-color: @accent_hover;
+    border-bottom-color: @accent_pressed;
 }
 QPushButton:default:pressed {
     background-color: @accent_pressed;
+    border-color: @accent_pressed;
 }
 QPushButton:disabled {
     background-color: @control_pressed;
     border-color: @divider;
     color: @text_disabled;
+}
+/* Help in dialog button rows: a quiet text button, so the actions stand
+ * out (the plugin marks it, see IconSwapper._visit). */
+QPushButton[studioRole="help"] {
+    background-color: transparent;
+    border-color: transparent;
+    color: @text_dim;
+}
+QPushButton[studioRole="help"]:hover {
+    background-color: @tool_hover;
+    color: @text;
+}
+QPushButton[studioRole="help"]:pressed {
+    background-color: @tool_pressed;
+}
+QPushButton[studioRole="help"]:focus {
+    border-color: @accent;
 }
 /* Inside the button, in its right padding (not on its border). */
 QPushButton::menu-indicator {
@@ -417,6 +568,8 @@ QTextEdit:hover,
 QPlainTextEdit:hover {
     border-color: @field_border_hover;
 }
+/* Focus: a 2 px accent ring, with 1 px less padding so the text does not
+ * move (padding filled in by the plugin). */
 QLineEdit:focus,
 QAbstractSpinBox:focus,
 QComboBox:focus,
@@ -424,6 +577,20 @@ QComboBox:on,
 QTextEdit:focus,
 QPlainTextEdit:focus {
     border-color: @accent;
+    border-width: 2px;
+}
+QLineEdit:focus,
+QAbstractSpinBox:focus,
+QComboBox:focus,
+QComboBox:on {
+    padding: @control_padding_y_focus 7px;
+}
+QAbstractSpinBox:focus {
+    padding-right: 19px;
+}
+QTextEdit:focus,
+QPlainTextEdit:focus {
+    padding: 1px;
 }
 QLineEdit:disabled,
 QAbstractSpinBox:disabled,
@@ -490,10 +657,12 @@ QComboBox {
     padding: @control_padding_y 8px;
     min-height: 18px;
 }
+/* Placed on the border box, which keeps its size with the 2 px focus ring,
+ * so the arrow does not move when the field takes focus. */
 QComboBox::drop-down {
     border: none;
     width: 22px;
-    subcontrol-origin: padding;
+    subcontrol-origin: border;
     subcontrol-position: center right;
 }
 QComboBox::down-arrow {
@@ -565,6 +734,47 @@ QHeaderView::section:hover {
 QHeaderView::section:checked {
     color: @text_bright;
 }
+/* Attribute tables read as a calmer data grid: no column grid (rows are
+ * told apart by their alternating colours), a firm rule under the header
+ * and dim row numbers. QGIS paints the cells itself (a QItemDelegate, which
+ * ignores ::item rules), so row lines and a row hover are not possible. */
+QgsAttributeTableView {
+    qproperty-showGrid: false;
+}
+QgsAttributeTableView QHeaderView::section:horizontal {
+    background-color: @bg_base;
+    border-right: 1px solid @grid;
+    border-bottom: 1px solid @divider_strong;
+}
+QgsAttributeTableView QHeaderView::section:vertical {
+    background-color: @bg_base;
+    color: @text_disabled;
+    font-weight: normal;
+    border-right: 1px solid @grid;
+    border-bottom: 1px solid @grid;
+    padding: 0 8px;
+}
+QgsAttributeTableView QTableCornerButton::section {
+    background-color: @bg_base;
+    border-right: 1px solid @grid;
+    border-bottom: 1px solid @divider_strong;
+}
+/* Cell editors fit the row: no field height, padding or focus ring. */
+QgsAttributeTableView QLineEdit,
+QgsAttributeTableView QComboBox,
+QgsAttributeTableView QAbstractSpinBox,
+QgsAttributeTableView QLineEdit:focus,
+QgsAttributeTableView QComboBox:focus,
+QgsAttributeTableView QAbstractSpinBox:focus {
+    min-height: 0;
+    padding: 0 4px;
+    border-width: 1px;
+    border-radius: 0;
+}
+QgsAttributeTableView QAbstractSpinBox,
+QgsAttributeTableView QAbstractSpinBox:focus {
+    padding-right: 20px;
+}
 QHeaderView::up-arrow {
     image: url(@theme_path/icons/studio/arrow-up.svg);
     width: 8px;
@@ -631,6 +841,33 @@ QTabBar::tab:left:selected {
 QTabBar::tab:right:selected {
     border-left-color: @accent;
 }
+/* Tabbed panels (Browser, Layers, Processing... sharing one place): a
+ * segmented control, the current panel a raised segment on a filled track,
+ * instead of loose text tabs. The bar is the main window's own child. */
+QMainWindow > QTabBar {
+    background-color: @control_bg;
+    border-radius: 7px;
+    qproperty-expanding: 1;
+}
+QMainWindow > QTabBar::tab:top,
+QMainWindow > QTabBar::tab:bottom {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    margin: 2px 1px;
+    padding: 4px 12px;
+    color: @text_dim;
+}
+QMainWindow > QTabBar::tab:top:hover,
+QMainWindow > QTabBar::tab:bottom:hover {
+    color: @text;
+}
+QMainWindow > QTabBar::tab:top:selected,
+QMainWindow > QTabBar::tab:bottom:selected {
+    background-color: @bg_base;
+    border-color: @divider;
+    color: @text_bright;
+}
 QTabBar::close-button {
     image: url(@theme_path/icons/studio/close.svg);
     subcontrol-position: right;
@@ -654,21 +891,32 @@ QScrollBar:horizontal {
     height: 10px;
     margin: 0;
 }
+/* Slim handles: 4 px at rest, 8 px and stronger while the pointer is on the
+ * scrollbar or the handle is dragged. */
 QScrollBar::handle {
     background-color: @scroll_handle;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 QScrollBar::handle:vertical {
     min-height: 32px;
-    margin: 2px 2px 2px 2px;
+    margin: 2px 3px;
 }
 QScrollBar::handle:horizontal {
     min-width: 32px;
-    margin: 2px 2px 2px 2px;
+    margin: 3px 2px;
 }
-QScrollBar::handle:hover,
+QScrollBar:hover::handle,
 QScrollBar::handle:pressed {
     background-color: @scroll_handle_hover;
+    border-radius: 4px;
+}
+QScrollBar:vertical:hover::handle:vertical,
+QScrollBar::handle:vertical:pressed {
+    margin: 2px 1px;
+}
+QScrollBar:horizontal:hover::handle:horizontal,
+QScrollBar::handle:horizontal:pressed {
+    margin: 1px 2px;
 }
 QScrollBar::add-line,
 QScrollBar::sub-line {
@@ -754,21 +1002,26 @@ QGroupBox::indicator:checked:disabled {
  * 9. GROUPS, SPLITTERS & FRAMES
  * ========================================================================= */
 
+/* Sections, not boxes: the title above a hairline, with no frame around the
+ * contents, so dialogs lose their nested boxes. The title sits wholly above
+ * the line (none runs through it), so nothing behind it has to be masked
+ * on dialogs, panels and tab pages alike. */
 QGroupBox,
 QgsCollapsibleGroupBox,
 QgsCollapsibleGroupBoxBasic {
     background-color: transparent;
-    border: 1px solid @divider;
-    border-radius: @radius_lg;
-    margin-top: 14px;
-    padding: 10px 8px 6px 8px;
+    border: none;
+    border-top: 1px solid @divider;
+    border-radius: 0;
+    margin-top: 22px;
+    padding: 8px 0 2px 0;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 10px;
-    padding: 0 4px;
-    color: @text_dim;
+    left: 0;
+    padding: 0 4px 0 0;
+    color: @text;
     font-weight: 600;
 }
 QSplitter::handle {
@@ -874,6 +1127,8 @@ QDockWidget QgsFilterLineEdit {
 }
 QDockWidget QgsFilterLineEdit:focus {
     background-color: @bg_base;
+    padding-left: 9px;
+    padding-right: 9px;
 }
 
 QgsColorButton,

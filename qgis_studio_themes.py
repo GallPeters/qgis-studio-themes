@@ -29,7 +29,7 @@ from qgis.PyQt.QtGui import (
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
-    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDockWidget,
+    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
     QStyleOptionViewItem, QTabBar, QToolBar, QToolButton,
 )
@@ -47,7 +47,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "20"
+BUILD_FORMAT = "21"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -1211,6 +1211,7 @@ class IconSwapper(QObject):
                 self._filter(widget)
         elif isinstance(widget, QAbstractButton):
             self._swap(widget, None, None, deferred)
+            self._mark_help(widget)
         elif isinstance(widget, QListWidget):
             self._rows(widget, "row", deferred)
         elif isinstance(widget, QComboBox):
@@ -1255,6 +1256,21 @@ class IconSwapper(QObject):
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
+
+    HELP_ROLE = "studioRole"
+
+    @classmethod
+    def _mark_help(cls, button):
+        """Mark the Help button of a dialog button row, so the stylesheet
+        draws it as a quiet text button (QPushButton[studioRole="help"]):
+        the stylesheet alone cannot tell it from the other buttons."""
+        box = button.parentWidget()
+        if (isinstance(box, QDialogButtonBox) and button.property(cls.HELP_ROLE) is None
+                and box.buttonRole(button) == QDialogButtonBox.ButtonRole.HelpRole):
+            button.setProperty(cls.HELP_ROLE, "help")
+            # Already polished: the property only applies once polished again.
+            button.style().unpolish(button)
+            button.style().polish(button)
 
     @staticmethod
     def _sort_themes(combo):
@@ -1598,6 +1614,8 @@ class QgisStudioThemesPlugin:
             # compact 26 px), so a row of them lines up; panel search
             # fields are pills of that height.
             "@control_padding_y": "3px" if compact else "4px",
+            # With the 2 px focus ring: 1 px less, so the text stays put.
+            "@control_padding_y_focus": "2px" if compact else "3px",
             "@search_radius": "13px" if compact else "14px",
             "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
             # Toolbar title strips (see studio_toolbars); separators keep
