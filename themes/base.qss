@@ -52,7 +52,13 @@
 
 /* ---- Popups ------------------------------------------------------------- */
 @menu_border:            mix(@bg_menu, @text, 0.14);
-@menu_hover:             mix(@bg_menu, @text, 0.09);
+/* Hovered menu and drop-down rows: an accent tint, like selected rows. */
+@menu_hover:             mix(@bg_menu, @accent, 0.16);
+/* Popups (menus, drop-down lists, tooltips) are lifted off the window
+ * without translucency: a firm outer edge and a light top edge, as if lit
+ * from above (dark themes use a darker edge, see their variables). */
+@menu_edge:              mix(@bg_menu, @text, 0.30);
+@menu_highlight:         mix(@bg_menu, #ffffff, 0.85);
 
 /* ---- Scrollbars --------------------------------------------------------- */
 @scroll_handle:          mix(@bg_base, @text, 0.20);
@@ -65,6 +71,10 @@
  * Disabled text keeps @text_disabled, which stays readable. */
 @icon_disabled:          mix(@bg_window, @icon, 0.40);
 @icon_accent:            @accent;
+/* Icons in selected rows (dialog page lists, Browser, Processing Toolbox):
+ * the accent, a shade towards the strongest text so it keeps its contrast
+ * on the accent-tinted selection. */
+@icon_selected:          mix(@accent, @text_bright, 0.30);
 
 /* ---- Message bar -------------------------------------------------------- */
 @info_bg:                mix(@bg_window, @info, 0.14);

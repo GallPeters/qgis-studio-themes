@@ -58,22 +58,27 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   size each screen draws them at (100%, 125%, 150%... scaling), with their
   lines snapped to the pixel grid, so they stay crisp instead of blurring
   on large monitors. Arrows, check marks and other widget glyphs are drawn
-  at their exact size.
-- **Toolbar titles** – each toolbar's name sits centred above its buttons,
-  with a divider between toolbars and a line under each row of toolbars
-  (vertical toolbars show a short name on their handle).
+  at their exact size. Plugging in another monitor or changing the display
+  scaling keeps them sharp. Selected rows show their icon in the accent
+  colour.
+- **Toolbar titles** – each toolbar's name sits centred above its buttons
+  in small capitals, with a divider between toolbars and a line under each
+  row of toolbars (vertical toolbars show a short name on their handle).
+  Empty toolbars collapse instead of showing a labelled empty box.
 - **Typography** – the bundled Inter typeface is used unless a custom font
   is set in QGIS options. The configured font size is always kept.
 - **Sizes for every screen** – on large, low-density desktop monitors the
   plugin picks compact sizes (smaller menu and panel icons, toolbar icons
   the size of QGIS's own), while laptops keep the roomier look. It is chosen
   automatically from the screen's pixel density.
-- **Layout** – thin dividers, rounded controls, underlined tabs, slim
-  scrollbars, accent-coloured selection and a message bar that follows
+- **Layout** – thin dividers, rounded controls of one height, underlined
+  tabs, slim scrollbars, accent-coloured selection, menus lifted off the
+  window, pill-shaped panel search fields and a message bar that follows
   the theme.
 - **Performance** – base colours are set through the Qt palette rather than
-  broad stylesheet rules, which keeps dialog opening and repainting faster
-  than in previous versions.
+  broad stylesheet rules, icons are loaded from a few pre-rendered atlas
+  images, and the panels and toolbars do no heavy work while drawing or
+  resizing, which keeps dialogs, panels and window resizing fast.
 
 ## Contributing
 

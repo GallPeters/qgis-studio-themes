@@ -35,8 +35,11 @@ QMainWindow::separator:hover {
 
 QDockWidget {
     color: @text;
-    titlebar-close-icon: url(@theme_path/icons/studio/close.svg);
-    titlebar-normal-icon: url(@theme_path/icons/studio/float.svg);
+    /* Qt draws the title buttons' icons at 10 px whatever the stylesheet
+     * says; these glyphs are drawn for that size and fill it (the 16 px
+     * tab close glyph shrank to two faint dots). */
+    titlebar-close-icon: url(@theme_path/icons/studio/dock-close.svg);
+    titlebar-normal-icon: url(@theme_path/icons/studio/dock-float.svg);
 }
 /* Panel titles: one point larger (compact sizes: same size) and semibold,
  * so panels are easy to find and tell apart. The (title-less) font goes on the dock, the contents get
@@ -63,8 +66,7 @@ QDockWidget::float-button {
     background: transparent;
     border: none;
     border-radius: @radius_sm;
-    padding: 3px;
-    icon-size: 16px;
+    padding: 0;
 }
 QDockWidget::close-button:hover,
 QDockWidget::float-button:hover {
@@ -118,9 +120,12 @@ QMenuBar::item:pressed {
     color: @text_bright;
 }
 
+/* Popups stay square (see the performance notes) and are lifted off the
+ * window by their edges: a firm outer edge and a light top edge. */
 QMenu {
     background-color: @bg_menu;
-    border: 1px solid @menu_border;
+    border: 1px solid @menu_edge;
+    border-top-color: @menu_highlight;
     padding: 5px;
 }
 QMenu::item {
@@ -324,11 +329,14 @@ QToolButton::menu-arrow:disabled {
     image: url(@theme_path/icons/studio/chevron-down-small-disabled.svg);
 }
 
+/* Push buttons, fields and combo boxes share one height (the padding is
+ * filled in by the plugin: 28 px, compact sizes 26 px), so a row of them
+ * lines up. */
 QPushButton {
     background-color: @control_bg;
     border: 1px solid @divider_strong;
     border-radius: @radius;
-    padding: 4px 14px;
+    padding: @control_padding_y 14px;
     min-height: 18px;
 }
 QPushButton:hover {
@@ -364,13 +372,14 @@ QPushButton:disabled {
     border-color: @divider;
     color: @text_disabled;
 }
+/* Inside the button, in its right padding (not on its border). */
 QPushButton::menu-indicator {
     image: url(@theme_path/icons/studio/chevron-down-small.svg);
     width: 10px;
     height: 10px;
     subcontrol-position: right center;
-    subcontrol-origin: padding;
-    right: -8px;
+    subcontrol-origin: border;
+    right: 6px;
 }
 QgsExpressionBuilderWidget QPushButton {
     min-width: 20px;
@@ -394,7 +403,7 @@ QComboBox {
 }
 QLineEdit,
 QAbstractSpinBox {
-    padding: 3px 8px;
+    padding: @control_padding_y 8px;
     min-height: 18px;
 }
 QTextEdit,
@@ -478,7 +487,7 @@ QAbstractSpinBox::down-arrow:off {
 }
 
 QComboBox {
-    padding: 3px 8px;
+    padding: @control_padding_y 8px;
     min-height: 18px;
 }
 QComboBox::drop-down {
@@ -498,7 +507,8 @@ QComboBox::down-arrow:disabled {
 QComboBox QAbstractItemView {
     background-color: @bg_menu;
     color: @text;
-    border: 1px solid @menu_border;
+    border: 1px solid @menu_edge;
+    border-top-color: @menu_highlight;
     border-radius: 0;
     padding: 4px;
     outline: none;
@@ -827,7 +837,8 @@ QSlider::handle:hover {
 QToolTip {
     background-color: @bg_menu;
     color: @text;
-    border: 1px solid @menu_border;
+    border: 1px solid @menu_edge;
+    border-top-color: @menu_highlight;
     padding: 5px 8px;
 }
 QRubberBand {
@@ -848,6 +859,21 @@ QgsDockWidget QListView {
     background-color: @bg_dock;
     border: none;
     border-radius: 0;
+}
+
+/* Search fields in panels (Processing Toolbox, Browser filter, Layer
+ * Styling...): one filled pill, its border shown on hover and focus. The
+ * selector ends in QgsFilterLineEdit, so Qt checks the ancestor only for
+ * those fields. */
+QDockWidget QgsFilterLineEdit {
+    background-color: @control_bg;
+    border-color: transparent;
+    border-radius: @search_radius;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+QDockWidget QgsFilterLineEdit:focus {
+    background-color: @bg_base;
 }
 
 QgsColorButton,
@@ -890,6 +916,9 @@ QgsOptionsTreeView {
 /* Narrow horizontal padding: when a dialog is too narrow, QGIS collapses
  * this list to an icon-only column, which wider padding pushed the icons
  * out of. */
+/* The selected page: a straight accent bar on the left of a soft pill. The
+ * left corners stay square: a radius there bends the bar into a crescent.
+ * Its icon is drawn in the accent (the icons' selected state). */
 QListWidget#mOptionsListWidget::item,
 QListWidget#mOptListWidget::item,
 QListView#mOptionsListWidget::item,
@@ -898,6 +927,8 @@ QgsOptionsTreeView::item {
     padding: 6px 6px 6px 4px;
     margin: 1px 0;
     border-radius: @radius;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
     border-left: 3px solid transparent;
 }
 QListWidget#mOptionsListWidget::item:selected,

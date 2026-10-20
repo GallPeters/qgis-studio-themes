@@ -8,6 +8,7 @@ for theme icons, so dialogs opened later pick up the modern icons natively.
 """
 import hashlib
 import json
+import os
 import re
 import shutil
 import queue
@@ -19,8 +20,8 @@ from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
 from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
-    QAbstractProxyModel, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
-    QPersistentModelIndex, QSize, Qt, QTimer, pyqtSignal, qVersion,
+    QAbstractProxyModel, QBuffer, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
+    QPersistentModelIndex, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, qVersion,
 )
 from qgis.PyQt.QtGui import (
     QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
@@ -46,7 +47,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "19"
+BUILD_FORMAT = "20"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -54,6 +55,11 @@ FULL_STYLE = "style.full.qss"
 # after installing the palette.
 STUB_STYLE = b"/* Studio theme: the plugin applies the stylesheet. */\n"
 LOG_TAG = "Studio Themes"
+# The palette and font QGIS had before any Studio theme, kept on the
+# application object so a reloaded or upgraded plugin (a new module and
+# plugin object) still restores them, not the theme's.
+ORIGINAL_PALETTE = "_studioOriginalPalette"
+ORIGINAL_FONT = "_studioOriginalFont"
 LABELS_SETTING = "studio_themes/toolbarLabels"
 # Compact sizes: "auto" (by the screen's pixel density), "on" or "off".
 COMPACT_SETTING = "studio_themes/compactSizes"
@@ -132,7 +138,8 @@ def device_sizes(ratios, sizes):
 
 
 def icon_colors(tokens):
-    """Colours of the normal and the disabled icons of a theme."""
+    """Colours of a theme's icons in each state of ICON_STATES: normal,
+    disabled and selected."""
     colors = {
         "icon": tokens["@icon"],
         "accent": tokens["@icon_accent"],
@@ -140,59 +147,126 @@ def icon_colors(tokens):
     }
     # Disabled state: glyph and badge both in the theme's disabled icon
     # colour (dimmer than disabled text: clearly unavailable).
-    return colors, dict.fromkeys(colors, tokens["@icon_disabled"])
+    disabled = dict.fromkeys(colors, tokens["@icon_disabled"])
+    # Selected rows (dialog page lists, Browser, Processing Toolbox): the
+    # glyph in the accent, a shade towards the text so it keeps its
+    # contrast on the accent-tinted selection.
+    selected = dict(colors, icon=tokens["@icon_selected"])
+    return colors, disabled, selected
+
+
+# Icon states drawn by the theme, with the QIcon mode each one serves.
+ICON_STATES = (
+    ("normal", QIcon.Mode.Normal),
+    ("disabled", QIcon.Mode.Disabled),
+    ("selected", QIcon.Mode.Selected),
+)
+# Pre-rendered icons live in one atlas per (pixel size, line width, state):
+# every distinct drawing in a cell of a grid this many cells wide, in
+# atlas_specs() order. One file per atlas instead of one per icon: Qt reads
+# a few images instead of thousands, and on Windows every small file opened
+# also costs a virus scan.
+ATLAS_COLUMNS = 32
+ATLAS_FORMAT = 2
+
+
+def atlas_specs():
+    """The distinct drawings, in atlas order."""
+    return sorted(set(studio_icons.ICON_MAP.values()))
+
+
+def atlas_index():
+    """Atlas cell of each drawing (spec)."""
+    return {spec: index for index, spec in enumerate(atlas_specs())}
+
+
+def atlas_cell(index, size):
+    return QRect((index % ATLAS_COLUMNS) * size, (index // ATLAS_COLUMNS) * size, size, size)
+
+
+def atlas_path(icons_dir, size, width, state):
+    return icons_dir / "png" / f"{size}w{width}-{state}.png"
 
 
 def png_marker(icons_dir):
     return icons_dir / "png" / ".done"
 
 
+def _specs_key():
+    return hashlib.sha1("|".join(atlas_specs()).encode()).hexdigest()
+
+
 def rendered_sizes(icons_dir):
-    """(pixel size, line width) pairs whose PNGs are complete for a built
-    theme."""
+    """(pixel size, line width) pairs whose atlases are complete for a
+    built theme (none if they were drawn for another set of drawings)."""
     try:
-        return frozenset(
-            (size, width) for size, width in json.loads(png_marker(icons_dir).read_text(encoding="utf-8"))
-        )
-    except (OSError, ValueError, TypeError):
+        marker = json.loads(png_marker(icons_dir).read_text(encoding="utf-8"))
+        if marker.get("format") != ATLAS_FORMAT or marker.get("specs") != _specs_key():
+            return frozenset()
+        return frozenset((size, width) for size, width in marker["sizes"])
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
         return frozenset()
 
 
-def disabled_path(icons_dir, name):
-    """Disabled-state drawing of an icon, shared by every name with the same
-    spec. Qt's own disabled rendering fades icons almost into the
-    background; these use the theme's @text_disabled instead."""
-    return icons_dir / "disabled" / f"{studio_icons.ICON_MAP[name]}.svg"
+def write_atomic(path, data):
+    """Write `data` (bytes) so that `path` is never left half written: a
+    file cut short by a crash would otherwise be trusted forever."""
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(data)
+    os.replace(temporary, path)
 
 
-def png_path(icons_dir, name, size, width, disabled=False):
-    """Shared by every icon name with the same drawing (spec)."""
-    suffix = "-disabled" if disabled else ""
-    return icons_dir / "png" / studio_icons.ICON_MAP[name] / f"{size}w{width}{suffix}.png"
+def state_path(icons_dir, name, state):
+    """Disabled or selected drawing of an icon, shared by every name with
+    the same spec. Qt's own disabled rendering fades icons almost into the
+    background; these use the theme's @icon_disabled instead."""
+    return icons_dir / state / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
-def render_pngs(icons_dir, name, sizes, colors, scale):
-    """Pre-render one icon at each (pixel size, line width) of `sizes`,
-    drawn for that exact size with its lines on the pixel grid
-    (studio_icons.render_icon_px), so it is shown 1:1, never resampled.
-    Decoding a small PNG is also cheaper than drawing an SVG. `colors` is
-    (normal, disabled). Safe in a worker thread (QImage painting needs no
-    GUI thread)."""
-    spec = studio_icons.ICON_MAP[name]
-    for disabled, state_colors in zip((False, True), colors):
-        for size, width in sizes:
-            path = png_path(icons_dir, name, size, width, disabled)
-            if path.exists():
-                continue
-            svg = studio_icons.render_icon_px(spec, state_colors, size, scale, width)
-            renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
-            image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
-            image.fill(Qt.GlobalColor.transparent)
-            painter = QPainter(image)
-            renderer.render(painter)
-            painter.end()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            image.save(str(path))
+def render_atlas(icons_dir, size, width, state, colors, scale, stop):
+    """Draw every distinct icon at one (pixel size, line width) in one
+    state into its atlas, each drawn for that exact size with its lines on
+    the pixel grid (studio_icons.render_icon_px), so it is shown 1:1,
+    never resampled. Safe in a worker thread (QImage painting needs no GUI
+    thread). False if stopped."""
+    specs = atlas_specs()
+    rows = -(-len(specs) // ATLAS_COLUMNS)
+    image = QImage(ATLAS_COLUMNS * size, rows * size, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    try:
+        for index, spec in enumerate(specs):
+            if stop.is_set():
+                return False
+            svg = studio_icons.render_icon_px(spec, colors, size, scale, width)
+            QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painter, QRectF(atlas_cell(index, size)))
+            time.sleep(0.001)  # yield Python's lock to the GUI thread
+    finally:
+        painter.end()
+    path = atlas_path(icons_dir, size, width, state)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = QByteArray()
+    buffer = QBuffer(data)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    if not image.save(buffer, "PNG"):
+        raise OSError(f"could not encode {path.name}")
+    buffer.close()
+    write_atomic(path, bytes(data))
+    return True
+
+
+def write_if_changed(path, text, written):
+    """Write a build file unless it already holds `text`: an upgrade then
+    rewrites only what changed (reading is much cheaper than writing), and
+    a file cut short by a crash is repaired. Adds `path` to `written`."""
+    data = text.encode("utf-8")
+    written.add(path)
+    try:
+        if path.read_bytes() == data:
+            return
+    except OSError:
+        pass
+    path.write_bytes(data)
 
 
 def build_stamp(sources):
@@ -211,19 +285,23 @@ def load_tokens(folder):
 
 
 def prerender_pngs(icons_dir, sizes, colors, scale, stop):
-    """Pre-render every distinct icon of a built theme at the (pixel size,
-    line width) pairs `sizes` that are not done yet (worker thread).
-    Returns True once all are written, False if stopped or failed."""
-    done = rendered_sizes(icons_dir)
-    missing = sorted(set(sizes) - done)
+    """Pre-render the atlases of a built theme at the (pixel size, line
+    width) pairs `sizes` that are not done yet (worker thread), every
+    state of ICON_STATES; `colors` gives each state's colours. The marker
+    is updated after each size, so an interrupted run keeps what it
+    finished. Returns True once all are written, False if stopped or
+    failed."""
+    done = set(rendered_sizes(icons_dir))
     try:
-        for name in studio_icons.unique_icons():
-            if stop.is_set():
-                return False
-            render_pngs(icons_dir, name, missing, colors, scale)
-            time.sleep(0.002)  # yield Python's lock to the GUI thread
-        png_marker(icons_dir).parent.mkdir(parents=True, exist_ok=True)
-        png_marker(icons_dir).write_text(json.dumps(sorted(done | set(sizes))), encoding="utf-8")
+        for size, width in sorted(set(sizes) - done):
+            for (state, _mode), state_colors in zip(ICON_STATES, colors):
+                if not render_atlas(icons_dir, size, width, state, state_colors, scale, stop):
+                    return False
+            done.add((size, width))
+            png_marker(icons_dir).parent.mkdir(parents=True, exist_ok=True)
+            write_atomic(png_marker(icons_dir), json.dumps({
+                "format": ATLAS_FORMAT, "specs": _specs_key(), "sizes": sorted(done),
+            }).encode("utf-8"))
     except OSError:
         return False
     return True
@@ -234,8 +312,9 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     """Write the resolved stylesheet and all icons for one theme into
     `target`; style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
-    startup costs only a few stat() calls. Thread-safe (no Qt calls).
-    Returns True when it (re)built the theme."""
+    startup costs only a few stat() calls; a rebuild rewrites only the
+    files whose content changed. Thread-safe (no Qt calls). Returns True
+    when it (re)built the theme."""
     stamp = build_stamp([THEMES_DIR / folder / "variables.qss"]) + shared_stamp
     stamp_file = target / STAMP
     if stamp_file.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
@@ -245,37 +324,48 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     tokens["@theme_path"] = target.as_posix()
     # Values that depend on the user's QGIS settings (part of shared_stamp).
     tokens.update(extra_tokens or {})
-    if (target / "icons").exists():
-        shutil.rmtree(target / "icons")
-    (target / "icons" / "studio").mkdir(parents=True)
+    icons = target / "icons"
+    # The atlases follow the theme's colours: drawn again in the background.
+    if (icons / "png").exists():
+        shutil.rmtree(icons / "png")
+    (icons / "studio").mkdir(parents=True, exist_ok=True)
+    written = set()
 
     style, unknown = render(SHARED_STYLE.read_text(encoding="utf-8"), tokens)
     for template in WIDGET_GLYPHS.glob("*.svg"):
         svg, missing = render(template.read_text(encoding="utf-8"), tokens)
         unknown |= missing
-        (target / "icons" / "studio" / template.name).write_text(svg, encoding="utf-8")
+        write_if_changed(icons / "studio" / template.name, svg, written)
     if unknown:
         QgsMessageLog.logMessage(
             f"{folder}: unresolved tokens {sorted(unknown)}", LOG_TAG, Qgis.MessageLevel.Warning
         )
-    colors, disabled_colors = icon_colors(tokens)
+    colors = dict(zip((state for state, _mode in ICON_STATES), icon_colors(tokens)))
     folders = set()
     svgs = {}
     for name, spec in studio_icons.ICON_MAP.items():
-        path = target / "icons" / icon_file(name)
+        path = icons / icon_file(name)
         if path.parent not in folders:
             path.parent.mkdir(parents=True, exist_ok=True)
             folders.add(path.parent)
         if spec not in svgs:
-            svgs[spec] = studio_icons.render_icon(spec, colors, icon_scale)
-            disabled = target / "icons" / "disabled" / f"{spec}.svg"
-            if disabled.parent not in folders:
-                disabled.parent.mkdir(parents=True, exist_ok=True)
-                folders.add(disabled.parent)
-            disabled.write_text(
-                studio_icons.render_icon(spec, disabled_colors, icon_scale), encoding="utf-8"
-            )
-        path.write_text(svgs[spec], encoding="utf-8")
+            svgs[spec] = studio_icons.render_icon(spec, colors["normal"], icon_scale)
+            for state in ("disabled", "selected"):
+                state_file = icons / state / f"{spec}.svg"
+                if state_file.parent not in folders:
+                    state_file.parent.mkdir(parents=True, exist_ok=True)
+                    folders.add(state_file.parent)
+                write_if_changed(
+                    state_file, studio_icons.render_icon(spec, colors[state], icon_scale), written
+                )
+        write_if_changed(path, svgs[spec], written)
+    # Icons of names no longer mapped would still be found by QGIS.
+    for root, dirs, files in os.walk(icons):
+        if Path(root) == icons:
+            dirs[:] = [d for d in dirs if d != "png"]
+        for file_name in files:
+            if Path(root, file_name) not in written:
+                Path(root, file_name).unlink(missing_ok=True)
     (target / FULL_STYLE).write_text(style, encoding="utf-8")
     if active:
         shutil.copyfile(target / FULL_STYLE, target / "style.qss")
@@ -283,6 +373,20 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
         (target / "style.qss").write_bytes(STUB_STYLE)
     stamp_file.write_text(stamp, encoding="utf-8")
     return True
+
+
+def set_tabular_digits(font):
+    """Inter's tabular (equal width) digits: numbers that change in place
+    (coordinates and scale in the status bar, spin boxes, shortcuts in
+    menus) keep their width instead of jittering. Needs Qt 6.7."""
+    if not hasattr(font, "setFeature"):
+        return
+    try:
+        tag = QFont.Tag.fromString("tnum")
+        if tag is not None:
+            font.setFeature(tag, 1)
+    except (AttributeError, TypeError, ValueError):
+        pass
 
 
 def make_palette(tokens):
@@ -461,9 +565,12 @@ class IconSwapper(QObject):
         # (screen ratios, logical sizes) while the active theme's PNGs are
         # used, else None (see _pngs_usable).
         self._png = None
-        # Loaded PNGs per (spec, pixel size, disabled, ratio), shared by
-        # every icon name with the same drawing.
+        # Icons cut from the atlases per (spec, pixel size, state, ratio),
+        # shared by every icon name with the same drawing, and the loaded
+        # atlases per (pixel size, line width, state) (None if unreadable).
         self._pixmaps = {}
+        self._atlases = {}
+        self._atlas_index = {}
         # QGIS's toolbar and dialog page list icon sizes, which get PNGs of
         # their own.
         self._extra_sizes = (24, 28)
@@ -476,9 +583,11 @@ class IconSwapper(QObject):
         self._reference_table = None
         # The disk cache is read once; a stale or missing one is recomputed.
         self._cache_checked = False
-        # Built incrementally in idle time (see _warm_reference).
+        # Built incrementally in idle time (see _warm_reference), started
+        # early when a panel needs it (see _request_reference).
         self._reference_partial = None
         self._reference_queue = None
+        self._warming = False
         # availableSizes() signatures of the built-in PNG icons: the only
         # pixmap-based icons worth fingerprinting (see _replacement).
         self._png_signatures = None
@@ -504,6 +613,7 @@ class IconSwapper(QObject):
         self._names = {}
         self._icons_dir = icons_dir
         self._pixmaps = {}
+        self._atlases = {}
         self._main_window = main_window
         self._extra_sizes = self._current_extra_sizes()
         self._png = self._pngs_usable(icons_dir)
@@ -511,7 +621,7 @@ class IconSwapper(QObject):
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
         }
         self._names = dict(self._base_names)
-        QTimer.singleShot(self.WARM_DELAY, self._warm_reference)
+        QTimer.singleShot(self.WARM_DELAY, self._request_reference)
         # Existing widgets: identify cheap matches now, the rest in idle
         # time. Hidden windows are left to the focus fallback and menus are
         # swapped when they are about to open, except the main window: QGIS
@@ -536,6 +646,7 @@ class IconSwapper(QObject):
         self._theme = theme
         self._icons = {}
         self._pixmaps = {}
+        self._atlases = {}
         self._icons_dir = icons_dir
         self._extra_sizes = self._current_extra_sizes()
         self._png = self._pngs_usable(icons_dir)
@@ -577,11 +688,22 @@ class IconSwapper(QObject):
 
     def use_pngs(self, icons_dir):
         """The active theme's PNGs are ready: every icon handed out so far
-        (drawn from the SVGs meanwhile) moves to its pixel-snapped version
-        in place, with a single repaint."""
-        if self._theme is not None and icons_dir == self._icons_dir and not self._png:
-            if self._pngs_usable(icons_dir):
+        (drawn from the SVGs meanwhile, or from PNGs for other screens)
+        moves to its pixel-snapped version in place, with a single
+        repaint."""
+        if self._theme is not None and icons_dir == self._icons_dir:
+            if self._pngs_usable(icons_dir) != self._png:
                 self._retheme(self._theme, icons_dir)
+
+    def refresh_sizes(self):
+        """Screens or QGIS's icon size changed: icons whose PNGs no longer
+        cover every screen and size go back to the SVGs (sharp at any size,
+        not stretched pixels) until the missing PNGs are drawn."""
+        if self._theme is None:
+            return
+        self._extra_sizes = self._current_extra_sizes()
+        if self._pngs_usable(self._icons_dir) != self._png:
+            self._retheme(self._theme, self._icons_dir)
 
     def _current_extra_sizes(self):
         """QGIS's toolbar icon size and dialog page list size, as now set."""
@@ -713,21 +835,37 @@ class IconSwapper(QObject):
         self._reference_queue = self._reference_partial = None
         if self._cache_file is not None:
             try:
-                self._cache_file.write_text(json.dumps({
+                write_atomic(self._cache_file, json.dumps({
                     "key": self._reference_key(),
                     "digests": self._reference_table,
                     "png_sizes": sorted(self._png_signatures),
-                }), encoding="utf-8")
+                }).encode("utf-8"))
             except OSError:
                 pass
         return True
 
-    def _warm_reference(self):
-        """Compute the fingerprint table a batch at a time between events."""
-        if self._theme is None or self._load_reference():
-            return
-        if not self._reference_step(self.WARM_BATCH):
+    def _request_reference(self):
+        """Start the idle-time fingerprinting now (if it is not running or
+        done): WARM_DELAY after the theme is applied, or earlier when a
+        panel meets an icon only the fingerprints can identify."""
+        if not self._warming and self._theme is not None and self._reference_table is None:
+            self._warming = True
             QTimer.singleShot(0, self._warm_reference)
+
+    def _warm_reference(self):
+        """Compute the fingerprint table a batch at a time between events;
+        once ready, the delegated panels redraw with the icons they were
+        drawn without meanwhile."""
+        if self._theme is None:
+            self._warming = False
+            return
+        if self._load_reference() or self._reference_step(self.WARM_BATCH):
+            self._warming = False
+            for view, _original, _delegate in self._delegates.values():
+                if not sip.isdeleted(view):
+                    view.viewport().update()
+            return
+        QTimer.singleShot(0, self._warm_reference)
 
     def _reference(self):
         """Fingerprints of the built-in icons (finishing them now if the
@@ -786,10 +924,13 @@ class IconSwapper(QObject):
 
     def keyed_icon(self, icon):
         """Our version of an icon the Browser or Layers delegate draws,
-        identified by the icon itself, or None to keep it. Pixmap icons
-        (layer symbols, legend items, the editing pencil composited onto a
-        layer icon) are new on every paint: they are turned down at once
-        and not remembered."""
+        identified by the icon itself, or None to keep it. Runs on every
+        paint of every row, so it never does slow work: pixmap icons (layer
+        symbols, legend items, the editing pencil composited onto a layer
+        icon) are new on every paint and never one of the QGIS icons these
+        panels show, so they are turned down at once, not fingerprinted;
+        other unknown icons wait for the idle-time fingerprints (the panel
+        redraws once they are ready) instead of computing them mid-paint."""
         if self._theme is None or icon.isNull():
             return None
         key = icon.cacheKey()
@@ -797,10 +938,12 @@ class IconSwapper(QObject):
         if name is self._UNKNOWN:
             name = self._key_names.get(key, self._UNKNOWN)
         if name is self._UNKNOWN:
-            signature = self._signature(icon)
-            if signature and signature not in self._png_signature_set():
+            if icon.availableSizes():
                 return None
-            name = self._identify(icon)
+            if not self._load_reference():
+                self._request_reference()
+                return None
+            name = self._reference().get(self._digest(icon))
             if len(self._key_names) > 4096:
                 self._key_names.clear()
             self._key_names[key] = name
@@ -808,9 +951,10 @@ class IconSwapper(QObject):
 
     def row_icon(self, row, icon, group=False):
         """Our version of the icon a delegated view draws for `row` (a
-        hashable row identity), or None to keep it. Identified once per row.
-        Group rows that only repeat the provider's or the generic tool icon
-        get a folder, so groups and tools are told apart at a glance."""
+        hashable row identity), or None to keep it. Identified once per row,
+        never by computing fingerprints mid-paint (see keyed_icon). Group
+        rows that only repeat the provider's or the generic tool icon get a
+        folder, so groups and tools are told apart at a glance."""
         if self._theme is None:
             return None
         row = (row, group)
@@ -818,6 +962,9 @@ class IconSwapper(QObject):
         if name is self._UNKNOWN:
             name = self._names.get(icon.cacheKey(), self._UNKNOWN)
             if name is self._UNKNOWN:
+                if not self._load_reference():
+                    self._request_reference()
+                    return None
                 name = self._identify(icon)
             if group and name in self.GENERIC_ICONS:
                 name = self.GROUP_ICON
@@ -845,42 +992,54 @@ class IconSwapper(QObject):
     def _icon(self, name):
         """Our icon for a QGIS icon name, in the active theme."""
         if name not in self._icons:
-            disabled = str(disabled_path(self._icons_dir, name))
+            ours = None
             if self._png:
+                # Pixmaps tagged with their screen's ratio, so Qt picks each
+                # at exactly the device size and never stretches one.
                 ratios, sizes = self._png
                 ours = QIcon()
-                if ratios == {1.0}:
-                    # Loaded lazily, only at the sizes actually drawn.
-                    width = studio_icons.screen_stroke_px(1.0)
+                for ratio in sorted(ratios):
                     for size in sizes:
-                        ours.addFile(str(png_path(self._icons_dir, name, size, width)), QSize(size, size))
-                        ours.addFile(
-                            str(png_path(self._icons_dir, name, size, width, True)), QSize(size, size),
-                            QIcon.Mode.Disabled,
-                        )
-                else:
-                    # Qt matches lazily loaded files by size alone and would
-                    # stretch them on scaled screens; pixmaps tagged with
-                    # their ratio are picked at exactly the device size.
-                    for ratio in sorted(ratios):
-                        for size in sizes:
-                            for disabled, mode in ((False, QIcon.Mode.Normal), (True, QIcon.Mode.Disabled)):
-                                ours.addPixmap(self._pixmap(name, round(size * ratio), disabled, ratio), mode)
-            else:
+                        for state, mode in ICON_STATES:
+                            pixmap = self._pixmap(name, round(size * ratio), state, ratio)
+                            if pixmap is None:
+                                ours = None
+                                break
+                            ours.addPixmap(pixmap, mode)
+                        if ours is None:
+                            break
+                    if ours is None:
+                        break
+            if ours is None:
+                # The SVGs (before the PNGs are drawn, or if an atlas cannot
+                # be read): sharp at any size.
                 ours = QIcon(str(self._icons_dir / icon_file(name)))
-                ours.addFile(disabled, QSize(), QIcon.Mode.Disabled)
+                for state, mode in ICON_STATES[1:]:
+                    ours.addFile(str(state_path(self._icons_dir, name, state)), QSize(), mode)
             self._icons[name] = ours
             # Never examine our own icons again.
             self._names[ours.cacheKey()] = None
             self._ours[ours.cacheKey()] = name
         return self._icons[name]
 
-    def _pixmap(self, name, size, disabled, ratio):
-        key = (studio_icons.ICON_MAP[name], size, disabled, ratio)
+    def _pixmap(self, name, size, state, ratio):
+        """One icon cut from its atlas (None if the atlas is unreadable)."""
+        spec = studio_icons.ICON_MAP[name]
+        key = (spec, size, state, ratio)
         pixmap = self._pixmaps.get(key)
         if pixmap is None:
             width = studio_icons.screen_stroke_px(ratio)
-            pixmap = QPixmap(str(png_path(self._icons_dir, name, size, width, disabled)))
+            atlas_key = (size, width, state)
+            if atlas_key not in self._atlases:
+                atlas = QPixmap(str(atlas_path(self._icons_dir, size, width, state)))
+                self._atlases[atlas_key] = None if atlas.isNull() else atlas
+            atlas = self._atlases[atlas_key]
+            if not self._atlas_index:
+                self._atlas_index = atlas_index()
+            index = self._atlas_index.get(spec)
+            if atlas is None or index is None:
+                return None
+            pixmap = atlas.copy(atlas_cell(index, size))
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
         return pixmap
@@ -946,21 +1105,26 @@ class IconSwapper(QObject):
             owner.setItemIcon(index, icon)
 
     def _swap(self, owner, kind, index, deferred):
+        """Swap one icon slot; True when it shows (or is queued to show)
+        one of our icons."""
         if self._theme is None or sip.isdeleted(owner):
-            return
+            return False
         icon = self._get(owner, kind, index)
+        if icon.cacheKey() in self._ours:
+            return True
         new = self._replacement(icon, deferred)
         if new is self._UNKNOWN:
             self._pending.append((owner, kind, index))
-            return
+            return True
         if new is None:
-            return
+            return False
         if isinstance(owner, QAction):
             owner.setIcon(new)
             self._watch(owner)
-            return
+            return True
         self._swapped.append((owner, kind, index, icon))
         self._set(owner, kind, index, new)
+        return True
 
     def _scan(self, root, deferred):
         """Swap every icon in a widget tree; each tree is scanned once.
@@ -1134,10 +1298,16 @@ class IconSwapper(QObject):
                 self._hook_menu(action.menu())
 
     def _rows(self, widget, kind, deferred):
-        for index in range(widget.count()):
-            self._swap(widget, kind, index, deferred)
+        """Swap a list's or combo box's row icons. Rows added later are
+        watched only where a row shows one of our icons, or none is there
+        yet (filled later): data lists (fields, units, layers...) then cost
+        no Python call per row inserted."""
+        count = widget.count()
+        ours = False
+        for index in range(count):
+            ours = self._swap(widget, kind, index, deferred) or ours
         model = widget.model()
-        if id(model) in self._models:
+        if id(model) in self._models or (count and not ours):
             return
 
         def inserted(_parent, first, last, widget=widget, kind=kind):
@@ -1151,7 +1321,9 @@ class IconSwapper(QObject):
 
     def _model_items(self, model, deferred):
         """Swap the item icons of a small QStandardItemModel, and of rows
-        added to it later."""
+        added to it later (watched as in _rows)."""
+        found = [False]
+
         def walk(parent, budget):
             for row in range(model.rowCount(parent)):
                 if budget[0] <= 0:
@@ -1159,11 +1331,14 @@ class IconSwapper(QObject):
                 budget[0] -= 1
                 index = model.index(row, 0, parent)
                 if isinstance(model.data(index, self._DECORATION), QIcon):
-                    self._swap(model, "model", QPersistentModelIndex(index), deferred)
+                    if self._swap(model, "model", QPersistentModelIndex(index), deferred):
+                        found[0] = True
                 if model.hasChildren(index):
                     walk(index, budget)
 
         walk(QModelIndex(), [self.MODEL_LIMIT])
+        if model.rowCount() and not found[0]:
+            return
 
         def inserted(parent, first, last, model=model):
             if self._theme is None or sip.isdeleted(model):
@@ -1189,14 +1364,19 @@ class IconSwapper(QObject):
 
     def _watch(self, action):
         """QGIS re-sets some action icons from its cache later; swap again
-        whenever that happens."""
+        whenever that happens. `changed` also fires on every enable,
+        disable and check (on each selection or layer change, for hundreds
+        of actions), so the common case, still our icon, returns at once."""
         if action in self._watched:
             return
 
         def recheck(action=action):
             if self._theme is None or sip.isdeleted(action):
                 return
-            new = self._replacement(action.icon())
+            icon = action.icon()
+            if icon.cacheKey() in self._ours:
+                return
+            new = self._replacement(icon)
             if new is not None:
                 action.setIcon(new)
 
@@ -1207,6 +1387,7 @@ class IconSwapper(QObject):
         if self._theme is not None:
             QGuiApplication.instance().focusWindowChanged.disconnect(self._on_focus_window)
         self._theme = None
+        self._warming = False
         self._pending = []
         for obj in self._filtered:
             if not sip.isdeleted(obj):
@@ -1244,9 +1425,21 @@ class IconSwapper(QObject):
             if builtin is not None:
                 action.setIcon(builtin)
         self._watched = {}
+        # A slot is restored by the icon it shows now, not by its position:
+        # rows may have been added, removed or reordered since the swap, so
+        # the icon saved for row 3 may belong to another row by now. Each
+        # slot still showing one of our icons gets the built-in version of
+        # that very icon (the saved original when it is the same one).
         for owner, kind, index, icon in reversed(self._swapped):
-            if not sip.isdeleted(owner) and self._valid(owner, kind, index):
-                self._set(owner, kind, index, icon)
+            if sip.isdeleted(owner) or not self._valid(owner, kind, index):
+                continue
+            current = self._get(owner, kind, index)
+            name = self._ours.get(current.cacheKey())
+            if name is None:
+                continue
+            original = icon if self._names.get(icon.cacheKey()) == name else self._builtin(current)
+            if original is not None:
+                self._set(owner, kind, index, original)
         self._swapped = []
         for root in self._scanned:
             if not sip.isdeleted(root):
@@ -1287,12 +1480,12 @@ class QgisStudioThemesPlugin:
         self._connected = False
         self._active = None
         self._tokens = {}
-        self._original_palette = QPalette(QApplication.palette())
-        self._original_font = QFont(QApplication.font())
+        self._original_palette, self._original_font = self._original_look()
         self._icons = IconSwapper(
             Path(QgsApplication.userThemesFolder()) / ".studio-icon-digests.json"
         )
-        self._message_bar_items = []
+        # Message bar items styled, with the slots connected to each.
+        self._message_bar_slots = {}
         self._main_window_sheet = None
         self._prepared = None
         self._fonts_loaded = False
@@ -1307,13 +1500,45 @@ class QgisStudioThemesPlugin:
         self._worker_running = False
         self._rendering = set()
         self._relay = _Relay()
-        self._relay.pngs_ready.connect(self._icons.use_pngs)
+        self._relay.pngs_ready.connect(self._pngs_ready)
+        # Screens plugged in or out, a changed display scaling or QGIS icon
+        # size: settled for a moment, then the icons follow (see
+        # _sizes_changed). Signal connections, undone on unload.
+        self._size_timer = QTimer()
+        self._size_timer.setSingleShot(True)
+        self._size_timer.setInterval(500)
+        self._size_timer.timeout.connect(self._refresh_icon_sizes)
+        self._size_hooks = []
         self._labels = ToolbarLabels()
         self._compact = False
         self._extra_tokens = {}
         self._dock_icon_sizes = {}
         # Themes (re)built by this plugin load, i.e. new or updated.
         self._rebuilt = set()
+
+    @classmethod
+    def _original_look(cls):
+        """The palette and font to restore when leaving the Studio themes.
+        Read once per QGIS session and kept on the application object: a
+        plugin reloaded or upgraded while a Studio theme is shown would
+        otherwise take the theme's palette and font for QGIS's own and
+        keep them after switching back to another theme."""
+        app = QApplication.instance()
+        palette, font = app.property(ORIGINAL_PALETTE), app.property(ORIGINAL_FONT)
+        if isinstance(palette, QPalette) and isinstance(font, QFont):
+            return QPalette(palette), QFont(font)
+        palette, font = QPalette(QApplication.palette()), QFont(QApplication.font())
+        studio = {f"Studio {name}" for name in cls.THEMES} | set(cls.RENAMED)
+        if QgsApplication.themeName() in studio:
+            # Already themed (by a release that did not keep them): the
+            # style's own palette, and the system font unless the user
+            # chose one in QGIS.
+            palette = QApplication.style().standardPalette()
+            if not QgsSettings().contains("app/fontFamily"):
+                font.setFamily(QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family())
+        app.setProperty(ORIGINAL_PALETTE, palette)
+        app.setProperty(ORIGINAL_FONT, font)
+        return QPalette(palette), QFont(font)
 
     @staticmethod
     def theme_target(name):
@@ -1347,6 +1572,7 @@ class QgisStudioThemesPlugin:
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self.iface.layoutDesignerOpened.connect(self._label_designer)
         self._connected = True
+        self._hook_sizes()
         self._compact = self._compact_sizes()
         # The main menu is one point larger than the UI font, so it reads as
         # the top level. The size goes into the theme stylesheet (a widget
@@ -1368,6 +1594,11 @@ class QgisStudioThemesPlugin:
             "@panel_title_font_size": f"{base_size + (0 if compact else 1):g}pt",
             "@ui_font_size": f"{base_size:g}pt",
             "@menu_item_padding_x": "11px" if compact else "14px",
+            # One height for fields, combo boxes and push buttons (28 px,
+            # compact 26 px), so a row of them lines up; panel search
+            # fields are pills of that height.
+            "@control_padding_y": "3px" if compact else "4px",
+            "@search_radius": "13px" if compact else "14px",
             "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
             # Toolbar title strips (see studio_toolbars); separators keep
             # their 6 px top margin below the strip.
@@ -1470,7 +1701,14 @@ class QgisStudioThemesPlugin:
                         self._worker_running = False
                         return
                 continue
-            target(*args)
+            try:
+                target(*args)
+            except Exception as error:  # pylint: disable=broad-except
+                # One failed job must not end the worker: it would stay
+                # flagged as running and every later job would wait forever.
+                QgsMessageLog.logMessage(
+                    f"Background task failed: {error!r}", LOG_TAG, Qgis.MessageLevel.Warning
+                )
         with self._worker_lock:
             self._worker_running = False
 
@@ -1484,6 +1722,20 @@ class QgisStudioThemesPlugin:
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self.iface.layoutDesignerOpened.disconnect(self._label_designer)
             self._connected = False
+        self._size_timer.stop()
+        for signal, slot in self._size_hooks:
+            try:
+                signal.disconnect(slot)
+            except (TypeError, RuntimeError):
+                pass  # the screen is gone
+        self._size_hooks = []
+        # Message bar items keep their slots otherwise: a reloaded plugin's
+        # old instance would live on through them.
+        for item, (restyle, forget) in self._message_bar_slots.items():
+            if not sip.isdeleted(item):
+                item.styleChanged.disconnect(restyle)
+                item.destroyed.disconnect(forget)
+        self._message_bar_slots = {}
         self._deactivate()
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
@@ -1536,6 +1788,7 @@ class QgisStudioThemesPlugin:
                 self._fonts_loaded = True
             font = QFont(self._original_font)
             font.setFamily(self._tokens["@font_family"].strip("\"'"))
+            set_tabular_digits(font)
             QApplication.setFont(font)
         window = self.iface.mainWindow()
         sheet = window.styleSheet()
@@ -1619,10 +1872,9 @@ class QgisStudioThemesPlugin:
         return QgsSettings().value(LABELS_SETTING, True, type=bool)
 
     def _label_color(self):
-        """Halfway from the dimmed to the normal text colour: readable,
-        still quieter than the icons."""
-        dim, text = parse_color(self._tokens["@text_dim"]), parse_color(self._tokens["@text"])
-        r, g, b, a = (x + (y - x) / 2 for x, y in zip(dim, text))
+        """The dimmed text colour: the small capitals stay readable and
+        quieter than the icons they name."""
+        r, g, b, a = parse_color(self._tokens["@text_dim"])
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _label_rule(self):
@@ -1665,11 +1917,60 @@ class QgisStudioThemesPlugin:
         scale = studio_icons.COMPACT_SCALE if self._compact else studio_icons.SCALE
 
         def work():
-            if prerender_pngs(icons_dir, sizes, colors, scale, self._stop):
-                self._relay.pngs_ready.emit(icons_dir)
-            self._rendering.discard(icons_dir)
+            try:
+                if prerender_pngs(icons_dir, sizes, colors, scale, self._stop):
+                    self._relay.pngs_ready.emit(icons_dir)
+            finally:
+                # Also after an error, so the next request tries again.
+                self._rendering.discard(icons_dir)
 
         QTimer.singleShot(3000, lambda: self._start(work))
+
+    def _pngs_ready(self, icons_dir):
+        """A worker finished drawing PNGs: move icons over, and draw any
+        sizes asked for meanwhile (a screen plugged in during the run)."""
+        self._icons.use_pngs(icons_dir)
+        if self._active is not None:
+            name = self._studio_themes()[self._active][0]
+            if self.theme_target(name) / "icons" == icons_dir:
+                self._prerender(icons_dir)
+
+    # ---- Screens and icon sizes -------------------------------------------
+
+    def _hook_sizes(self):
+        """Follow screens plugged in or out, display scaling changes and
+        QGIS's toolbar icon size: each needs PNGs of other sizes."""
+        app = QGuiApplication.instance()
+        hooks = [(app.screenAdded, self._screen_added), (app.screenRemoved, self._sizes_changed)]
+        window = self.iface.mainWindow()
+        if window is not None:
+            hooks.append((window.iconSizeChanged, self._sizes_changed))
+        for signal, slot in hooks:
+            signal.connect(slot)
+        self._size_hooks = hooks
+        for screen in app.screens():
+            self._hook_screen(screen)
+
+    def _hook_screen(self, screen):
+        signal = screen.logicalDotsPerInchChanged
+        signal.connect(self._sizes_changed)
+        self._size_hooks.append((signal, self._sizes_changed))
+
+    def _screen_added(self, screen):
+        self._hook_screen(screen)
+        self._sizes_changed()
+
+    def _sizes_changed(self, *_args):
+        self._size_timer.start()
+
+    def _refresh_icon_sizes(self):
+        """Icons that no longer fit the screens go back to the SVGs, and the
+        missing PNGs are drawn in the background (then swapped in)."""
+        if self._active is None:
+            return
+        self._icons.refresh_sizes()
+        name = self._studio_themes()[self._active][0]
+        self._prerender(self.theme_target(name) / "icons")
 
     def _deactivate(self):
         if self._active is None and self._prepared is None:
@@ -1707,10 +2008,12 @@ class QgisStudioThemesPlugin:
         item = bar.currentItem()
         if item is None:
             return
-        if item not in self._message_bar_items:
-            self._message_bar_items.append(item)
-            item.styleChanged.connect(lambda _sheet, item=item: self._style_message_bar(item))
-            item.destroyed.connect(lambda _obj=None, item=item: self._forget_item(item))
+        if item not in self._message_bar_slots:
+            restyle = lambda _sheet, item=item: self._style_message_bar(item)  # noqa: E731
+            forget = lambda _obj=None, item=item: self._message_bar_slots.pop(item, None)  # noqa: E731
+            self._message_bar_slots[item] = (restyle, forget)
+            item.styleChanged.connect(restyle)
+            item.destroyed.connect(forget)
         level = {
             Qgis.MessageLevel.Info: "info",
             Qgis.MessageLevel.Success: "success",
@@ -1724,10 +2027,6 @@ class QgisStudioThemesPlugin:
             f" QLabel, QTextEdit {{ color: {t['@text']}; background: transparent; border: none; }}"
             " QLabel#mItemCount { font-style: italic; }"
         )
-
-    def _forget_item(self, item):
-        if item in self._message_bar_items:
-            self._message_bar_items.remove(item)
 
     @staticmethod
     def _set_color_scheme(scheme):

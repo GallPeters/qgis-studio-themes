@@ -78,6 +78,42 @@ changelog=
           - Browser and Layers panels use the same sharp, pixel-snapped icons
             as the toolbars (their lines looked heavier before); Layers groups
             get a folder icon.
+          - Faster icons: pre-rendered icons are stored in a few atlas images
+            per theme instead of thousands of small files, so QGIS reads a
+            handful of files and theme switches are quicker; theme updates
+            rewrite only the files that changed.
+          - Smoother toolbars and panels: resizing the window, dragging
+            panels and changing the selection do less work for the toolbar
+            names; the Layers, Browser and Processing panels never compute
+            icon fingerprints while drawing; actions and drop-down lists no
+            longer run plugin code on every enable, disable or row added.
+          - Icons stay sharp when a monitor is plugged in or out, the display
+            scaling changes or the QGIS icon size is changed, without a
+            restart.
+          - Selected rows (dialog page lists, Browser, Processing Toolbox)
+            show their icon in the accent colour; the selected page's accent
+            bar is straight instead of curved.
+          - Toolbar names in small capitals with a slimmer title strip; empty
+            toolbars (Database, Web, Vector without plugins) no longer show
+            a labelled empty box.
+          - Fields, drop-down lists, spin boxes and buttons share one height
+            (28 px, compact sizes 26 px), so rows of them line up; drop-down
+            arrows of buttons stay inside the button.
+          - Panel title buttons (float, close) are clearly visible instead of
+            two faint dots; panel search fields are rounded and filled.
+          - Menus, drop-down lists and tooltips are lifted off the window by
+            a firm edge and a light top edge; hovered menu rows take an
+            accent tint; digits are tabular, so changing numbers (status bar
+            coordinates, scale) no longer jitter.
+          - Fixed: after updating or reloading the plugin while a Studio theme
+            was shown, switching to another theme kept the Studio palette and
+            font.
+          - Fixed: one failed background task stopped all later theme builds
+            and icon pre-rendering until QGIS was restarted.
+          - Fixed: an icon file cut short by a crash or forced exit stayed
+            broken (blank icon) for good.
+          - Fixed: leaving a Studio theme could put icons on the wrong rows of
+            lists and drop-down lists that changed in the meantime.
 
      ** v0.9 (18.10.2026):
           - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,

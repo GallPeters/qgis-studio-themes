@@ -43,13 +43,14 @@ PROPERTY = "studioLabel"
 # buttons, so a hovered or checked button's fill keeps clear of the name.
 # Their sum is the room the buttons are pushed down by (TITLE_SPACE,
 # shared with style.qss).
-TITLE_HEIGHT = 15
+TITLE_HEIGHT = 13
 TITLE_GAP = 3
 TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
-TITLE_SIZE = 11
-# Regular weight, slightly spaced: SemiBold letters ran together,
-# especially at 150 %.
-TITLE_SPACING = 0.5
+# Small capitals: a quiet caption that never competes with the icons.
+# Regular weight, spaced by a whole pixel: SemiBold letters ran together,
+# especially at 150 %, and fractional spacing puts letters between pixels.
+TITLE_SIZE = 10
+TITLE_SPACING = 1.0
 # Room either side of a name when a toolbar is widened to fit it.
 RULE_ROOM = 6
 # Items the stylesheet pushes down itself (box model); any other widget in
@@ -106,10 +107,17 @@ SPACINGS = (LETTER_SPACING, 0)
 
 
 def title(toolbar):
-    """The name shown above a toolbar: its title without "Toolbar"."""
+    """The name shown above a toolbar: its title without "Toolbar", in
+    capitals."""
     words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
     text = " ".join(words)
-    return SHORT_TITLES.get(text, text)
+    return SHORT_TITLES.get(text, text).upper()
+
+
+def has_items(toolbar):
+    """Whether a toolbar shows anything: plugin toolbars (Database, Web,
+    Vector...) stay empty until a plugin adds a button."""
+    return any(action.isVisible() and not action.isSeparator() for action in toolbar.actions())
 
 
 def abbreviation(toolbar):
@@ -318,6 +326,13 @@ class ToolbarLabels(QObject):
         # Widgets given a top contents margin in titled toolbars, with
         # their own margins to restore: {toolbar: {widget: QMargins}}.
         self._shifted = {}
+        # Whether each toolbar shows anything (see has_items), and the
+        # visibility of its actions as last seen, by id: action changes are
+        # frequent (enabling), visibility changes rare.
+        self._filled = {}
+        self._action_visible = {}
+        # Toolbars refreshed on the next event-loop pass.
+        self._refresh_pending = set()
 
     def attach(self, window, color, rule, row_rule=None):
         """Name every toolbar of `window` (a QMainWindow): text in
@@ -393,10 +408,14 @@ class ToolbarLabels(QObject):
         self._tooltips = {}
         self._slots = {}
         self._shifted = {}
+        self._filled = {}
+        self._action_visible = {}
+        self._refresh_pending = set()
 
     def _add(self, toolbar):
         if toolbar in self._labels:
             return
+        self._filled[toolbar] = has_items(toolbar)
         label = _Label(toolbar, self._color)
         self._labels[toolbar] = label
         self._dividers[toolbar] = _Divider(toolbar, self._rule)
@@ -418,8 +437,9 @@ class ToolbarLabels(QObject):
     def _forget(self, toolbar):
         for table in (self._labels, self._dividers, self._row_lines, self._ends, self._last,
                       self._extensions, self._widgets, self._frames, self._offsets, self._min_widths,
-                      self._tooltips, self._slots, self._shifted):
+                      self._tooltips, self._slots, self._shifted, self._filled):
             table.pop(toolbar, None)
+        self._refresh_pending.discard(toolbar)
 
     def _overlays(self, toolbar):
         return (self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar),
@@ -427,11 +447,12 @@ class ToolbarLabels(QObject):
 
     # ---- Modes ------------------------------------------------------------
 
-    @staticmethod
-    def _mode(toolbar):
+    def _mode(self, toolbar):
         """"title" (docked horizontal), "handle" (docked vertical, movable)
-        or None (floating, or a fixed vertical toolbar: no handle)."""
-        if toolbar.isFloating():
+        or None (floating, empty, or a fixed vertical toolbar: no handle).
+        An empty toolbar gets no name, strip or dividers: it shrinks to a
+        sliver instead of showing a labelled empty box."""
+        if toolbar.isFloating() or not self._filled.get(toolbar, True):
             return None
         if toolbar.orientation() == Qt.Orientation.Horizontal:
             return "title"
@@ -675,21 +696,30 @@ class ToolbarLabels(QObject):
         if sip.isdeleted(window):
             return
         rows = {}
+        # Only toolbars whose part in their row changed are placed again:
+        # each toolbar placed itself already on its own move or resize.
+        changed = set()
         for toolbar, line in self._row_lines.items():
             if sip.isdeleted(toolbar) or sip.isdeleted(line) or toolbar.parentWidget() is not window:
                 continue
             if (toolbar.isVisible() and toolbar.property(PROPERTY) == "title"
                     and window.toolBarArea(toolbar) == Qt.ToolBarArea.TopToolBarArea):
                 rows.setdefault(toolbar.y(), []).append(toolbar)
-                line.show()
+                if not line.isVisible():
+                    line.show()
+                    changed.add(toolbar)
             else:
                 line.hide()
                 self._last[toolbar] = False
         for row in rows.values():
             last = max(row, key=lambda toolbar: toolbar.x())
             for toolbar in row:
-                self._last[toolbar] = toolbar is last
-                self._update(toolbar)
+                is_last = toolbar is last
+                if self._last.get(toolbar) is not is_last:
+                    self._last[toolbar] = is_last
+                    changed.add(toolbar)
+        for toolbar in changed:
+            self._update(toolbar)
 
     @staticmethod
     def _show(line, rect):
@@ -701,13 +731,14 @@ class ToolbarLabels(QObject):
     def _layout_widgets(self, toolbar):
         """A toolbar's item widgets, read in one pass over its layout
         (QToolBar.widgetForAction searches the layout for each action) and
-        kept until items are added or removed."""
+        kept until items are added or removed (the cache is dropped when a
+        child is removed, so it never holds a deleted widget)."""
         cached = self._widgets.get(toolbar)
         layout = cached[0] if cached is not None else toolbar.layout()
         if layout is None or sip.isdeleted(layout):
             return []
         count = layout.count()
-        if cached is not None and cached[1] == count and not any(sip.isdeleted(w) for w in cached[2]):
+        if cached is not None and cached[1] == count:
             return cached[2]
         widgets = []
         for index in range(count):
@@ -741,25 +772,53 @@ class ToolbarLabels(QObject):
                 child = event.child()
                 if isinstance(child, QToolBar) and child.parent() is watched:
                     self._add(child)
-        elif kind in (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved):
-            # A widget added later (a plugin's) exists once the toolbar has
-            # handled the event.
-            QTimer.singleShot(0, lambda toolbar=watched: self._refresh(toolbar))
         elif kind == QEvent.Type.LayoutRequest:
             # Qt has laid the toolbar out already (layouts see events before
             # event filters): re-centre now, before anything is painted.
             self._update(watched)
-        elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange,
-                      QEvent.Type.Move, QEvent.Type.Hide):
-            # Move: a toolbar dragged to the start of a row loses its
-            # divider, one dragged away from it gets one. Hide: a whole row
-            # may go. Resize: the last toolbar of a row may change.
+        elif kind == QEvent.Type.ActionChanged:
+            # Sent for every enable and disable; only a change of an
+            # action's visibility can empty or fill the toolbar.
+            action = event.action()
+            visible = action.isVisible()
+            if self._action_visible.get(id(action)) is not visible:
+                self._action_visible[id(action)] = visible
+                self._schedule_refresh(watched)
+        elif kind in (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved):
+            # A widget added later (a plugin's) exists once the toolbar has
+            # handled the event.
+            self._schedule_refresh(watched)
+        elif kind == QEvent.Type.ChildRemoved:
+            self._widgets.pop(watched, None)
+        elif kind == QEvent.Type.Move:
+            # Only a toolbar's divider depends on where it is (none at the
+            # start of a row); which toolbar ends a row is settled once all
+            # have moved.
+            frame, extent = self._metrics(watched)
+            self._place_divider(watched, watched.property(PROPERTY), frame, extent)
+            self._schedule_rows(watched.parentWidget())
+        elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange, QEvent.Type.Hide):
+            # Hide: a whole row may go. Resize: the last toolbar of a row
+            # may change.
             self._moved(watched)
         return False
 
+    def _schedule_refresh(self, toolbar):
+        """Refresh a toolbar once on the next event-loop pass, however many
+        of its actions changed meanwhile."""
+        if toolbar not in self._refresh_pending:
+            self._refresh_pending.add(toolbar)
+            QTimer.singleShot(0, lambda toolbar=toolbar: self._refresh(toolbar))
+
     def _refresh(self, toolbar):
+        self._refresh_pending.discard(toolbar)
         self._widgets.pop(toolbar, None)
         if toolbar in self._labels and not sip.isdeleted(toolbar):
+            filled = has_items(toolbar)
+            if filled != self._filled.get(toolbar):
+                self._filled[toolbar] = filled
+                # An emptied or filled toolbar changes its row.
+                self._schedule_rows(toolbar.parentWidget())
             if toolbar.property(PROPERTY) == "title":
                 self._shift(toolbar)
             self._update(toolbar)
