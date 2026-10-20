@@ -72,7 +72,7 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   the size of QGIS's own), while laptops keep the roomier look. It is chosen
   automatically from the screen's pixel density.
 - **Layout** – thin dividers and splitter lines, rounded controls of one
-  height, raised buttons, underlined dialog tabs and segmented panel tabs,
+  height, flat buttons, underlined dialog tabs and segmented panel tabs,
   dialog sections instead of nested boxes, soft rounded rows in the main
   panels, slim scrollbars, a visible focus ring, accent-coloured selection,
   menus lifted off the window, pill-shaped panel search fields, a quiet

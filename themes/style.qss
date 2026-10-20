@@ -455,13 +455,9 @@ QToolButton::menu-arrow:disabled {
 /* Push buttons, fields and combo boxes share one height (the padding is
  * filled in by the plugin: 28 px, compact sizes 26 px), so a row of them
  * lines up. */
-/* They stand slightly raised: a light top edge and a darker bottom edge,
- * swapped while pressed, so a click reads as a press. */
 QPushButton {
     background-color: @control_bg;
     border: 1px solid @divider_strong;
-    border-top-color: @button_top;
-    border-bottom-color: @button_bottom;
     border-radius: @radius;
     padding: @control_padding_y 14px;
     min-height: 18px;
@@ -469,13 +465,9 @@ QPushButton {
 QPushButton:hover {
     background-color: @control_hover;
     border-color: @field_border_hover;
-    border-top-color: @button_top;
-    border-bottom-color: @button_bottom;
 }
 QPushButton:pressed {
     background-color: @control_pressed;
-    border-top-color: @button_bottom;
-    border-bottom-color: @button_top;
 }
 QPushButton:checked {
     background-color: @tool_checked;
@@ -488,14 +480,12 @@ QPushButton:focus {
 QPushButton:default {
     background-color: @accent;
     border-color: @accent;
-    border-bottom-color: @accent_pressed;
     color: @on_accent;
     font-weight: 600;
 }
 QPushButton:default:hover {
     background-color: @accent_hover;
     border-color: @accent_hover;
-    border-bottom-color: @accent_pressed;
 }
 QPushButton:default:pressed {
     background-color: @accent_pressed;
@@ -653,9 +643,13 @@ QAbstractSpinBox::down-arrow:off {
     image: url(@theme_path/icons/studio/arrow-down-disabled.svg);
 }
 
+/* combobox-popup: 0 opens the list below the field (not shifted so the
+ * current item covers the field, which clipped short lists such as the
+ * labelling mode into a scroll area), drawn with the item rules below. */
 QComboBox {
     padding: @control_padding_y 8px;
     min-height: 18px;
+    combobox-popup: 0;
 }
 /* Placed on the border box, which keeps its size with the 2 px focus ring,
  * so the arrow does not move when the field takes focus. */
@@ -892,7 +886,8 @@ QScrollBar:horizontal {
     margin: 0;
 }
 /* Slim handles: 4 px at rest, 8 px and stronger while the pointer is on the
- * scrollbar or the handle is dragged. */
+ * handle or it is dragged. (Not on the whole scrollbar: Qt does not support
+ * QScrollBar:hover::handle and paints the whole bar with it instead.) */
 QScrollBar::handle {
     background-color: @scroll_handle;
     border-radius: 2px;
@@ -905,16 +900,16 @@ QScrollBar::handle:horizontal {
     min-width: 32px;
     margin: 3px 2px;
 }
-QScrollBar:hover::handle,
+QScrollBar::handle:hover,
 QScrollBar::handle:pressed {
     background-color: @scroll_handle_hover;
     border-radius: 4px;
 }
-QScrollBar:vertical:hover::handle:vertical,
+QScrollBar::handle:vertical:hover,
 QScrollBar::handle:vertical:pressed {
     margin: 2px 1px;
 }
-QScrollBar:horizontal:hover::handle:horizontal,
+QScrollBar::handle:horizontal:hover,
 QScrollBar::handle:horizontal:pressed {
     margin: 1px 2px;
 }

@@ -123,8 +123,10 @@ changelog=
               uses outline chevrons.
             - Status bar: dimmed labels and filled value fields of one
               height, their border shown on hover and focus.
-            - Push buttons stand slightly raised and press in when clicked;
-              Help in dialog button rows is a quiet text button.
+            - Help in dialog button rows is a quiet text button.
+            - Drop-down lists open below the field and show all their items
+              (short lists such as the labelling mode no longer need
+              scrolling).
             - Tabbed panels switch with a segmented control.
             - A 2 px accent focus ring that does not shift the text.
             - Slim scrollbar handles that widen on hover.
