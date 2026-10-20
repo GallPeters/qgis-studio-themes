@@ -17,7 +17,7 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.0 (20.10.2026):
+     ** v1.0 (21.10.2026):
           - Sharper icons on every screen: each icon is drawn for the exact
             pixel size it is shown at, with its lines on the pixel grid
             (solid 1-2 px lines instead of blurred ones), at normal and at
@@ -26,7 +26,9 @@ changelog=
           - Calmer badges: add and new actions show a small + in the icon's
             colour, remove-from a -, save and accept a check mark; delete
             keeps its red dot.
-          - Stronger Identify "i" and larger SQL letters.
+          - Stronger Identify "i" and larger SQL letters; New Shapefile Layer
+            shows "SHP" in the same letters, and the SpatiaLite feather is
+            simpler (one barb less, no quill through the vane).
           - Toolbar titles: each toolbar's name is shown centred above its
             buttons (Project, Map Navigation, Data Sources...), with divider
             lines between and after toolbars and a line under each row of

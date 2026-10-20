@@ -75,7 +75,7 @@ ICON_MAP = {
     "mActionAddXyzLayer.svg": "map-2+plus",
     "mActionAddVectorTileLayer.svg": "layout-grid+plus",
     "mActionAddStacLayer.svg": "stack-3+plus",
-    "mActionNewVectorLayer.svg": "file-vector+star",
+    "mActionNewVectorLayer.svg": "shp-raised+star",
     "mActionNewGeoPackageLayer.svg": "package+star",
     "mActionNewSpatiaLiteLayer.svg": "feather+star",
     "mActionCreateMemory.svg": "cpu+star",
@@ -814,6 +814,10 @@ def unique_icons():
 # - sql: the letters, 8 units tall, stretched to 11.2 (and 5 % wider) so
 #   they fill more of the button; sql-raised (with a badge) sits higher, so
 #   the "L" stays clear of the badge's cut-out.
+# - shp-raised: "SHP" for shapefiles, drawn like sql-raised.
+# - feather (SpatiaLite): Tabler's three barbs, small steps along the
+#   quill, blurred together at toolbar sizes; here without the middle one,
+#   and the quill only below the vane.
 CUSTOM_GLYPHS = {
     "info-circle": (
         '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/>'
@@ -835,6 +839,19 @@ CUSTOM_GLYPHS = {
         '<path d="M2.55 13.2A1.05 1.4 0 0 0 3.6 14.6L5.7 14.6A1.05 1.4 0 0 0 6.75 13.2L6.75 10.4'
         'A1.05 1.4 0 0 0 5.7 9L3.6 9A1.05 1.4 0 0 1 2.55 7.6L2.55 4.8A1.05 1.4 0 0 1 3.6 3.4'
         'L5.7 3.4A1.05 1.4 0 0 1 6.75 4.8"/>'
+    ),
+    "shp-raised": (
+        '<path d="M2.55 13.2A1.05 1.4 0 0 0 3.6 14.6L5.7 14.6A1.05 1.4 0 0 0 6.75 13.2L6.75 10.4'
+        'A1.05 1.4 0 0 0 5.7 9L3.6 9A1.05 1.4 0 0 1 2.55 7.6L2.55 4.8A1.05 1.4 0 0 1 3.6 3.4'
+        'L5.7 3.4A1.05 1.4 0 0 1 6.75 4.8"/>'
+        '<path d="M9.9 3.4L9.9 14.6M14.1 3.4L14.1 14.6M9.9 9L14.1 9"/>'
+        '<path d="M17.25 14.6L17.25 3.4L20.4 3.4A1.05 1.4 0 0 1 21.45 4.8L21.45 7.6'
+        'A1.05 1.4 0 0 1 20.4 9L17.25 9"/>'
+    ),
+    "feather": (
+        '<path d="M4 20l2 -2m8 -13v5h5m-13 3v5h5m-5 -5l8 -8"/>'
+        '<path d="M19 10c.638 -.636 1 -1.515 1 -2.486a3.515 3.515 0 0 0 -3.517 -3.514'
+        'c-.97 0 -1.847 .367 -2.483 1m-3 13l4 -4l4 -4"/>'
     ),
 }
 

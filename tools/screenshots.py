@@ -1,22 +1,35 @@
 """Capture screenshots of QGIS with each theme, for review and the README.
 
-Run inside QGIS (the plugin must be installed and enabled in the profile):
+Run inside QGIS (the plugin must be installed and enabled in the profile,
+and every theme built once, so its icons are pre-rendered):
 
-    STUDIO_THEMES="Studio Premium,Studio Pro Light" STUDIO_OUT=shots \
+    STUDIO_THEMES="Studio Premium Dark,Studio Pro Light" STUDIO_OUT=shots \
         qgis --nologo --noversioncheck --code tools/screenshots.py
 
-For every theme it saves the main window with a layer loaded and the
-Layer Styling, Processing and Layers panels open, the layer properties
-dialog, the attribute table and an open menu.
+For every theme it saves, named like docs/screenshots (premium-dark.png,
+premium-dark_properties.png...): the main window (1600 x 1000) with the
+countries layer drawn in the theme's colours (the canvas in the theme
+background for dark themes, white for light ones; countries in a tint of
+the accent, labelled) and the Layer Styling, Processing, Browser and Layers
+panels open; the layer properties dialog on its Symbology page (the
+Information page would show local paths); and, for review, the attribute
+table and an open menu.
 """
 import os
 import traceback
 
-from qgis.core import QgsApplication, QgsProject, QgsVectorLayer
+from qgis.core import (
+    QgsApplication, QgsFillSymbol, QgsPalLayerSettings, QgsProject, QgsTextFormat,
+    QgsVectorLayer, QgsVectorLayerSimpleLabeling,
+)
 from qgis.gui import QgsVectorLayerProperties
 from qgis.PyQt.QtCore import QPoint, QTimer
+from qgis.PyQt.QtGui import QColor, QFont
 from qgis.PyQt.QtWidgets import QApplication, QDockWidget
 from qgis.utils import iface
+
+from qgis_studio_themes.qgis_studio_themes import QgisStudioThemesPlugin, load_tokens
+from qgis_studio_themes.studio_tokens import is_dark, parse_color
 
 LAYER = os.environ.get(
     "STUDIO_LAYER",
@@ -27,19 +40,62 @@ OUT = os.environ.get("STUDIO_OUT", "screenshots")
 PANELS = ("Layers", "Browser", "LayerStyling", "ProcessingToolbox")
 
 
-def pump():
-    for _ in range(10):
+def pump(count=10):
+    for _ in range(count):
         QApplication.processEvents()
 
 
+def color(tokens, name):
+    r, g, b, _alpha = parse_color(tokens[name])
+    return QColor(r, g, b)
+
+
+def mix(a, b, t):
+    return QColor(*(round(x * (1 - t) + y * t) for x, y in zip(a.getRgb()[:3], b.getRgb()[:3])))
+
+
+def style(layer, theme):
+    """Draw `layer` and the canvas in the colours of Studio `theme`."""
+    tokens = load_tokens(QgisStudioThemesPlugin.THEMES[theme.removeprefix("Studio ")])
+    accent, text = color(tokens, "@accent"), color(tokens, "@text")
+    dark = is_dark(tokens["@bg_window"])
+    canvas = color(tokens, "@bg_window") if dark else QColor("#ffffff")
+    layer.renderer().setSymbol(QgsFillSymbol.createSimple({
+        "color": mix(canvas, accent, 0.45 if dark else 0.3).name(),
+        "outline_color": mix(canvas, accent, 0.9 if dark else 0.6).name(),
+        "outline_width": "0.2",
+    }))
+    labels = QgsPalLayerSettings()
+    labels.fieldName = "NAME"
+    text_format = QgsTextFormat()
+    text_format.setFont(QFont("Inter", 9))
+    text_format.setSize(9)
+    text_format.setColor(text)
+    labels.setFormat(text_format)
+    layer.setLabeling(QgsVectorLayerSimpleLabeling(labels))
+    layer.setLabelsEnabled(True)
+    layer.triggerRepaint()
+    iface.mapCanvas().setCanvasColor(canvas)
+    # Panels showing the symbol (Layers swatch, Layer Styling) redraw it.
+    layer.emitStyleChanged()
+    view = iface.layerTreeView()
+    view.refreshLayerSymbology(layer.id())
+    view.setCurrentLayer(None)
+    pump()
+    view.setCurrentLayer(layer)
+
+
 def capture(theme, layer):
-    tag = theme.replace(" ", "_")
+    tag = theme.removeprefix("Studio ").lower().replace(" ", "-")
     QgsApplication.setUITheme(theme)
     pump()
+    style(layer, theme)
     window = iface.mainWindow()
-    iface.mapCanvas().refreshAllLayers()
-    pump()
-    window.grab().save(os.path.join(OUT, f"{tag}_main.png"))
+    canvas = iface.mapCanvas()
+    canvas.refreshAllLayers()
+    canvas.waitWhileRendering()
+    pump(30)
+    window.grab().save(os.path.join(OUT, f"{tag}.png"))
 
     menu = window.menuBar().actions()[1].menu()
     menu.popup(window.mapToGlobal(QPoint(120, 40)))
@@ -54,11 +110,12 @@ def capture(theme, layer):
     table.grab().save(os.path.join(OUT, f"{tag}_table.png"))
     table.close()
 
-    dialog = QgsVectorLayerProperties(iface.mapCanvas(), iface.messageBar(), layer, window)
-    dialog.resize(1100, 760)
+    dialog = QgsVectorLayerProperties(canvas, iface.messageBar(), layer, window)
+    dialog.resize(1100, 720)
+    dialog.setCurrentPage("mOptsPage_Style")
     dialog.show()
     dialog.activateWindow()
-    pump()
+    pump(20)
     dialog.grab().save(os.path.join(OUT, f"{tag}_properties.png"))
     dialog.close()
     dialog.deleteLater()
@@ -68,17 +125,19 @@ def capture(theme, layer):
 def run():
     os.makedirs(OUT, exist_ok=True)
     window = iface.mainWindow()
+    window.showNormal()
     window.resize(1600, 1000)
     layer = QgsVectorLayer(LAYER, "Countries", "ogr")
     QgsProject.instance().addMapLayer(layer)
-    iface.mapCanvas().setExtent(layer.extent())
     for dock in window.findChildren(QDockWidget):
         if dock.objectName() in PANELS:
             dock.show()
-    iface.messageBar().pushInfo("Studio", "Message bar sample — info level")
+    pump()
+    iface.mapCanvas().setExtent(layer.extent())
     pump()
     for theme in THEMES or QgsApplication.applicationThemeRegistry().themes():
-        capture(theme, layer)
+        if theme.removeprefix("Studio ") in QgisStudioThemesPlugin.THEMES:
+            capture(theme, layer)
     QgsApplication.exit()
 
 
@@ -92,4 +151,4 @@ def safe_run():
         QgsApplication.exit(1)
 
 
-QTimer.singleShot(3000, safe_run)
+QTimer.singleShot(5000, safe_run)
