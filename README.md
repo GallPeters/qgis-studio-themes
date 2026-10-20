@@ -49,38 +49,18 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 
 ## Features
 
-- **Icons** – over 600 QGIS toolbar, menu, panel and dialog icons are
-  replaced with a consistent line-icon set based on
-  [Tabler Icons](https://tabler.io/icons), coloured for each theme. Small
-  marks show what an action does: + add or new, - remove from, a check
-  mark for save, a red dot for delete.
-- **Sharp on every screen** – icons are pre-rendered for the exact pixel
-  size each screen draws them at (100%, 125%, 150%... scaling), with their
-  lines snapped to the pixel grid, so they stay crisp instead of blurring
-  on large monitors. Arrows, check marks and other widget glyphs are drawn
-  at their exact size. Plugging in another monitor or changing the display
-  scaling keeps them sharp. Selected rows show their icon in the colour
-  of their text.
-- **Toolbar titles** – each toolbar's name sits centred above its buttons
-  in small capitals, with a divider between toolbars and a line under each
-  row of toolbars (vertical toolbars show a short name on their handle).
-  Empty toolbars collapse instead of showing a labelled empty box.
-- **Typography** – the bundled Inter typeface is used unless a custom font
-  is set in QGIS options. The configured font size is always kept.
-- **Sizes for every screen** – on large, low-density desktop monitors the
-  plugin picks compact sizes (smaller menu and panel icons, toolbar icons
-  the size of QGIS's own), while laptops keep the roomier look. It is chosen
-  automatically from the screen's pixel density.
-- **Layout** – thin dividers and splitter lines, rounded controls of one
-  height, flat buttons, underlined dialog tabs and segmented panel tabs,
-  dialog sections instead of nested boxes, soft rounded rows in the main
-  panels, slim scrollbars, a visible focus ring, accent-coloured selection,
-  menus lifted off the window, pill-shaped panel search fields, a quiet
-  status bar and a message bar that follows the theme.
-- **Performance** – base colours are set through the Qt palette rather than
-  broad stylesheet rules, icons are loaded from a few pre-rendered atlas
-  images, and the panels and toolbars do no heavy work while drawing or
-  resizing, which keeps dialogs, panels and window resizing fast.
+- **Modern icons** – over 600 QGIS icons replaced with a consistent line-icon
+  set based on [Tabler Icons](https://tabler.io/icons), coloured per theme.
+- **Sharp at any scaling** – icons are pre-rendered for each screen's exact
+  pixel size and stay crisp when monitors or scaling change.
+- **Toolbar titles** – each toolbar is named above its buttons; empty
+  toolbars collapse.
+- **Clean layout** – controls of one height, flat buttons, rounded panel
+  rows, slim scrollbars, a clear focus ring and themed code editors.
+- **Typography and sizing** – the bundled Inter typeface, with compact sizes
+  chosen automatically on large, low-density monitors.
+- **Fast** – colours come from the Qt palette and icons from a few atlas
+  images, so dialogs, panels and theme switching stay quick.
 
 ## Contributing
 

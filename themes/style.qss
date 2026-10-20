@@ -1252,6 +1252,12 @@ QgsDevToolsPanelWidget QListWidget#mOptionsListWidget::item {
 }
 
 /* ---- Plugin manager list ------------------------------------------------ */
+/* QGIS draws the rows itself (checkbox at the row's very edge, no item
+ * padding, native checkboxes): room around them on the list instead, so
+ * the checkboxes keep clear of its border. */
+QListView#vwPlugins {
+    padding: 4px 0 4px 8px;
+}
 QListView#vwPlugins::item {
     padding: 6px 8px;
     border-bottom: 1px solid @divider;

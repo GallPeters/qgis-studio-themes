@@ -35,7 +35,7 @@ changelog=
             toolbars like the one under the menu bar, as sharp as the rest of
             the UI text; a toolbar wider than its buttons has them centred;
             vertical toolbars show a three-letter name on their handle, in
-            the same small capitals, centred on their buttons.
+            the same small capitals, centred over their icons.
           - Fixed distorted icons (Processing History, rotate, refresh, world,
             settings and others drawn with partial circles) and lines cut off
             at the icon edge.
@@ -95,7 +95,8 @@ changelog=
             Processing Toolbox) show their icon in the selected text's colour
             (white in the dark themes), like checked tool buttons; the
             selected page's accent bar is straight instead of curved.
-          - Toolbar names in small capitals with a slimmer title strip; empty
+          - Toolbar names in semibold small capitals (easier to read) with a
+            slimmer title strip; empty
             toolbars (Database, Web, Vector without plugins) no longer show
             a labelled empty box: they shrink to a sliver, even where the
             saved window layout had made them wide, and the line under the
@@ -129,6 +130,7 @@ changelog=
             - Status bar: dimmed labels and filled value fields of one
               height, their border shown on hover and focus.
             - Help in dialog button rows is a quiet text button.
+            - Plugins dialog: the checkboxes keep clear of the list's border.
             - Drop-down lists open below the field and show all their items
               (short lists such as the labelling mode no longer need
               scrolling).

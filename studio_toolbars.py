@@ -47,8 +47,10 @@ TITLE_HEIGHT = 13
 TITLE_GAP = 3
 TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
 # Small capitals: a quiet caption that never competes with the icons.
-# Regular weight, spaced by a whole pixel: SemiBold letters ran together,
-# especially at 150 %, and fractional spacing puts letters between pixels.
+# A little heavier than the UI text so it reads at 10 px (Segoe UI has no
+# medium face: its SemiBold; Inter, the fallback, Medium), spaced by a
+# whole pixel so the letters stay apart (fractional spacing puts letters
+# between pixels).
 TITLE_SIZE = 10
 TITLE_SPACING = 1.0
 # Room either side of a name when a toolbar is widened to fit it.
@@ -149,7 +151,8 @@ def title_font():
 @functools.lru_cache(maxsize=4)
 def _title_font(_app_font):
     # Keyed by the application font, which the themes change.
-    return _font(TITLE_SIZE, QFont.Weight.Normal, TITLE_SPACING)
+    weight = QFont.Weight.DemiBold if _face() else QFont.Weight.Medium
+    return _font(TITLE_SIZE, weight, TITLE_SPACING)
 
 
 @functools.lru_cache(maxsize=256)
@@ -544,11 +547,9 @@ class ToolbarLabels(QObject):
                 rect.setRight(min(rect.right(), left + width - 1))
         else:
             rect = QRect(frame, frame, toolbar.width() - 2 * frame, extent)
-            # Centred on the column of buttons (the toolbar can be a few
-            # pixels wider on one side), like a title on its buttons.
-            span = self._items_span(toolbar)
-            if span is not None:
-                centre = (span[0] + span[1] + 1) / 2
+            # Centred on the column of icons, like a title on its buttons.
+            centre = self._icon_column_centre(toolbar)
+            if centre is not None:
                 half = min(centre - rect.left(), rect.right() + 1 - centre)
                 if half > 0:
                     rect = QRect(round(centre - half), rect.top(), round(2 * half), rect.height())
@@ -761,6 +762,17 @@ class ToolbarLabels(QObject):
         if extension is not None and not sip.isdeleted(extension) and extension.isVisible():
             widgets.append(extension)
         return widgets
+
+    def _icon_column_centre(self, toolbar):
+        """Horizontal centre of a vertical toolbar's icons, or None before
+        it is laid out. Buttons with a drop-down arrow are wider, on their
+        right, so only the narrowest buttons (icon only) count."""
+        widgets = [w for w in self._layout_widgets(toolbar) if w.isVisible() and w.width() > 0]
+        if not widgets:
+            return None
+        narrowest = min(w.width() for w in widgets)
+        column = [w for w in widgets if w.width() == narrowest]
+        return sum(w.x() + w.width() / 2 for w in column) / len(column)
 
     def _items_span(self, toolbar):
         """(left, right) of a toolbar's visible items (and its overflow
