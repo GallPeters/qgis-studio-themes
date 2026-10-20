@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
-from qgis.gui import QgsFilterLineEdit
+from qgis.gui import QgsCollapsibleGroupBoxBasic, QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QBuffer, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
@@ -560,6 +560,9 @@ class IconSwapper(QObject):
         # turned on, Processing re-enabled...).
         self._bars = set()
         self._delegates = {}
+        # Collapsible group boxes whose collapse button is swapped again on
+        # every open and close (see _hook_collapse).
+        self._collapsibles = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the active theme's PNGs are
@@ -746,7 +749,7 @@ class IconSwapper(QObject):
         self._docks = {id(obj) for obj in self._filtered if isinstance(obj, QDockWidget)}
         self._bars = {id(obj) for obj in self._filtered if isinstance(obj, (QToolBar, QMenuBar))}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
-        for table in (self._stacks, self._menus, self._models, self._delegates):
+        for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1188,6 +1191,8 @@ class IconSwapper(QObject):
                 self._swap(action, None, None, deferred)
             else:
                 self._swap(widget, None, None, deferred)
+                # A collapsible group box's collapse button is a tool button.
+                self._hook_collapse(widget)
             # Drop-down choices (align, distribute, export...): actions added
             # to the button itself, or a menu outside the scanned tree.
             for extra in widget.actions():
@@ -1256,6 +1261,34 @@ class IconSwapper(QObject):
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
+
+    def _hook_collapse(self, button):
+        """The collapse button of a collapsible group box: QGIS keeps its
+        own expand and collapse icons and sets one of them on every open
+        and close, which would bring the built-in arrow back. Swap the
+        button again after each change (once QGIS has set its icon)."""
+        box = button.parentWidget()
+        if box is None or id(box) in self._collapsibles or not box.inherits("QgsCollapsibleGroupBoxBasic"):
+            return
+        if not hasattr(box, "collapsedStateChanged"):
+            # Group boxes from .ui files reach Python as plain QGroupBox.
+            try:
+                box = sip.cast(box, QgsCollapsibleGroupBoxBasic)
+            except (TypeError, RuntimeError):
+                return
+
+        def reswap(_collapsed=None, button=button):
+            if self._theme is None or sip.isdeleted(button):
+                return
+            new = self._replacement(button.icon())
+            if new is not None:
+                button.setIcon(new)
+
+        def changed(_collapsed=None):
+            QTimer.singleShot(0, reswap)
+
+        box.collapsedStateChanged.connect(changed)
+        self._collapsibles[id(box)] = (box, changed)
 
     HELP_ROLE = "studioRole"
 
@@ -1433,6 +1466,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(model):
                 model.rowsInserted.disconnect(inserted)
         self._models = {}
+        for box, changed in self._collapsibles.values():
+            if not sip.isdeleted(box):
+                box.collapsedStateChanged.disconnect(changed)
+        self._collapsibles = {}
         for action, recheck in self._watched.items():
             if sip.isdeleted(action):
                 continue

@@ -111,8 +111,11 @@ changelog=
             was shown, switching to another theme kept the Studio palette and
             font.
           - Visual polish (side build):
-            - Layers, Browser and Processing rows are soft rounded pills
-              with a hover; the selected row has a straight accent bar.
+            - Layers, Browser and Processing rows are soft rounded pills;
+              hover and selection run the whole row, expand arrows
+              included.
+            - Collapsible sections in dialogs keep the modern arrows after
+              they are opened or closed.
             - A thin line in the splitters between panels and the map.
             - Group boxes in dialogs are sections (title above a hairline)
               instead of nested rounded boxes.

@@ -235,39 +235,50 @@ QToolBar::handle {
  * filled in by the plugin, empty with compact sizes (low-density screens),
  * where they keep QGIS's own size. */
 @panel_icon_rules
-/* The main panels share one rhythm: roomy rows (the 1 px margin and padding
- * add up to QGIS's 2 px padding before), drawn as soft pills set in from
- * the panel's right edge, with a hover and, on the selected row, the
- * straight accent bar of the dialog page lists (square left corners: a
- * radius there bends the bar). Padding (not a fixed height) keeps taller
- * legend entries in the Layers panel intact. Every row reserves the bar's
- * width, so text does not move when selected. */
+/* The main panels share one rhythm: roomy rows (padding, not a fixed
+ * height, keeps taller legend entries in the Layers panel intact), drawn
+ * as soft pills that end short of the panel's right edge. Hover and
+ * selection run the full row: the branch column (expand arrows and
+ * indentation) on the left takes the same colour, so the highlight has no
+ * gap, and the row's left corners stay square where they meet it. */
+QgsBrowserTreeView,
+QgsLayerTreeView,
+QgsProcessingToolboxTreeView {
+    show-decoration-selected: 1;
+}
 QgsBrowserTreeView::item,
 QgsLayerTreeView::item,
 QgsProcessingToolboxTreeView::item {
-    padding-top: 1px;
-    padding-bottom: 1px;
-    margin: 1px 6px 1px 0;
-    border-left: 3px solid transparent;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-right: 6px;
     border-radius: @radius;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }
 QgsBrowserTreeView::item:hover,
 QgsLayerTreeView::item:hover,
-QgsProcessingToolboxTreeView::item:hover {
+QgsProcessingToolboxTreeView::item:hover,
+QgsBrowserTreeView::branch:hover,
+QgsLayerTreeView::branch:hover,
+QgsProcessingToolboxTreeView::branch:hover {
     background-color: @panel_row_hover;
 }
 QgsBrowserTreeView::item:selected,
 QgsLayerTreeView::item:selected,
-QgsProcessingToolboxTreeView::item:selected {
+QgsProcessingToolboxTreeView::item:selected,
+QgsBrowserTreeView::branch:selected,
+QgsLayerTreeView::branch:selected,
+QgsProcessingToolboxTreeView::branch:selected {
     background-color: @row_selected;
-    border-left-color: @accent;
     color: @text_bright;
 }
 QgsBrowserTreeView::item:selected:!active,
 QgsLayerTreeView::item:selected:!active,
-QgsProcessingToolboxTreeView::item:selected:!active {
+QgsProcessingToolboxTreeView::item:selected:!active,
+QgsBrowserTreeView::branch:selected:!active,
+QgsLayerTreeView::branch:selected:!active,
+QgsProcessingToolboxTreeView::branch:selected:!active {
     background-color: @row_selected_inactive;
     color: @text;
 }
