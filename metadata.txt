@@ -95,7 +95,9 @@ changelog=
             bar is straight instead of curved.
           - Toolbar names in small capitals with a slimmer title strip; empty
             toolbars (Database, Web, Vector without plugins) no longer show
-            a labelled empty box.
+            a labelled empty box: they shrink to a sliver, even where the
+            saved window layout had made them wide, and the line under the
+            row runs on beneath them.
           - Fields, drop-down lists, spin boxes and buttons share one height
             (28 px, compact sizes 26 px), so rows of them line up; drop-down
             arrows of buttons stay inside the button.

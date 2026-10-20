@@ -333,6 +333,8 @@ class ToolbarLabels(QObject):
         self._action_visible = {}
         # Toolbars refreshed on the next event-loop pass.
         self._refresh_pending = set()
+        # Empty toolbars already shrunk to their own size (_collapse_empty).
+        self._collapsed = set()
 
     def attach(self, window, color, rule, row_rule=None):
         """Name every toolbar of `window` (a QMainWindow): text in
@@ -411,6 +413,7 @@ class ToolbarLabels(QObject):
         self._filled = {}
         self._action_visible = {}
         self._refresh_pending = set()
+        self._collapsed = set()
 
     def _add(self, toolbar):
         if toolbar in self._labels:
@@ -440,6 +443,7 @@ class ToolbarLabels(QObject):
                       self._tooltips, self._slots, self._shifted, self._filled):
             table.pop(toolbar, None)
         self._refresh_pending.discard(toolbar)
+        self._collapsed.discard(toolbar)
 
     def _overlays(self, toolbar):
         return (self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar),
@@ -702,7 +706,9 @@ class ToolbarLabels(QObject):
         for toolbar, line in self._row_lines.items():
             if sip.isdeleted(toolbar) or sip.isdeleted(line) or toolbar.parentWidget() is not window:
                 continue
-            if (toolbar.isVisible() and toolbar.property(PROPERTY) == "title"
+            # Empty toolbars stay in their row: the line under it runs on
+            # beneath them, never broken by a gap.
+            if (toolbar.isVisible() and (toolbar.property(PROPERTY) == "title" or self._empty_docked(toolbar))
                     and window.toolBarArea(toolbar) == Qt.ToolBarArea.TopToolBarArea):
                 rows.setdefault(toolbar.y(), []).append(toolbar)
                 if not line.isVisible():
@@ -712,14 +718,41 @@ class ToolbarLabels(QObject):
                 line.hide()
                 self._last[toolbar] = False
         for row in rows.values():
-            last = max(row, key=lambda toolbar: toolbar.x())
+            # The row is closed after its last named toolbar (an empty one
+            # after it shows nothing to close).
+            titled = [toolbar for toolbar in row if toolbar.property(PROPERTY) == "title"]
+            last = max(titled, key=lambda toolbar: toolbar.x()) if titled else None
             for toolbar in row:
                 is_last = toolbar is last
                 if self._last.get(toolbar) is not is_last:
                     self._last[toolbar] = is_last
                     changed.add(toolbar)
+            self._collapse_empty(window, row)
         for toolbar in changed:
             self._update(toolbar)
+
+    def _empty_docked(self, toolbar):
+        """An empty toolbar docked in a horizontal row (see _mode)."""
+        return (not self._filled.get(toolbar, True) and not toolbar.isFloating()
+                and toolbar.orientation() == Qt.Orientation.Horizontal)
+
+    def _collapse_empty(self, window, row):
+        """Shrink empty toolbars to their own small size. QMainWindow keeps
+        the width a toolbar was once dragged to (saved with the window
+        layout), so an empty one can hold a wide blank gap between its
+        neighbours. Inserting it again at the same place drops that width;
+        the room goes to the row's last toolbar, which reaches the window's
+        edge anyway. Once per toolbar and session."""
+        for toolbar in row:
+            if (self._filled.get(toolbar, True) or toolbar in self._collapsed
+                    or toolbar.width() <= toolbar.sizeHint().width() + 1):
+                continue
+            after = [other for other in row if other.x() > toolbar.x()]
+            if not after:
+                continue
+            self._collapsed.add(toolbar)
+            window.insertToolBar(min(after, key=lambda other: other.x()), toolbar)
+            toolbar.show()
 
     @staticmethod
     def _show(line, rect):
