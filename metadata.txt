@@ -110,7 +110,7 @@ changelog=
           - Fixed: after updating or reloading the plugin while a Studio theme
             was shown, switching to another theme kept the Studio palette and
             font.
-          - Visual polish (side build):
+          - Visual polish:
             - Layers, Browser and Processing rows are soft rounded pills;
               hover and selection run the whole row, expand arrows
               included.
