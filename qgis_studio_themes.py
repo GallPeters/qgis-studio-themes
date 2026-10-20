@@ -31,12 +31,12 @@ from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
-    QStyleOptionViewItem, QTabBar, QToolBar, QToolButton,
+    QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QWidget,
 )
 
 from . import studio_icons
 from .studio_toolbars import TITLE_SPACE, ToolbarLabels
-from .studio_tokens import is_dark, parse_color, parse_tokens, render, resolve_tokens
+from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
 PLUGIN_DIR = Path(__file__).parent
 THEMES_DIR = PLUGIN_DIR / "themes"
@@ -47,7 +47,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "21"
+BUILD_FORMAT = "22"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -84,6 +84,9 @@ DEFAULT_THEME_RULES = re.compile(
     r"[^{}]*(?:mOptionsListWidget|mOptionsListFrame|mOptionsTreeView)[^{}]*\{[^{}]*\}"
     r"|\s*QTableView\s*\{[^{}]*\}"
 )
+# The text colour QGIS writes into the status bar message's own stylesheet
+# (not the background-color before it).
+STATUS_TEXT_COLOR = re.compile(r"(?<![-\w])color:\s*[^;}]+")
 
 
 def shared_sources():
@@ -366,6 +369,8 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
         for file_name in files:
             if Path(root, file_name) not in written:
                 Path(root, file_name).unlink(missing_ok=True)
+    # Code editor colours (QGIS reads them from the theme folder).
+    write_if_changed(target / "qscintilla.ini", code_editor_ini(tokens), set())
     (target / FULL_STYLE).write_text(style, encoding="utf-8")
     if active:
         shutil.copyfile(target / FULL_STYLE, target / "style.qss")
@@ -1141,12 +1146,22 @@ class IconSwapper(QObject):
         if len(self._scanned) + len(self._swapped) >= self._compact_at:
             self._compact()
         self._mark(root)
-        widgets = root.findChildren(self.ICON_TYPES)
-        if isinstance(root, self.ICON_TYPES):
+        # All widgets, filtered here: faster than findChildren() with a
+        # tuple of types, which PyQt matches type by type. The full list
+        # stays referenced during the scan: its Python wrappers make the
+        # parent walks below cheap, and keep every id() in them unique.
+        types = self.ICON_TYPES
+        everything = root.findChildren(QWidget)
+        widgets = [widget for widget in everything if isinstance(widget, types)]
+        if isinstance(root, types):
             widgets.insert(0, root)
-        skipped = set()
+        # Widgets on a skipped page (a stacked widget's other pages) are
+        # found by walking up their parents, each answer remembered (id ->
+        # skipped?), instead of listing each page's widgets again: most of
+        # a large dialog's widgets are on its hidden pages.
+        hidden = {id(root): False}
         for widget in widgets:
-            if widget in skipped:
+            if len(hidden) > 1 and self._on_skipped_page(widget, hidden):
                 continue
             self._visit(widget, deferred)
             if isinstance(widget, QStackedWidget):
@@ -1157,8 +1172,23 @@ class IconSwapper(QObject):
                     if page is current and page.property(self.PROPERTY) != self._theme:
                         self._mark(page)
                     else:
-                        skipped.add(page)
-                        skipped.update(page.findChildren(self.ICON_TYPES))
+                        hidden[id(page)] = True
+        del everything
+
+    @staticmethod
+    def _on_skipped_page(widget, hidden):
+        chain = []
+        answer = False
+        while widget is not None:
+            known = hidden.get(id(widget))
+            if known is not None:
+                answer = known
+                break
+            chain.append(id(widget))
+            widget = widget.parentWidget()
+        for key in chain:
+            hidden[key] = answer
+        return answer
 
     def _mark(self, widget):
         widget.setProperty(self.PROPERTY, self._theme)
@@ -1598,6 +1628,19 @@ class QgisStudioThemesPlugin:
         return Path(QgsApplication.userThemesFolder()) / f"Studio {name}"
 
     def initGui(self):
+        try:
+            self._init_gui()
+        except Exception:
+            # QGIS drops a plugin whose initGui fails (e.g. a read-only or
+            # locked profile folder) without calling unload(): undo the
+            # hooks, palette and font already installed, then report it.
+            try:
+                self.unload()
+            except Exception:  # pylint: disable=broad-except
+                pass
+            raise
+
+    def _init_gui(self):
         # QGIS applies the configured theme as soon as it is registered.
         # Install palette and font first so that single stylesheet pass
         # already sees them (no second, full repolish at startup).
@@ -1769,8 +1812,11 @@ class QgisStudioThemesPlugin:
 
     def unload(self):
         self._stop.set()
+        # A theme build does not stop half way (its files must stay
+        # consistent); the worker is a daemon thread, so do not freeze
+        # QGIS waiting for it.
         for thread in self._threads:
-            thread.join()
+            thread.join(timeout=2)
         self._threads = []
         if self._connected:
             QgsApplication.instance().themeChanged.disconnect(self._sync)
@@ -1791,7 +1837,13 @@ class QgisStudioThemesPlugin:
                 item.styleChanged.disconnect(restyle)
                 item.destroyed.disconnect(forget)
         self._message_bar_slots = {}
+        studio_shown = self._active is not None
         self._deactivate()
+        if studio_shown:
+            # Disabled or uninstalled while a Studio theme is shown: its
+            # stylesheet would stay on top of QGIS's own palette until a
+            # restart. (An upgraded or reloaded plugin applies it again.)
+            QApplication.instance().setStyleSheet("")
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
 
@@ -1834,7 +1886,7 @@ class QgisStudioThemesPlugin:
         name, folder = self._studio_themes()[theme]
         self._tokens = load_tokens(folder)
         dark = is_dark(self._tokens["@bg_window"])
-        self._set_color_scheme(Qt.ColorScheme.Dark if dark else Qt.ColorScheme.Light)
+        self._set_color_scheme("Dark" if dark else "Light")
         QApplication.setPalette(make_palette(self._tokens))
         if not QgsSettings().contains("app/fontFamily"):
             if not self._fonts_loaded:
@@ -1865,21 +1917,25 @@ class QgisStudioThemesPlugin:
         if not self._build(studio[theme][0]):
             self._deactivate()
             return
-        if self._prepared != theme:
+        app = QApplication.instance()
+        if self._prepared != theme or not app.styleSheet():
             # Switched at runtime: QGIS has just applied the near-empty
             # placeholder, which already dropped the palette copies Qt kept
             # on widgets styled under the previous theme. The palette goes
             # in before the real stylesheet, so every widget is polished
-            # once, with the right colours.
-            self._prepare(theme)
+            # once, with the right colours. (No stylesheet at all: the
+            # plugin was reloaded or upgraded, and its unload removed it.)
+            if self._prepared != theme:
+                self._prepare(theme)
             full = self.theme_target(studio[theme][0]) / FULL_STYLE
-            QApplication.instance().setStyleSheet(full.read_text(encoding="utf-8"))
+            app.setStyleSheet(full.read_text(encoding="utf-8"))
             self._select_style(theme)
         self._active = theme
         name = studio[theme][0]
         icons_dir = self.theme_target(name) / "icons"
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
         self._style_message_bar()
+        QTimer.singleShot(0, self._recolor_status_message)
         self._apply_labels()
         # After QGIS's own startup sizing, which would undo it.
         QTimer.singleShot(0, self._size_dock_toolbars)
@@ -2040,7 +2096,7 @@ class QgisStudioThemesPlugin:
         self._icons.restore()
         QApplication.setPalette(self._original_palette)
         QApplication.setFont(self._original_font)
-        self._set_color_scheme(Qt.ColorScheme.Unknown)
+        self._set_color_scheme("Unknown")
         if self._main_window_sheet is not None:
             self.iface.mainWindow().setStyleSheet(self._main_window_sheet)
             self._main_window_sheet = None
@@ -2048,6 +2104,27 @@ class QgisStudioThemesPlugin:
         item = bar.currentItem()
         if item is not None and hasattr(item, "getStyleSheet"):
             bar.setStyleSheet(item.getStyleSheet())
+        QTimer.singleShot(0, self._recolor_status_message)
+
+    def _recolor_status_message(self):
+        """QGIS writes the palette's text colour into the status bar
+        message's own stylesheet when the palette changes, but reads it
+        before a theme switch has set the new palette: the message kept the
+        previous theme's colour (light grey, invisible on a light theme
+        after a dark one, and on QGIS's own theme after a Studio one)."""
+        window = self.iface.mainWindow()
+        bar = window.statusBar() if window is not None else None
+        if bar is None:
+            return
+        color = QApplication.palette().color(QPalette.ColorRole.WindowText).name()
+        for widget in bar.findChildren(QLineEdit):
+            parent = widget.parentWidget()
+            if parent is None or not parent.inherits("QgsStatusBar"):
+                continue
+            sheet = widget.styleSheet()
+            recolored = STATUS_TEXT_COLOR.sub(f"color: {color}", sheet)
+            if recolored != sheet:
+                widget.setStyleSheet(recolored)
 
     # ---- Message bar ------------------------------------------------------
 
@@ -2084,7 +2161,11 @@ class QgisStudioThemesPlugin:
         )
 
     @staticmethod
-    def _set_color_scheme(scheme):
+    def _set_color_scheme(name):
+        """Dark, Light or Unknown (follow the desktop). Qt.ColorScheme
+        exists from Qt 6.5 and setColorScheme from 6.8; older Qt builds
+        keep the desktop's scheme."""
         hints = QGuiApplication.styleHints()
-        if hasattr(hints, "setColorScheme"):  # requires Qt >= 6.8
+        scheme = getattr(getattr(Qt, "ColorScheme", None), name, None)
+        if scheme is not None and hasattr(hints, "setColorScheme"):
             hints.setColorScheme(scheme)

@@ -282,9 +282,10 @@ QgsProcessingToolboxTreeView::branch:selected:!active {
     background-color: @row_selected_inactive;
     color: @text;
 }
-/* Expand arrows of the main panels and the symbol layer tree as outline
- * chevrons, like every other arrow. Only these trees: their rows already go
- * through the stylesheet (the rules above; the symbol tree is small), while
+/* Expand arrows of the main panels, the symbol layer tree and the expression
+ * builder's function tree as outline chevrons, like every other arrow. Only
+ * these trees: their rows already go through the stylesheet (the rules
+ * above and below; the other two trees are small), while
  * a ::branch rule on every tree would send all of QGIS's lists through Qt's
  * slower stylesheet drawing. */
 QgsBrowserTreeView::branch:has-children:!has-siblings:closed,
@@ -294,7 +295,9 @@ QgsLayerTreeView::branch:closed:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:has-children:!has-siblings:closed,
 QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings,
 QTreeView#layersTree::branch:has-children:!has-siblings:closed,
-QTreeView#layersTree::branch:closed:has-children:has-siblings {
+QTreeView#layersTree::branch:closed:has-children:has-siblings,
+QgsExpressionTreeView::branch:has-children:!has-siblings:closed,
+QgsExpressionTreeView::branch:closed:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-closed.svg);
 }
@@ -305,9 +308,16 @@ QgsLayerTreeView::branch:open:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:open:has-children:!has-siblings,
 QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings,
 QTreeView#layersTree::branch:open:has-children:!has-siblings,
-QTreeView#layersTree::branch:open:has-children:has-siblings {
+QTreeView#layersTree::branch:open:has-children:has-siblings,
+QgsExpressionTreeView::branch:open:has-children:!has-siblings,
+QgsExpressionTreeView::branch:open:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-open.svg);
+}
+/* Expression builder: QGIS paints its group rows (Aggregates, Arrays...)
+ * with a fixed grey block; the rows read as headers by their arrows. */
+QgsExpressionTreeView::item {
+    background: transparent;
 }
 /* Checkboxes in these trees (layer and legend visibility, symbol layers)
  * match the dialog checkboxes instead of the native tick. */
@@ -608,6 +618,25 @@ QLineEdit:read-only {
 
 QAbstractSpinBox {
     padding-right: 20px;
+}
+/* The text field inside spin boxes and editable combo boxes: plain text.
+ * The field rules above would give it its own padding, minimum height and
+ * border, making it taller than the box, so its text sat low. */
+QAbstractSpinBox > QLineEdit,
+QAbstractSpinBox > QLineEdit:hover,
+QAbstractSpinBox > QLineEdit:focus,
+QAbstractSpinBox > QLineEdit:disabled,
+QAbstractSpinBox > QLineEdit:read-only,
+QComboBox > QLineEdit,
+QComboBox > QLineEdit:hover,
+QComboBox > QLineEdit:focus,
+QComboBox > QLineEdit:disabled,
+QComboBox > QLineEdit:read-only {
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
 }
 QAbstractSpinBox::up-button,
 QAbstractSpinBox::down-button {

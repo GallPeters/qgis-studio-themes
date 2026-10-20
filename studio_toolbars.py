@@ -299,6 +299,7 @@ class ToolbarLabels(QObject):
         self._rule = QColor()
         self._row_rule = QColor()
         self._windows = []
+        self._window_slots = {}
         self._labels = {}
         self._dividers = {}
         self._row_lines = {}
@@ -347,12 +348,16 @@ class ToolbarLabels(QObject):
             self._windows.append(window)
             window.installEventFilter(self)
             # Layout designers close: forget them, not loop over them.
-            window.destroyed.connect(lambda _obj=None, window=window: self._drop_window(window))
+            # Disconnected on detach, or each theme switch would add one.
+            slot = lambda _obj=None, window=window: self._drop_window(window)  # noqa: E731
+            window.destroyed.connect(slot)
+            self._window_slots[id(window)] = (window, slot)
         for toolbar in window.findChildren(QToolBar):
             if toolbar.parent() is window:
                 self._add(toolbar)
 
     def _drop_window(self, window):
+        self._window_slots.pop(id(window), None)
         if window in self._windows:
             self._windows.remove(window)
         self._rows_pending.discard(window)
@@ -377,7 +382,13 @@ class ToolbarLabels(QObject):
         for window in self._windows:
             if not sip.isdeleted(window):
                 window.removeEventFilter(self)
+        for window, slot in self._window_slots.values():
+            try:
+                window.destroyed.disconnect(slot)
+            except (TypeError, RuntimeError):
+                pass  # already gone
         self._windows = []
+        self._window_slots = {}
         for toolbar, label in list(self._labels.items()):
             if sip.isdeleted(toolbar):
                 continue

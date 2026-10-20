@@ -109,3 +109,81 @@ def is_dark(color):
     """Relative luminance test used to pick the Qt colour scheme."""
     r, g, b, _ = parse_color(color)
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5
+
+
+# Syntax colours that are not theme colours, per mode: on a dark editor
+# light tints, on a light one darker shades that keep their contrast.
+SYNTAX = {
+    True: {"class": "#82aaff", "string": "#e5c07b", "number": "#c99cf0", "error": "#ff7070"},
+    False: {"class": "#2a5db0", "string": "#94600b", "number": "#8a3fb8", "error": "#c62828"},
+}
+
+
+def code_editor_ini(tokens):
+    """QGIS's code editors (expressions, Python console, SQL...) take
+    their colours from qscintilla.ini in the theme folder; without one they
+    stay white even in a dark theme. Built from the theme's colours: its
+    base background and text, the accent for keywords and selection."""
+
+    def color(name):
+        return parse_color(tokens[name])
+
+    def mix(first, second, amount):
+        return format_color(tuple(a + (b - a) * amount for a, b in zip(first, second)))
+
+    background, text, accent = color("@bg_base"), color("@text"), color("@accent")
+    dark = is_dark(tokens["@bg_base"])
+    syntax = SYNTAX[dark]
+    black = (0, 0, 0, 1.0)
+    paper = format_color(background)
+    default = format_color(text)
+    keyword = mix(accent, text, 0.3) if dark else mix(accent, black, 0.25)
+    # Quieter than code, still readable (about 4.5:1 or more).
+    comment = mix(background, text, 0.5 if dark else 0.66)
+    operator = format_color(color("@text_dim"))
+    general = {
+        "cursorColor": default,
+        "caretLineColor": mix(background, text, 0.06),
+        "marginBackgroundColor": format_color(color("@bg_window")),
+        "marginForegroundColor": format_color(color("@text_disabled")),
+        "selectionBackgroundColor": mix(background, accent, 0.4),
+        "selectionForegroundColor": default,
+        "matchedBraceColor": mix(background, accent, 0.25),
+        "stderrFontColor": syntax["error"],
+        "edgeColor": format_color(color("@border")),
+        "foldColor": format_color(color("@bg_window")),
+    }
+    strings = {key: syntax["string"] for key in (
+        "singleQuoteFontColor", "doubleQuoteFontColor",
+    )}
+    sections = {
+        "general": general,
+        "python": {
+            "paperBackgroundColor": paper, "defaultFontColor": default,
+            "classFontColor": syntax["class"], "methodFontColor": syntax["class"],
+            "keywordFontColor": keyword, "decoratorFontColor": keyword,
+            "numberFontColor": syntax["number"],
+            "commentFontColor": comment, "commentBlockFontColor": comment,
+            **strings,
+            "tripleSingleQuoteFontColor": syntax["string"],
+            "tripleDoubleQuoteFontColor": syntax["string"],
+        },
+        "sql": {
+            "paperBackgroundColor": paper, "defaultFontColor": default,
+            "commentFontColor": comment, "commentLineFontColor": comment,
+            "numberFontColor": syntax["number"], "keywordFontColor": keyword,
+            **strings,
+            "operatorFontColor": operator,
+            "identifierFontColor": syntax["class"], "QuotedIdentifierFontColor": syntax["class"],
+            "QuotedOperatorFontColor": operator,
+        },
+        "html": {
+            "paperBackgroundColor": paper, "defaultFontColor": default,
+            "tagFontColor": keyword, "unknownTagFontColor": syntax["error"],
+            "numberFontColor": syntax["number"], **strings, "commentFontColor": comment,
+        },
+    }
+    return "\n".join(
+        f"[{section}]\n" + "".join(f"{key}={value}\n" for key, value in values.items())
+        for section, values in sections.items()
+    )

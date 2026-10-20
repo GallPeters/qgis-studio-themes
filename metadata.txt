@@ -12,7 +12,7 @@ experimental=False
 deprecated=False
 homepage=https://github.com/GallPeters/qgis-studio-themes
 repository=https://github.com/GallPeters/qgis-studio-themes
-tracker=https://github.com/GallPeters/qgis-studio-themes
+tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
@@ -133,6 +133,21 @@ changelog=
             - Tabbed panels switch with a segmented control.
             - A 2 px accent focus ring that does not shift the text.
             - Slim scrollbar handles that widen on hover.
+          - Code editors (expressions, Field Calculator, Python console,
+            SQL) take the theme's colours: dark in the dark themes instead of
+            a white block, with the accent for keywords.
+          - Numbers in spin boxes and text in editable drop-down lists are
+            centred (they sat a few pixels low).
+          - Expression builder: function groups without grey blocks, and
+            outline chevrons.
+          - Faster large dialogs: finding the icons to modernise in Layer
+            Properties and similar dialogs takes about a third less time.
+          - Fixed: the status bar message kept the previous theme's colour
+            (invisible after switching from a dark to a light theme, or back
+            to QGIS's own theme).
+          - Fixed: disabling or uninstalling the plugin while a Studio theme
+            was shown left its stylesheet over QGIS's colours until a
+            restart; disabling it no longer waits for background work.
           - Fixed: one failed background task stopped all later theme builds
             and icon pre-rendering until QGIS was restarted.
           - Fixed: an icon file cut short by a crash or forced exit stayed
