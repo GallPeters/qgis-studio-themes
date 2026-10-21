@@ -6,12 +6,14 @@ studio_icons.py) plus the theme's own themes/<folder>/variables.qss.
 Built themes live in the profile's themes folder, which QGIS also searches
 for theme icons, so dialogs opened later pick up the modern icons natively.
 """
+import ctypes
 import hashlib
 import json
 import os
 import re
 import shutil
 import queue
+import sys
 import threading
 import time
 from pathlib import Path
@@ -86,6 +88,9 @@ DEFAULT_THEME_RULES = re.compile(
 )
 # The text colour QGIS writes into the status bar message's own stylesheet
 # (not the background-color before it).
+# Win32 window class style (set_popup_shadows).
+GCL_STYLE = -26
+CS_DROPSHADOW = 0x00020000
 STATUS_TEXT_COLOR = re.compile(r"(?<![-\w])color:\s*[^;}]+")
 
 
@@ -394,6 +399,32 @@ def set_tabular_digits(font):
         pass
 
 
+def set_popup_shadows(enabled):
+    """Windows draws a soft shadow along the right and bottom edge of
+    menus, drop-down lists and tooltips (CS_DROPSHADOW on the window
+    classes Qt registers for them), which reads as dated next to the flat
+    theme. The flag belongs to the window class, which every popup (or
+    tooltip) of the process shares, so it is cleared once, on a throwaway
+    window of each kind, and set again when leaving the Studio themes."""
+    if sys.platform != "win32":
+        return
+    user32 = ctypes.windll.user32
+    user32.GetClassLongPtrW.restype = ctypes.c_size_t
+    user32.GetClassLongPtrW.argtypes = (ctypes.c_void_p, ctypes.c_int)
+    user32.SetClassLongPtrW.restype = ctypes.c_size_t
+    user32.SetClassLongPtrW.argtypes = (ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t)
+    for kind in (Qt.WindowType.Popup, Qt.WindowType.ToolTip):
+        probe = QWidget(None, kind)
+        # Qt gives tooltips their shadow class through this property.
+        probe.setProperty("_q_windowsDropShadow", True)
+        hwnd = int(probe.winId())
+        style = user32.GetClassLongPtrW(hwnd, GCL_STYLE)
+        wanted = style | CS_DROPSHADOW if enabled else style & ~CS_DROPSHADOW
+        if wanted != style:
+            user32.SetClassLongPtrW(hwnd, GCL_STYLE, wanted)
+        probe.deleteLater()
+
+
 def make_palette(tokens):
     """Qt palette for the theme: plain widgets get their colours from here
     instead of from broad stylesheet rules."""
@@ -433,12 +464,16 @@ class _IconDelegate(QStyledItemDelegate):
     icon cache (filled before the Studio themes were registered) or from
     the Processing plugin's own image files, and the Browser, whose rows
     would otherwise show the theme's SVGs (not pixel-snapped, so heavier
-    than the toolbar icons on screens at 100 percent)."""
+    than the toolbar icons on screens at 100 percent), and the Processing
+    and query History dialogs, whose entries show the algorithm's icon."""
 
-    def __init__(self, swapper, parent, by_row=True):
+    def __init__(self, swapper, parent, by_row=True, folders=True):
         super().__init__(parent)
         self._swapper = swapper
         self._by_row = by_row
+        # Rows with children are groups (Processing Toolbox), not History
+        # entries, whose children are their details.
+        self._folders = folders
 
     def initStyleOption(self, option, index):  # pylint: disable=invalid-name
         super().initStyleOption(option, index)
@@ -449,7 +484,8 @@ class _IconDelegate(QStyledItemDelegate):
             # Processing plugin tools create a new QIcon on every paint.
             parent = index.parent()
             row = (index.data(), parent.data(), parent.parent().data())
-            icon = self._swapper.row_icon(row, option.icon, index.model().hasChildren(index))
+            group = self._folders and index.model().hasChildren(index)
+            icon = self._swapper.row_icon(row, option.icon, group)
         else:
             # Keyed by the icon: a Browser row changes its icon (folder
             # open or closed, loading).
@@ -981,7 +1017,7 @@ class IconSwapper(QObject):
             self._view_names[row] = name
         return None if name is None else self._icon(name)
 
-    def _delegate_view(self, view, by_row=True):
+    def _delegate_view(self, view, by_row=True, folders=True):
         """Draw `view`'s rows with our icons (only over Qt's plain
         delegate, or the Layers panel's, so no custom drawing is lost)."""
         if id(view) in self._delegates:
@@ -989,7 +1025,7 @@ class IconSwapper(QObject):
         original = view.itemDelegate()
         kind = None if original is None else original.metaObject().className()
         if kind == "QStyledItemDelegate":
-            delegate = _IconDelegate(self, view, by_row)
+            delegate = _IconDelegate(self, view, by_row, folders)
         elif kind == "QgsLayerTreeViewItemDelegate":
             delegate = _LayerTreeDelegate(self, view, original)
         else:
@@ -1278,6 +1314,10 @@ class IconSwapper(QObject):
                 widget.setUniformRowHeights(True)
             elif widget.inherits("QgsBrowserTreeView") or widget.inherits("QgsLayerTreeView"):
                 self._delegate_view(widget, by_row=False)
+            elif widget.model() is not None and widget.model().inherits("QgsHistoryEntryProxyModel"):
+                # Processing History: each entry shows its algorithm's icon,
+                # which QGIS cached before the theme was registered.
+                self._delegate_view(widget, folders=False)
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
                 model = model.sourceModel()
@@ -1933,6 +1973,7 @@ class QgisStudioThemesPlugin:
             app.setStyleSheet(sheet)
             self._select_style(theme)
         self._active = theme
+        set_popup_shadows(False)
         name = studio[theme][0]
         icons_dir = self.theme_target(name) / "icons"
         self._icons.apply(theme, icons_dir, self.iface.mainWindow())
@@ -2096,6 +2137,7 @@ class QgisStudioThemesPlugin:
                 toolbar.setIconSize(size)
         self._dock_icon_sizes = {}
         self._icons.restore()
+        set_popup_shadows(True)
         QApplication.setPalette(self._original_palette)
         QApplication.setFont(self._original_font)
         self._set_color_scheme("Unknown")

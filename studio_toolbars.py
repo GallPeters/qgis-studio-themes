@@ -47,10 +47,10 @@ TITLE_HEIGHT = 13
 TITLE_GAP = 3
 TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
 # Small capitals: a quiet caption that never competes with the icons.
-# A little heavier than the UI text so it reads at 10 px (Segoe UI has no
-# medium face: its SemiBold; Inter, the fallback, Medium), spaced by a
-# whole pixel so the letters stay apart (fractional spacing puts letters
-# between pixels).
+# Bold, so the name reads at 10 px and stands apart from the UI text
+# (Segoe UI's Bold; Inter, the fallback, its SemiBold, the heaviest face
+# bundled), spaced by a whole pixel so the letters stay apart (fractional
+# spacing puts letters between pixels).
 TITLE_SIZE = 10
 TITLE_SPACING = 1.0
 # Room either side of a name when a toolbar is widened to fit it.
@@ -151,7 +151,7 @@ def title_font():
 @functools.lru_cache(maxsize=4)
 def _title_font(_app_font):
     # Keyed by the application font, which the themes change.
-    weight = QFont.Weight.DemiBold if _face() else QFont.Weight.Medium
+    weight = QFont.Weight.Bold if _face() else QFont.Weight.DemiBold
     return _font(TITLE_SIZE, weight, TITLE_SPACING)
 
 

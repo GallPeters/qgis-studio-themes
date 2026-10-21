@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.0
+version=1.1
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,20 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.1 (21.10.2026):
+          - Flat menus, drop-down lists and tooltips: no more Windows drop
+            shadow along their right and bottom edges, just the theme's
+            thin outline (the shadow comes back when leaving the Studio
+            themes).
+          - Processing History (and Query History) entries show the modern
+            icon of their algorithm instead of the old built-in one.
+          - Clearer SQL icon (Add and New Virtual Layer, SQL windows): the
+            "Q" is drawn like the "S" and the "SHP" letters, straight sides
+            with small rounded corners and a short diagonal tail, instead
+            of a rounded "0"-like shape.
+          - Toolbar titles a touch bolder (Segoe UI Bold on Windows, Inter
+            SemiBold elsewhere), easier to read at their small size.
 
      ** v1.0 (21.10.2026):
           - Sharper icons on every screen: each icon is drawn for the exact

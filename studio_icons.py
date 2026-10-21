@@ -813,7 +813,9 @@ def unique_icons():
 #   taller stem with a foot.
 # - sql: the letters, 8 units tall, stretched to 11.2 (and 5 % wider) so
 #   they fill more of the button; sql-raised (with a badge) sits higher, so
-#   the "L" stays clear of the badge's cut-out.
+#   the "L" stays clear of the badge's cut-out. The "Q" is drawn like the
+#   "S" (and the "SHP" letters): straight sides with small rounded corners,
+#   its tail a short diagonal through the bottom-right corner.
 # - shp-raised: "SHP" for shapefiles, drawn like sql-raised.
 # - feather (SpatiaLite): Tabler's three barbs, small steps along the
 #   quill, blurred together at toolbar sizes; here without the middle one,
@@ -825,17 +827,19 @@ CUSTOM_GLYPHS = {
         '<path d="M10.5 10.5h1.5v6.5h1.5"/>'
     ),
     "sql": (
-        '<path d="M12 6.4A2.1 2.8 0 0 1 14.1 9.2L14.1 14.8A2.1 2.8 0 1 1 9.9 14.8L9.9 9.2A2.1 2.8 0 0 1 12 6.4"/>'
+        '<path d="M10.95 6.4L13.05 6.4A1.05 1.4 0 0 1 14.1 7.8L14.1 16.2A1.05 1.4 0 0 1 13.05 17.6'
+        'L10.95 17.6A1.05 1.4 0 0 1 9.9 16.2L9.9 7.8A1.05 1.4 0 0 1 10.95 6.4"/>'
+        '<path d="M12.15 14.7L14.45 18"/>'
         '<path d="M17.25 6.4L17.25 17.6L21.45 17.6"/>'
-        '<path d="M13.05 16.2L14.1 17.6"/>'
         '<path d="M2.55 16.2A1.05 1.4 0 0 0 3.6 17.6L5.7 17.6A1.05 1.4 0 0 0 6.75 16.2L6.75 13.4'
         'A1.05 1.4 0 0 0 5.7 12L3.6 12A1.05 1.4 0 0 1 2.55 10.6L2.55 7.8A1.05 1.4 0 0 1 3.6 6.4'
         'L5.7 6.4A1.05 1.4 0 0 1 6.75 7.8"/>'
     ),
     "sql-raised": (
-        '<path d="M12 3.4A2.1 2.8 0 0 1 14.1 6.2L14.1 11.8A2.1 2.8 0 1 1 9.9 11.8L9.9 6.2A2.1 2.8 0 0 1 12 3.4"/>'
+        '<path d="M10.95 3.4L13.05 3.4A1.05 1.4 0 0 1 14.1 4.8L14.1 13.2A1.05 1.4 0 0 1 13.05 14.6'
+        'L10.95 14.6A1.05 1.4 0 0 1 9.9 13.2L9.9 4.8A1.05 1.4 0 0 1 10.95 3.4"/>'
+        '<path d="M12.15 11.7L14.45 15"/>'
         '<path d="M17.25 3.4L17.25 14.6L21.45 14.6"/>'
-        '<path d="M13.05 13.2L14.1 14.6"/>'
         '<path d="M2.55 13.2A1.05 1.4 0 0 0 3.6 14.6L5.7 14.6A1.05 1.4 0 0 0 6.75 13.2L6.75 10.4'
         'A1.05 1.4 0 0 0 5.7 9L3.6 9A1.05 1.4 0 0 1 2.55 7.6L2.55 4.8A1.05 1.4 0 0 1 3.6 3.4'
         'L5.7 3.4A1.05 1.4 0 0 1 6.75 4.8"/>'
