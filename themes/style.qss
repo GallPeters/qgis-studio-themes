@@ -39,6 +39,13 @@ QMainWindow::separator:hover {
     border-width: 1px;
 }
 
+/* The map has no frame of its own: the splitter lines beside it, the line
+ * under the toolbar rows and the status bar's top edge already outline it,
+ * and its frame drew a second line next to each of them. */
+QgsMapCanvas {
+    border: none;
+}
+
 QDockWidget {
     color: @text;
     /* Qt draws the title buttons' icons at 10 px whatever the stylesheet

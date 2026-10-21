@@ -26,8 +26,12 @@ changelog=
             icon of their algorithm instead of the old built-in one.
           - Clearer SQL icon (Add and New Virtual Layer, SQL windows): the
             "Q" is drawn like the "S" and the "SHP" letters, straight sides
-            with small rounded corners and a short diagonal tail, instead
-            of a rounded "0"-like shape.
+            with small rounded corners and a short slanted tail below the
+            bowl, so it stays open and readable at small sizes instead of
+            a rounded "0"-like shape.
+          - The map canvas has no frame of its own: the panel dividers, the
+            line under the toolbars and the status bar edge outline it, so
+            each edge of the map shows one line instead of two.
           - Toolbar titles a touch bolder (Segoe UI Bold on Windows, Inter
             SemiBold elsewhere), easier to read at their small size.
 
