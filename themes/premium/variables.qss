@@ -8,21 +8,26 @@
  */
 
 /* ---- Accent (brand green) ----------------------------------------------- */
-@accent:                 #789d4a;
-@accent_hover:           #85ae53;
-@accent_pressed:         #688840;
-@accent_checked_border:  #5a7a3a;
-@accent_disabled:        #4a5a3a;
-@accent_indeterminate:   #4a6635;
-@accent_translucent:     rgba(107, 140, 66, 0.15);
+/* A clean QGIS green (the former #789d4a leaned khaki, and every tint of
+ * it came out olive). */
+@accent:                 #86b553;
+@accent_hover:           #94c262;
+@accent_pressed:         #76a046;
+@accent_checked_border:  #6a9440;
+@accent_disabled:        #46573a;
+@accent_indeterminate:   #4d6a33;
+@accent_translucent:     rgba(134, 181, 83, 0.15);
 
 /* ---- Backgrounds -------------------------------------------------------- */
-@bg_window:              #2b2b2b;
-@bg_base:                #232323;
-@bg_alt:                 #262626;
-@bg_dock:                #282828;
-@bg_statusbar:           #242424;
-@bg_menu:                #2d2d2d;
+/* Three levels: chrome (window, toolbars and panels, one surface),
+ * recessed (fields, lists, tables) and raised (menus, tooltips, message
+ * cards), each a clear step apart. */
+@bg_window:              #252626;
+@bg_base:                #1c1d1d;
+@bg_alt:                 #202121;
+@bg_dock:                #252626;
+@bg_statusbar:           #222323;
+@bg_menu:                #303231;
 @bg_disabled:            #2e2e2e;
 @bg_btn_status_hover:    #2f2f2f;
 @bg_pressed:             #2c2c2c;
@@ -48,14 +53,14 @@
 @separator_bg:           #222222;
 
 /* ---- Text --------------------------------------------------------------- */
-@text:                   #e8e8e8;
+@text:                   #ececec;
 @text_bright:            #ffffff;
-@text_dim:               #b0b0b0;
-@text_disabled:          #7d7d7d;
+@text_dim:               #a2a6a3;
+@text_disabled:          #6e726f;
 @text_light:             #d8d8d8;
 @text_header:            #d0d0d0;
-@text_placeholder:       #787878;
-@text_dark:              #1a1a1a;
+@text_placeholder:       #6e726f;
+@text_dark:              #14200a;
 
 
 /* ---- Scrollbar ---------------------------------------------------------- */
@@ -64,12 +69,25 @@
 /* Structural lines and checked tool buttons, tuned for a dark window: the
  * shared line at about 1.6:1, and a checked tint strong enough to read as
  * the accent rather than a muddy shade of the window. */
-@line:                   mix(@bg_window, @text, 0.17);
-@tool_checked:           mix(@bg_window, @accent, 0.36);
-@tool_checked_hover:     mix(@bg_window, @accent, 0.44);
+@line:                   mix(@bg_window, @text, 0.12);
+@tool_checked:           mix(@bg_window, @accent, 0.28);
+@tool_checked_hover:     mix(@bg_window, @accent, 0.36);
 @icon_disabled:          mix(@bg_window, @icon, 0.26);
-/* Popups on a dark window: a near-black outer edge and a faint light top
- * edge lift them off the window; hovered rows take a stronger accent tint. */
-@menu_edge:              mix(@bg_menu, #000000, 0.55);
-@menu_highlight:         mix(@bg_menu, @text, 0.12);
-@menu_hover:             mix(@bg_menu, @accent, 0.28);
+/* Popups float on their lighter surface with one even, neutral edge (no
+ * dark outline or lit top edge); hovered rows take the selection tint. */
+@menu_edge:              mix(@bg_menu, @text, 0.13);
+@menu_hover:             mix(@bg_menu, @accent, 0.22);
+/* Panels share the window's surface: no line under their titles. */
+@dock_seam:              @bg_dock;
+/* Fields sit in the recessed surface with a quieter edge. */
+@field_border:           mix(@bg_base, @text, 0.15);
+@field_border_hover:     mix(@bg_base, @text, 0.30);
+@field_focus:            mix(@bg_base, @text, 0.02);
+@panel_row_hover:        mix(@bg_dock, @text, 0.05);
+/* Selected rows and pages show their icon in the accent. */
+@icon_selected:          @accent_hover;
+@slider_knob:            #eceeec;
+@slider_knob_border:     mix(@bg_base, #000000, 0.30);
+@slider_knob_hover:      #ffffff;
+/* Labels a step quieter than the values beside them. */
+@text_label:             mix(@text, @bg_window, 0.16);

@@ -32,6 +32,11 @@
 @line:                   mix(@bg_window, @text, 0.22);
 @field_border:           mix(@bg_base, @text, 0.20);
 @field_border_hover:     mix(@bg_base, @text, 0.34);
+/* A focused field: a 1 px accent edge on this barely lifted fill. */
+@field_focus:            mix(@bg_base, @text, 0.03);
+/* The line between a panel's title and its contents: none where a theme
+ * gives both one surface (set it to @bg_dock). */
+@dock_seam:              @divider;
 
 /* ---- Controls ----------------------------------------------------------- */
 @control_bg:             mix(@bg_window, @text, 0.07);
@@ -42,6 +47,13 @@
 @tool_checked:           mix(@bg_window, @accent, 0.22);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.30);
 @on_accent:              @text_dark;
+/* Secondary push buttons are tonal: a fill and no visible edge. */
+@button_border:          transparent;
+@button_border_hover:    transparent;
+/* Slider knob: solid, so it never reads as a radio button. */
+@slider_knob:            #ffffff;
+@slider_knob_border:     @field_border_hover;
+@slider_knob_hover:      mix(#ffffff, @accent, 0.18);
 
 /* ---- Item views --------------------------------------------------------- */
 @row_hover:              mix(@bg_base, @text, 0.05);
@@ -49,19 +61,29 @@
  * background is the dock's, not the base colour. */
 @panel_row_hover:        mix(@bg_dock, @text, 0.07);
 @row_selected:           mix(@bg_base, @accent, 0.24);
-@row_selected_inactive:  mix(@bg_base, @text, 0.09);
+/* Selected rows keep the accent when their view loses focus, only
+ * fainter: a grey selection matched the hover colour exactly. */
+@row_selected_inactive:  mix(@bg_base, @accent, 0.11);
+@panel_row_selected:     mix(@bg_dock, @accent, 0.24);
+@panel_row_selected_inactive: mix(@bg_dock, @accent, 0.12);
+/* Page lists on the window surface (dialog page lists, Labels sub-pages). */
+@row_hover_window:       mix(@bg_window, @text, 0.05);
+@row_selected_window:    mix(@bg_window, @accent, 0.24);
 @header_bg:              mix(@bg_base, @text, 0.03);
 @grid:                   mix(@bg_base, @text, 0.07);
+
+/* ---- Text roles --------------------------------------------------------- */
+/* Labels beside values, and section (group box) titles. */
+@text_label:             @text;
+@section_title:          @text_dim;
 
 /* ---- Popups ------------------------------------------------------------- */
 @menu_border:            mix(@bg_menu, @text, 0.14);
 /* Hovered menu and drop-down rows: an accent tint, like selected rows. */
 @menu_hover:             mix(@bg_menu, @accent, 0.16);
-/* Popups (menus, drop-down lists, tooltips) are lifted off the window
- * without translucency: a firm outer edge and a light top edge, as if lit
- * from above (dark themes use a darker edge, see their variables). */
+/* Popups (menus, drop-down lists, tooltips): one even edge around them
+ * (dark themes lift them with a lighter surface, see their variables). */
 @menu_edge:              mix(@bg_menu, @text, 0.30);
-@menu_highlight:         mix(@bg_menu, #ffffff, 0.85);
 
 /* ---- Scrollbars --------------------------------------------------------- */
 @scroll_handle:          mix(@bg_base, @text, 0.20);

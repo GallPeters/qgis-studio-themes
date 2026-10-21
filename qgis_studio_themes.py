@@ -26,13 +26,13 @@ from qgis.PyQt.QtCore import (
     QPersistentModelIndex, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, qVersion,
 )
 from qgis.PyQt.QtGui import (
-    QAction, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
+    QAction, QBrush, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
     QPixmap, QRegion, QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
-    QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
+    QGroupBox, QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
     QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QWidget,
 )
 
@@ -49,7 +49,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "22"
+BUILD_FORMAT = "23"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -465,18 +465,29 @@ class _IconDelegate(QStyledItemDelegate):
     the Processing plugin's own image files, and the Browser, whose rows
     would otherwise show the theme's SVGs (not pixel-snapped, so heavier
     than the toolbar icons on screens at 100 percent), and the Processing
-    and query History dialogs, whose entries show the algorithm's icon."""
+    and query History dialogs, whose entries show the algorithm's icon.
 
-    def __init__(self, swapper, parent, by_row=True, folders=True):
+    With `soften`, a fixed background colour QGIS gives a cell (the Fields
+    page paints every provider field a translucent yellow, olive on a dark
+    theme) is blended into the view's base colour: the rows it marks stay
+    told apart, in the theme's palette."""
+
+    SOFTEN = 0.05
+
+    def __init__(self, swapper, parent, by_row=True, folders=True, soften=False):
         super().__init__(parent)
         self._swapper = swapper
         self._by_row = by_row
         # Rows with children are groups (Processing Toolbox), not History
         # entries, whose children are their details.
         self._folders = folders
+        self._soften = soften
 
     def initStyleOption(self, option, index):  # pylint: disable=invalid-name
         super().initStyleOption(option, index)
+        if self._soften:
+            # Painted softened in paint(), under the row.
+            option.backgroundBrush = QBrush()
         if option.icon.isNull():
             return
         if self._by_row:
@@ -492,6 +503,23 @@ class _IconDelegate(QStyledItemDelegate):
             icon = self._swapper.keyed_icon(option.icon)
         if icon is not None:
             option.icon = icon
+
+
+    def paint(self, painter, option, index):
+        if self._soften:
+            brush = index.data(Qt.ItemDataRole.BackgroundRole)
+            if isinstance(brush, (QBrush, QColor)):
+                tint = brush.color() if isinstance(brush, QBrush) else brush
+                base = option.palette.color(QPalette.ColorRole.Base)
+                # A translucent colour (QGIS's yellow) counts for what it
+                # covers, at most SOFTEN.
+                t = min(self.SOFTEN, tint.alphaF() * 0.35)
+                painter.fillRect(option.rect, QColor(
+                    round(base.red() * (1 - t) + tint.red() * t),
+                    round(base.green() * (1 - t) + tint.green() * t),
+                    round(base.blue() * (1 - t) + tint.blue() * t),
+                ))
+        super().paint(painter, option, index)
 
 
 class _LayerTreeDelegate(QStyledItemDelegate):
@@ -565,7 +593,7 @@ class IconSwapper(QObject):
     # instead of walking every widget of a window from Python.
     ICON_TYPES = (
         QAbstractButton, QToolBar, QMenuBar, QListWidget, QComboBox, QTabBar, QMenu, QStackedWidget,
-        QAbstractItemView, QgsFilterLineEdit, QDockWidget,
+        QAbstractItemView, QgsFilterLineEdit, QDockWidget, QGroupBox,
     )
     # Item views on a QStandardItemModel (e.g. the Options page tree) are
     # swapped item by item; larger models hold data, not navigation icons.
@@ -604,6 +632,11 @@ class IconSwapper(QObject):
         # Collapsible group boxes whose collapse button is swapped again on
         # every open and close (see _hook_collapse).
         self._collapsibles = {}
+        # Group boxes whose title is shown in capitals, with their own title
+        # (see _overline), and page lists with their own icon size (see
+        # _page_list).
+        self._titles = {}
+        self._page_lists = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the active theme's PNGs are
@@ -617,7 +650,7 @@ class IconSwapper(QObject):
         self._atlas_index = {}
         # QGIS's toolbar and dialog page list icon sizes, which get PNGs of
         # their own.
-        self._extra_sizes = (24, 28)
+        self._extra_sizes = (24, self.PAGE_LIST_ICON)
         self._main_window = None
         self._scanned = []
         self._names = {}
@@ -755,13 +788,34 @@ class IconSwapper(QObject):
         toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
         return toolbar, self._list_size()
 
-    @staticmethod
-    def _list_size():
-        """Icon size of dialog page lists (Layer Properties, Data Source
-        Manager, Options...), as QgsOptionsDialogBase sets it: the
-        configured toolbar size plus a 4 px buffer, both scaled by QGIS."""
-        size = QgsSettings().value("/IconSize", 24, type=int)
-        return QgsApplication.scaleIconSize(size) + QgsApplication.scaleIconSize(4)
+    # Dialog page lists (Layer Properties, Data Source Manager...): 20 px
+    # icons instead of QGIS's toolbar size plus 4 (28 px at the default 24),
+    # so rows are 32 px and a 760 px Layer Properties dialog shows all its
+    # pages. The Layer Styling and Dev Tools rails share the list's name and
+    # keep their own size.
+    PAGE_LISTS = frozenset({"mOptionsListWidget", "mOptListWidget"})
+    PAGE_LIST_ICON = 20
+    RAILS = ("QgsLayerStylingWidget", "QgsDevToolsPanelWidget")
+
+    @classmethod
+    def _list_size(cls):
+        """Icon size of dialog page lists, as set by _page_list."""
+        return QgsApplication.scaleIconSize(cls.PAGE_LIST_ICON)
+
+    def _page_list(self, widget):
+        """Give a dialog page list its icon size (see PAGE_LISTS)."""
+        if widget.objectName() not in self.PAGE_LISTS or id(widget) in self._page_lists:
+            return
+        parent = widget.parentWidget()
+        for _ in range(6):
+            if parent is None:
+                break
+            if any(parent.inherits(rail) for rail in self.RAILS):
+                return
+            parent = parent.parentWidget()
+        size = self._list_size()
+        self._page_lists[id(widget)] = (widget, widget.iconSize())
+        widget.setIconSize(QSize(size, size))
 
     def needed_png_sizes(self):
         """(pixel size, line width) of the PNGs these screens need."""
@@ -1017,7 +1071,7 @@ class IconSwapper(QObject):
             self._view_names[row] = name
         return None if name is None else self._icon(name)
 
-    def _delegate_view(self, view, by_row=True, folders=True):
+    def _delegate_view(self, view, by_row=True, folders=True, soften=False):
         """Draw `view`'s rows with our icons (only over Qt's plain
         delegate, or the Layers panel's, so no custom drawing is lost)."""
         if id(view) in self._delegates:
@@ -1025,7 +1079,7 @@ class IconSwapper(QObject):
         original = view.itemDelegate()
         kind = None if original is None else original.metaObject().className()
         if kind == "QStyledItemDelegate":
-            delegate = _IconDelegate(self, view, by_row, folders)
+            delegate = _IconDelegate(self, view, by_row, folders, soften)
         elif kind == "QgsLayerTreeViewItemDelegate":
             delegate = _LayerTreeDelegate(self, view, original)
         else:
@@ -1274,6 +1328,8 @@ class IconSwapper(QObject):
                     self._swap(choice, None, None, deferred)
         elif isinstance(widget, QMenu):
             self._hook_menu(widget)
+        elif isinstance(widget, QGroupBox):
+            self._overline(widget)
         elif isinstance(widget, (QToolBar, QMenuBar)):
             for action in widget.actions():
                 self._swap(action, None, None, deferred)
@@ -1284,6 +1340,7 @@ class IconSwapper(QObject):
             self._swap(widget, None, None, deferred)
             self._mark_help(widget)
         elif isinstance(widget, QListWidget):
+            self._page_list(widget)
             self._rows(widget, "row", deferred)
         elif isinstance(widget, QComboBox):
             if widget.objectName() == self.THEME_COMBO:
@@ -1314,6 +1371,9 @@ class IconSwapper(QObject):
                 widget.setUniformRowHeights(True)
             elif widget.inherits("QgsBrowserTreeView") or widget.inherits("QgsLayerTreeView"):
                 self._delegate_view(widget, by_row=False)
+            elif widget.objectName() == "mFieldsList":
+                # Layer Properties > Fields: QGIS's fixed row tint, softened.
+                self._delegate_view(widget, folders=False, soften=True)
             elif widget.model() is not None and widget.model().inherits("QgsHistoryEntryProxyModel"):
                 # Processing History: each entry shows its algorithm's icon,
                 # which QGIS cached before the theme was registered.
@@ -1361,6 +1421,20 @@ class IconSwapper(QObject):
         self._collapsibles[id(box)] = (box, changed)
 
     HELP_ROLE = "studioRole"
+
+    def _overline(self, box):
+        """Show a group box title in capitals: section titles are overlines
+        in the voice of the toolbar titles (dim and a size down, see the
+        stylesheet), and Qt stylesheets cannot change letter case. The
+        title is given back when the theme is left (restore)."""
+        title = box.title()
+        if not title or id(box) in self._titles:
+            return
+        upper = title.upper()
+        if upper == title:
+            return
+        self._titles[id(box)] = (box, title, upper)
+        box.setTitle(upper)
 
     @classmethod
     def _mark_help(cls, button):
@@ -1540,6 +1614,15 @@ class IconSwapper(QObject):
             if not sip.isdeleted(box):
                 box.collapsedStateChanged.disconnect(changed)
         self._collapsibles = {}
+        for box, title, upper in self._titles.values():
+            # Only titles QGIS has not set again meanwhile.
+            if not sip.isdeleted(box) and box.title() == upper:
+                box.setTitle(title)
+        self._titles = {}
+        for widget, size in self._page_lists.values():
+            if not sip.isdeleted(widget):
+                widget.setIconSize(size)
+        self._page_lists = {}
         for action, recheck in self._watched.items():
             if sip.isdeleted(action):
                 continue
@@ -1728,6 +1811,8 @@ class QgisStudioThemesPlugin:
         self._extra_tokens = {
             "@menu_font_size": f"{menu_size:g}pt",
             "@panel_title_font_size": f"{base_size + (0 if compact else 1):g}pt",
+            # Section (group box) titles: capitals, a size down from the UI.
+            "@section_font_size": f"{base_size - 1:g}pt",
             "@ui_font_size": f"{base_size:g}pt",
             "@menu_item_padding_x": "11px" if compact else "14px",
             # One height for fields, combo boxes and push buttons (28 px,
@@ -2197,11 +2282,16 @@ class QgisStudioThemesPlugin:
             Qgis.MessageLevel.Critical: "danger",
         }.get(item.level(), "info")
         t = self._tokens
+        # A card on the raised surface, set in from the canvas edges, with a
+        # stripe in the message level's colour; the count of further
+        # messages is a quiet pill.
         bar.setStyleSheet(
-            f"QgsMessageBar {{ background-color: {t[f'@{level}_bg']};"
-            f" border: 1px solid {t[f'@{level}_border']}; border-radius: {t['@radius']}; }}"
+            f"QgsMessageBar {{ background-color: {t['@bg_menu']};"
+            f" border: 1px solid {t['@menu_edge']}; border-left: 3px solid {t[f'@{level}']};"
+            f" border-radius: {t['@radius_lg']}; margin: 6px 8px 2px 8px; }}"
             f" QLabel, QTextEdit {{ color: {t['@text']}; background: transparent; border: none; }}"
-            " QLabel#mItemCount { font-style: italic; }"
+            f" QLabel#mItemCount {{ color: {t['@text_dim']}; background-color: {t['@control_bg']};"
+            " border-radius: 8px; padding: 1px 7px; }"
         )
 
     @staticmethod

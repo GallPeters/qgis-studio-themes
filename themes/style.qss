@@ -67,7 +67,7 @@ QMainWindow > QDockWidget > QWidget {
 }
 QDockWidget > QWidget {
     background-color: @bg_dock;
-    border-top: 1px solid @divider;
+    border-top: 1px solid @dock_seam;
 }
 QDockWidget::title {
     background-color: @bg_window;
@@ -168,11 +168,11 @@ QMenuBar::item:pressed {
 }
 
 /* Popups stay square (see the performance notes) and are lifted off the
- * window by their edges: a firm outer edge and a light top edge. */
+ * window by their surface: a step lighter than the window (dark themes)
+ * with one even edge, no drop shadow (see set_popup_shadows). */
 QMenu {
     background-color: @bg_menu;
     border: 1px solid @menu_edge;
-    border-top-color: @menu_highlight;
     padding: 5px;
 }
 QMenu::item {
@@ -216,14 +216,13 @@ QMenu::indicator {
     margin-left: 8px;
     border-radius: @radius_sm;
 }
+/* Checked menu items: the mark alone, in the accent colour, not a filled
+ * box: a column of filled boxes (View > Panels) read as heavy. */
 QMenu::indicator:non-exclusive:checked {
-    background-color: @accent;
-    image: url(@theme_path/icons/studio/checkbox-check.svg);
+    image: url(@theme_path/icons/studio/menu-check.svg);
 }
 QMenu::indicator:exclusive:checked {
-    background-color: @accent;
-    border-radius: 7px;
-    image: url(@theme_path/icons/studio/radio-dot.svg);
+    image: url(@theme_path/icons/studio/menu-dot.svg);
 }
 
 QToolBar {
@@ -277,7 +276,7 @@ QgsProcessingToolboxTreeView::item:selected,
 QgsBrowserTreeView::branch:selected,
 QgsLayerTreeView::branch:selected,
 QgsProcessingToolboxTreeView::branch:selected {
-    background-color: @row_selected;
+    background-color: @panel_row_selected;
     color: @text_bright;
 }
 QgsBrowserTreeView::item:selected:!active,
@@ -286,12 +285,12 @@ QgsProcessingToolboxTreeView::item:selected:!active,
 QgsBrowserTreeView::branch:selected:!active,
 QgsLayerTreeView::branch:selected:!active,
 QgsProcessingToolboxTreeView::branch:selected:!active {
-    background-color: @row_selected_inactive;
+    background-color: @panel_row_selected_inactive;
     color: @text;
 }
-/* Expand arrows of the main panels, the symbol layer tree and the expression
- * builder's function tree as outline chevrons, like every other arrow. Only
- * these trees: their rows already go through the stylesheet (the rules
+/* Expand arrows of the main panels, the symbol layer tree, the expression
+ * builder's function tree and the Options page tree as outline chevrons,
+ * like every other arrow. Only these trees: their rows already go through the stylesheet (the rules
  * above and below; the other two trees are small), while
  * a ::branch rule on every tree would send all of QGIS's lists through Qt's
  * slower stylesheet drawing. */
@@ -304,7 +303,9 @@ QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings,
 QTreeView#layersTree::branch:has-children:!has-siblings:closed,
 QTreeView#layersTree::branch:closed:has-children:has-siblings,
 QgsExpressionTreeView::branch:has-children:!has-siblings:closed,
-QgsExpressionTreeView::branch:closed:has-children:has-siblings {
+QgsExpressionTreeView::branch:closed:has-children:has-siblings,
+QTreeView#mOptionsTreeView::branch:has-children:!has-siblings:closed,
+QTreeView#mOptionsTreeView::branch:closed:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-closed.svg);
 }
@@ -317,7 +318,9 @@ QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings,
 QTreeView#layersTree::branch:open:has-children:!has-siblings,
 QTreeView#layersTree::branch:open:has-children:has-siblings,
 QgsExpressionTreeView::branch:open:has-children:!has-siblings,
-QgsExpressionTreeView::branch:open:has-children:has-siblings {
+QgsExpressionTreeView::branch:open:has-children:has-siblings,
+QTreeView#mOptionsTreeView::branch:open:has-children:!has-siblings,
+QTreeView#mOptionsTreeView::branch:open:has-children:has-siblings {
     border-image: none;
     image: url(@theme_path/icons/studio/branch-open.svg);
 }
@@ -331,8 +334,8 @@ QgsExpressionTreeView::item {
 QgsLayerTreeView::indicator,
 QgsBrowserTreeView::indicator,
 QTreeView#layersTree::indicator {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
     border-radius: @radius_sm;
@@ -483,16 +486,19 @@ QToolButton::menu-arrow:disabled {
 /* Push buttons, fields and combo boxes share one height (the padding is
  * filled in by the plugin: 28 px, compact sizes 26 px), so a row of them
  * lines up. */
+/* Secondary buttons are tonal in themes that set @button_border to the
+ * fill (a fill and no visible edge), so the default button is the only
+ * coloured one in a row; the edge stays in the box so focus can show. */
 QPushButton {
     background-color: @control_bg;
-    border: 1px solid @divider_strong;
+    border: 1px solid @button_border;
     border-radius: @radius;
     padding: @control_padding_y 14px;
     min-height: 18px;
 }
 QPushButton:hover {
     background-color: @control_hover;
-    border-color: @field_border_hover;
+    border-color: @button_border_hover;
 }
 QPushButton:pressed {
     background-color: @control_pressed;
@@ -519,9 +525,10 @@ QPushButton:default:pressed {
     background-color: @accent_pressed;
     border-color: @accent_pressed;
 }
+/* Disabled: the outline only, so it never passes for an enabled button. */
 QPushButton:disabled {
-    background-color: @control_pressed;
-    border-color: @divider;
+    background-color: transparent;
+    border-color: @divider_strong;
     color: @text_disabled;
 }
 /* Help in dialog button rows: a quiet text button, so the actions stand
@@ -586,8 +593,10 @@ QTextEdit:hover,
 QPlainTextEdit:hover {
     border-color: @field_border_hover;
 }
-/* Focus: a 2 px accent ring, with 1 px less padding so the text does not
- * move (padding filled in by the plugin). */
+/* Focus: a 1 px accent edge on a slightly lifted fill. Dialogs focus their
+ * search field when they open, so a heavier ring greeted every one of
+ * them; this one marks the field without shouting, and the text does not
+ * move. */
 QLineEdit:focus,
 QAbstractSpinBox:focus,
 QComboBox:focus,
@@ -595,20 +604,7 @@ QComboBox:on,
 QTextEdit:focus,
 QPlainTextEdit:focus {
     border-color: @accent;
-    border-width: 2px;
-}
-QLineEdit:focus,
-QAbstractSpinBox:focus,
-QComboBox:focus,
-QComboBox:on {
-    padding: @control_padding_y_focus 7px;
-}
-QAbstractSpinBox:focus {
-    padding-right: 19px;
-}
-QTextEdit:focus,
-QPlainTextEdit:focus {
-    padding: 1px;
+    background-color: @field_focus;
 }
 QLineEdit:disabled,
 QAbstractSpinBox:disabled,
@@ -718,7 +714,6 @@ QComboBox QAbstractItemView {
     background-color: @bg_menu;
     color: @text;
     border: 1px solid @menu_edge;
-    border-top-color: @menu_highlight;
     border-radius: 0;
     padding: 4px;
     outline: none;
@@ -799,6 +794,44 @@ QgsAttributeTableView QTableCornerButton::section {
     background-color: @bg_base;
     border-right: 1px solid @grid;
     border-bottom: 1px solid @divider_strong;
+}
+/* Table pages of the layer properties (Fields, Actions): a data grid with
+ * row lines instead of a cell grid, a header on the table's own surface
+ * with one firm rule, and the drop-downs in the cells (Fields >
+ * Configuration) without an edge until hovered. The fixed tint QGIS gives
+ * marked field rows is blended into the theme by the plugin
+ * (_IconDelegate, `soften`). */
+QTableWidget#mFieldsList,
+QTableWidget#mAttributeActionTable {
+    qproperty-showGrid: false;
+}
+QTableWidget#mFieldsList::item,
+QTableWidget#mAttributeActionTable::item {
+    border-bottom: 1px solid @grid;
+    padding: 0 4px;
+}
+QTableWidget#mFieldsList::item:selected,
+QTableWidget#mAttributeActionTable::item:selected {
+    background-color: @row_selected;
+    color: @text_bright;
+}
+QTableWidget#mFieldsList::item:selected:!active,
+QTableWidget#mAttributeActionTable::item:selected:!active {
+    background-color: @row_selected_inactive;
+    color: @text;
+}
+QTableWidget#mFieldsList QHeaderView::section:horizontal,
+QTableWidget#mAttributeActionTable QHeaderView::section:horizontal {
+    background-color: @bg_base;
+    border-right: none;
+    border-bottom: 1px solid @line;
+}
+QTableWidget#mFieldsList QComboBox {
+    background-color: transparent;
+    border-color: transparent;
+}
+QTableWidget#mFieldsList QComboBox:hover {
+    border-color: @field_border_hover;
 }
 /* Cell editors fit the row: no field height, padding or focus ring. */
 QgsAttributeTableView QLineEdit,
@@ -979,25 +1012,35 @@ QAbstractScrollArea::corner {
  * 8. CHECKBOXES, RADIO BUTTONS & ITEM INDICATORS
  * ========================================================================= */
 
+/* Labels a step quieter than the values beside them (a theme token; the
+ * text colour in themes that do not set it). */
+QLabel {
+    color: @text_label;
+}
 QCheckBox,
 QRadioButton {
     background: transparent;
     spacing: 8px;
 }
+/* Room after a radio button's label, so a row of choices (Data Source
+ * Manager: File, Directory, Database...) does not run together. */
+QRadioButton {
+    padding-right: 6px;
+}
 QCheckBox::indicator,
 QGroupBox::indicator {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
     border-radius: @radius_sm;
 }
 QRadioButton::indicator {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
-    border-radius: 8px;
+    border-radius: 9px;
 }
 QCheckBox::indicator:hover,
 QRadioButton::indicator:hover,
@@ -1058,12 +1101,17 @@ QgsCollapsibleGroupBoxBasic {
     margin-top: 22px;
     padding: 8px 0 2px 0;
 }
+/* Titles are overlines, in the toolbar titles' voice: capitals (the plugin
+ * capitalises the text, IconSwapper._overline), dim and a size down from
+ * the content, so a section introduces its fields instead of competing
+ * with them. */
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
     left: 0;
     padding: 0 4px 0 0;
-    color: @text;
+    color: @section_title;
+    font-size: @section_font_size;
     font-weight: 600;
 }
 QSplitter::handle {
@@ -1111,30 +1159,30 @@ QSlider::add-page:vertical {
     background-color: @accent;
     border-radius: 2px;
 }
+/* A solid light knob: a hollow accent ring read as a radio button. */
 QSlider::handle:horizontal,
 QSlider::handle:vertical {
-    background-color: @bg_base;
-    border: 3px solid @accent;
-    width: 10px;
-    height: 10px;
-    border-radius: 8px;
+    background-color: @slider_knob;
+    border: 1px solid @slider_knob_border;
+    width: 12px;
+    height: 12px;
+    border-radius: 7px;
 }
 QSlider::handle:horizontal {
-    margin: -6px 0;
+    margin: -5px 0;
 }
 QSlider::handle:vertical {
-    margin: 0 -6px;
+    margin: 0 -5px;
 }
 QSlider::handle:hover {
-    border-color: @accent_hover;
+    background-color: @slider_knob_hover;
 }
 
 QToolTip {
     background-color: @bg_menu;
     color: @text;
     border: 1px solid @menu_edge;
-    border-top-color: @menu_highlight;
-    padding: 5px 8px;
+    padding: 6px 10px;
 }
 QRubberBand {
     background-color: @accent_translucent;
@@ -1168,9 +1216,7 @@ QDockWidget QgsFilterLineEdit {
     padding-right: 10px;
 }
 QDockWidget QgsFilterLineEdit:focus {
-    background-color: @bg_base;
-    padding-left: 9px;
-    padding-right: 9px;
+    background-color: @field_focus;
 }
 
 QgsColorButton,
@@ -1213,30 +1259,47 @@ QgsOptionsTreeView {
 /* Narrow horizontal padding: when a dialog is too narrow, QGIS collapses
  * this list to an icon-only column, which wider padding pushed the icons
  * out of. */
-/* The selected page: a straight accent bar on the left of a soft pill. The
- * left corners stay square: a radius there bends the bar into a crescent.
- * Its icon is drawn in the selected text's colour (the icons' selected
- * state). */
+/* The selected page: a soft pill rounded all round, its icon in the
+ * selected icon colour (@icon_selected). The sub-page lists of the text
+ * format widgets (Labels: Text, Formatting, Buffer...) look the same, one
+ * size down, instead of a framed box with a grey selection. */
 QListWidget#mOptionsListWidget::item,
 QListWidget#mOptListWidget::item,
 QListView#mOptionsListWidget::item,
 QTreeView#mOptionsTreeView::item,
 QgsOptionsTreeView::item {
-    padding: 6px 6px 6px 4px;
-    margin: 1px 0;
+    padding: 5px 6px;
+    margin: 1px 4px 1px 0;
     border-radius: @radius;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-left: 3px solid transparent;
+}
+QListWidget#mOptionsListWidget::item:hover,
+QListWidget#mOptListWidget::item:hover,
+QListView#mOptionsListWidget::item:hover,
+QTreeView#mOptionsTreeView::item:hover,
+QgsOptionsTreeView::item:hover,
+QListWidget#mLabelingOptionsListWidget::item:hover {
+    background-color: @row_hover_window;
 }
 QListWidget#mOptionsListWidget::item:selected,
 QListWidget#mOptListWidget::item:selected,
 QListView#mOptionsListWidget::item:selected,
 QTreeView#mOptionsTreeView::item:selected,
-QgsOptionsTreeView::item:selected {
-    background-color: @row_selected;
-    border-left-color: @accent;
+QgsOptionsTreeView::item:selected,
+QListWidget#mLabelingOptionsListWidget::item:selected {
+    background-color: @row_selected_window;
     color: @text_bright;
+}
+QListWidget#mLabelingOptionsListWidget {
+    background-color: transparent;
+    border: none;
+    border-right: 1px solid @divider;
+    border-radius: 0;
+    padding: 0;
+}
+QListWidget#mLabelingOptionsListWidget::item {
+    padding: 4px;
+    margin: 0 4px 1px 0;
+    border-radius: @radius;
 }
 
 /* ---- Layer Styling / Dev Tools: vertical icon rail ---------------------- */
@@ -1254,7 +1317,6 @@ QgsDevToolsPanelWidget QListWidget#mOptionsListWidget::item {
     padding: 6px 0 6px 6px;
     margin: 1px 0;
     min-height: 28px;
-    border-left: none;
     border-radius: @radius;
 }
 

@@ -158,8 +158,7 @@
 @tool_checked:           mix(@bg_window, @accent, 0.36);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.44);
 @icon_disabled:          mix(@bg_window, @icon, 0.26);
-/* Popups on a dark window: a near-black outer edge and a faint light top
- * edge lift them off the window; hovered rows take a stronger accent tint. */
+/* Popups on a dark window: a near-black edge lifts them off the window;
+ * hovered rows take a stronger accent tint. */
 @menu_edge:              mix(@bg_menu, #000000, 0.55);
-@menu_highlight:         mix(@bg_menu, @text, 0.12);
 @menu_hover:             mix(@bg_menu, @accent, 0.28);
