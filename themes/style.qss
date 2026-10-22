@@ -334,8 +334,8 @@ QgsExpressionTreeView::item {
 QgsLayerTreeView::indicator,
 QgsBrowserTreeView::indicator,
 QTreeView#layersTree::indicator {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
     border-radius: @radius_sm;
@@ -916,6 +916,17 @@ QTabBar::tab:left:selected {
 QTabBar::tab:right:selected {
     border-left-color: @accent;
 }
+/* The text format pages (Labels: Text, Formatting, Buffer...) as icon
+ * tabs: a soft, short line between them, so they read as tabs rather than
+ * a loose row of icons. */
+QTabWidget#mOptionsTab > QTabBar::tab:top {
+    margin: 0;
+}
+QTabWidget#mOptionsTab > QTabBar::tab:top:!last {
+    background-image: url(@theme_path/icons/studio/tab-separator.svg);
+    background-position: right center;
+    background-repeat: no-repeat;
+}
 /* Tabbed panels (Browser, Layers, Processing... sharing one place): a
  * segmented control, the current panel a raised segment on a filled track,
  * instead of loose text tabs. The bar is the main window's own child. */
@@ -1023,20 +1034,23 @@ QRadioButton {
 QRadioButton {
     padding-right: 6px;
 }
+/* 16 px in all with the border: QGIS lays some rows out at the native
+ * indicator height (16 px, e.g. Draw effects), which clipped the top of
+ * an 18 px box. */
 QCheckBox::indicator,
 QGroupBox::indicator {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
     border-radius: @radius_sm;
 }
 QRadioButton::indicator {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
-    border-radius: 9px;
+    border-radius: 8px;
 }
 QCheckBox::indicator:hover,
 QRadioButton::indicator:hover,
@@ -1139,6 +1153,14 @@ QProgressBar::chunk {
     border-radius: @radius_sm;
 }
 
+/* At least as tall as the knob (16 px with its ring): Qt sizes a slider
+ * from the groove, so the knob's top was cut off in opacity sliders. */
+QSlider:horizontal {
+    min-height: 18px;
+}
+QSlider:vertical {
+    min-width: 18px;
+}
 QSlider::groove:horizontal {
     background-color: @control_hover;
     height: 4px;
@@ -1296,13 +1318,14 @@ QgsOptionsTreeView::item {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }
-QTreeView#mOptionsTreeView::branch:selected,
-QgsOptionsTreeView::branch:selected {
-    background-color: @row_selected_window;
-}
+/* Hover first: a hovered selected row stays selected all along. */
 QTreeView#mOptionsTreeView::branch:hover,
 QgsOptionsTreeView::branch:hover {
     background-color: @row_hover_window;
+}
+QTreeView#mOptionsTreeView::branch:selected,
+QgsOptionsTreeView::branch:selected {
+    background-color: @row_selected_window;
 }
 QListWidget#mLabelingOptionsListWidget,
 QListWidget#mDiagramOptionsListWidget {
