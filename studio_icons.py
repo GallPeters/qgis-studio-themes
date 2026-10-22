@@ -585,6 +585,7 @@ ICON_MAP = {
     "providerGdal.svg": "file-database",
     "providerGrass.svg": "plant",
     "providerQgis.svg": "hexagon-letter-q",
+    "qgis_icon.svg": "hexagon-letter-q",
     "mIconIterate.svg": "repeat",
     "mIconModelInput.svg": "forms",
     "mActionRunSelected.svg": "player-play+check",
@@ -715,6 +716,12 @@ ICON_MAP = {
     "processing/gdaltools/warp.png": "world",
 }
 
+# Icons QGIS loads from its resources outside the theme folder: name ->
+# resource path (the QGIS logo on the Dev Tools documentation page).
+RESOURCE_PATHS = {
+    "qgis_icon.svg": ":/images/icons/qgis_icon.svg",
+}
+
 # Icons that QGIS core plugins load from their own folder instead of the
 # theme: name -> path relative to QgsApplication.pkgDataPath().
 EXTERNAL = {
@@ -824,6 +831,13 @@ def unique_icons():
 #   quill, blurred together at toolbar sizes; here without the middle one,
 #   and the quill only below the vane.
 CUSTOM_GLYPHS = {
+    # Tabler's help-circle with a larger question mark: its own one is too
+    # small to read inside the circle at toolbar and rail sizes.
+    "help-circle": (
+        '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/>'
+        '<path d="M9.5 9.5a2.5 2.5 0 1 1 4.42 1.61c-1.2 .55 -1.92 1.1 -1.92 2.1v.4"/>'
+        '<path d="M12 16.75v.01"/>'
+    ),
     "info-circle": (
         '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/>'
         '<path d="M11 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" fill="currentColor"/>'

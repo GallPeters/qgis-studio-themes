@@ -1044,7 +1044,7 @@ class IconSwapper(QObject):
         return hashlib.sha1(IconSwapper._serialized(icon)).hexdigest()
 
     # A built-in icon's file as an SVG icon stores it (UTF-16 text).
-    _RESOURCE_FILE = re.compile(r":/images/themes/default/([\w./ -]+?\.(?:svg|png))")
+    _RESOURCE_FILE = re.compile(r":/images/(?:themes/default|icons)/([\w./ -]+?\.(?:svg|png))")
 
     def _match(self, icon):
         """The QGIS icon name of `icon` by its data: its fingerprint, or
@@ -1389,6 +1389,9 @@ class IconSwapper(QObject):
         surfaces in the message bar."""
         if QFile.exists(self.RESOURCES + name):
             return self.RESOURCES + name
+        elsewhere = studio_icons.RESOURCE_PATHS.get(name)
+        if elsewhere is not None and QFile.exists(elsewhere):
+            return elsewhere
         external = studio_icons.EXTERNAL.get(name)
         if external is not None:
             path = Path(QgsApplication.pkgDataPath()) / external

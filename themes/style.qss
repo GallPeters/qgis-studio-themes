@@ -1221,15 +1221,19 @@ QgsDockWidget QListView {
 }
 
 /* Search fields in panels (Processing Toolbox, Browser filter, Layer
- * Styling...): one filled pill, its border shown on hover and focus. The
- * selector ends in QgsFilterLineEdit, so Qt checks the ancestor only for
- * those fields. */
+ * Styling, Dev Tools filters...): a filled pill with the fields' resting
+ * edge, so it reads as a field on the panel (fill alone almost vanished
+ * in the light themes), stronger on hover and focus. The selector ends in
+ * QgsFilterLineEdit, so Qt checks the ancestor only for those fields. */
 QDockWidget QgsFilterLineEdit {
     background-color: @control_bg;
-    border-color: transparent;
+    border-color: @field_border;
     border-radius: @search_radius;
     padding-left: 10px;
     padding-right: 10px;
+}
+QDockWidget QgsFilterLineEdit:hover {
+    border-color: @field_border_hover;
 }
 QDockWidget QgsFilterLineEdit:focus {
     background-color: @field_focus;
@@ -1266,8 +1270,9 @@ QgsCodeEditor {
  * Properties...): a sidebar set off from the page by a soft line, its
  * search field and page list inset from the window's edge and the line.
  * (Padding on the frame, not a margin on the field: Qt places the field's
- * search and clear icons by its full size.) */
-QFrame#mOptionsListFrame {
+ * search and clear icons by its full size.) Only in dialogs: the Dev
+ * Tools panel's rail has a frame of that name too, with its own line. */
+QgsOptionsDialogBase QFrame#mOptionsListFrame {
     border: none;
     border-right: 1px solid @divider;
     padding: 8px 8px 0 8px;

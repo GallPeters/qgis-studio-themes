@@ -25,6 +25,9 @@ changelog=
           - Options > Processing shows the theme's icons.
           - The layout designer's guide buttons show the theme's icons.
           - Dialogs grow to fit their contents, so the Layout Manager's rows no longer touch.
+          - Panel search fields have a soft edge, so they stand out in every theme.
+          - The Debugging/Development Tools panel has one divider line and a modern QGIS icon.
+          - Help icons have a larger, easier to read question mark.
 
      ** v1.0 (23.10.2026):
           - Sharper icons, each drawn for its exact pixel size on the pixel grid.
