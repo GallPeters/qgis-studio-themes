@@ -60,7 +60,8 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes
   chosen automatically on large, low-density monitors.
 - **Fast** – colours come from the Qt palette and icons from a few atlas
-  images, so dialogs, panels and theme switching stay quick.
+  images drawn once and shared by every theme, so dialogs, panels and theme
+  switching stay quick.
 
 ## Contributing
 

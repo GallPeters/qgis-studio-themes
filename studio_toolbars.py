@@ -18,10 +18,13 @@ so the toolbars' lines join into one across the window. A toolbar wider
 than its buttons (QMainWindow gives it the room left of a neighbour
 dragged further right) has them centred, its name with them.
 
-The title is horizontal text, drawn straight onto the window: Windows
-smooths it with ClearType like all other UI text. The capitals are centred
-in the strip with the baseline on a whole device pixel, and the dividers
-are one device pixel thick, so both stay sharp at every scaling.
+The title is horizontal text, drawn onto the toolbar's own background
+colour, so Windows smooths it with ClearType like all other UI text. The
+capitals are centred in the strip with the baseline on a whole device
+pixel, and the dividers are one device pixel thick, so both stay sharp at
+every scaling. Names and lines are drawn into pictures once, when they
+change, and Qt paints them from then on: buttons reach into the title
+strip, so every hover repaints it, without running any Python.
 
 A vertical toolbar (docked left or right) has no room for a strip; it gets
 a short three-letter name across the top of a taller handle
@@ -32,7 +35,7 @@ from qgis.PyQt import sip
 import functools
 
 from qgis.PyQt.QtCore import QEvent, QMargins, QObject, QPointF, QRect, Qt, QTimer
-from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen
+from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap
 from qgis.PyQt.QtWidgets import (
     QAbstractSpinBox, QApplication, QComboBox, QLabel, QLineEdit, QMainWindow, QStyle, QToolBar,
     QToolButton, QWidget,
@@ -169,56 +172,100 @@ def _snap(value, ratio):
     return round(value * ratio) / ratio
 
 
-class _Label(QWidget):
-    """The overlay painting one toolbar's name: a title strip above the
-    buttons, or a short name across the top of a vertical toolbar."""
+class _Overlay(QLabel):
+    """A picture over a toolbar, drawn by _paint into a pixmap of the
+    widget's size whenever it changes (see refresh); Qt paints it from
+    then on, so repainting the toolbar runs no Python. A QLabel, which
+    paints its pixmap in C++ (the stylesheet leaves these alone by name,
+    see style.qss)."""
 
-    def __init__(self, toolbar, color):
+    def __init__(self, toolbar, name):
         super().__init__(toolbar)
-        self.setObjectName("studioToolbarLabel")
+        self.setObjectName(name)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self._drawn = None
+
+    def refresh(self):
+        """Draw the picture again if its size, screen scaling or content
+        (_content) changed since it was last drawn."""
+        ratio = self.devicePixelRatioF()
+        key = (self.width(), self.height(), ratio, self._content())
+        if key == self._drawn or self.width() <= 0 or self.height() <= 0:
+            return
+        self._drawn = key
+        pixmap = QPixmap(max(1, round(self.width() * ratio)), max(1, round(self.height() * ratio)))
+        pixmap.setDevicePixelRatio(ratio)
+        pixmap.fill(self._background())
+        painter = QPainter(pixmap)
+        self._paint(painter, ratio)
+        painter.end()
+        self.setPixmap(pixmap)
+
+    def _background(self):
+        return QColor(Qt.GlobalColor.transparent)
+
+    def _content(self):
+        raise NotImplementedError
+
+    def _paint(self, painter, ratio):
+        raise NotImplementedError
+
+
+class _Label(_Overlay):
+    """One toolbar's name: a title strip above the buttons, or a short
+    name across the top of a vertical toolbar. Drawn on the toolbar's
+    background colour (when known): text on an opaque picture keeps
+    ClearType's subpixel smoothing, like text drawn on the window."""
+
+    def __init__(self, toolbar, color, background=None):
+        super().__init__(toolbar, "studioToolbarLabel")
         self.color = color
+        self.background = background
         self.text = ""
+        self.title_font = QFont()
         # What _place last applied, so unchanged layout requests are free.
         self.placed = None
 
-    def paintEvent(self, _event):  # pylint: disable=invalid-name
+    def _background(self):
+        if self.background is None or not self.background.isValid():
+            return super()._background()
+        return self.background
+
+    def _content(self):
+        background = self.background.rgba() if self.background is not None else None
+        return self.text, self.color.rgba(), background, self.title_font.key()
+
+    def _paint(self, painter, ratio):
         if not self.text:
             return
-        painter = QPainter(self)
-        ratio = self.devicePixelRatioF()
-        metrics = QFontMetricsF(self.font())
-        rect = self.rect()
+        metrics = QFontMetricsF(self.title_font)
         width = metrics.horizontalAdvance(self.text)
         # Capitals centred (centring the full line height would push them
         # up by the descender); baseline and start on whole device pixels,
         # where hinting keeps stems sharp.
-        x = _snap((rect.width() - width) / 2, ratio)
-        baseline = _snap((rect.height() + metrics.capHeight()) / 2, ratio)
-        painter.setFont(self.font())
+        x = _snap((self.width() - width) / 2, ratio)
+        baseline = _snap((self.height() + metrics.capHeight()) / 2, ratio)
+        painter.setFont(self.title_font)
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
-        painter.end()
 
 
-class _Divider(QWidget):
+class _Divider(_Overlay):
     """A line one device pixel thick, in `rule`: down the middle of the
     widget (the divider between a titled toolbar and the one to its left,
     in this toolbar's handle gap), or along its bottom when `row` (the line
     under a row of toolbars)."""
 
     def __init__(self, toolbar, rule, row=False):
-        super().__init__(toolbar)
-        self.setObjectName("studioToolbarRowLine" if row else "studioToolbarDivider")
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        super().__init__(toolbar, "studioToolbarRowLine" if row else "studioToolbarDivider")
         self.rule = rule
         self.row = row
 
-    def paintEvent(self, _event):  # pylint: disable=invalid-name
-        painter = QPainter(self)
-        ratio = self.devicePixelRatioF()
+    def _content(self):
+        return self.rule.rgba(), self.row
+
+    def _paint(self, painter, ratio):
         pen = QPen(self.rule)
         pen.setCosmetic(True)
         pen.setWidth(1)
@@ -229,7 +276,6 @@ class _Divider(QWidget):
         else:
             x = (int(self.width() / 2 * ratio) + 0.5) / ratio
             painter.drawLine(QPointF(x, 0), QPointF(x, self.height()))
-        painter.end()
 
 
 class ToolbarLabels(QObject):
@@ -244,11 +290,29 @@ class ToolbarLabels(QObject):
     toolbars share a row, and which is the last of it, is worked out once
     per window after toolbars move, show, hide or resize."""
 
-    def __init__(self):
+    # Events each part watches for (see _window_event, _toolbar_event).
+    WINDOW_EVENTS = (QEvent.Type.ChildPolished,) + tuple(
+        # Moved to a screen with another scaling: pictures drawn again.
+        getattr(QEvent.Type, name) for name in ("DevicePixelRatioChange", "ScreenChangeInternal")
+        if hasattr(QEvent.Type, name)
+    )
+    TOOLBAR_EVENTS = (
+        QEvent.Type.LayoutRequest, QEvent.Type.ActionChanged, QEvent.Type.ActionAdded,
+        QEvent.Type.ActionRemoved, QEvent.Type.ChildRemoved, QEvent.Type.Move, QEvent.Type.Resize,
+        QEvent.Type.Show, QEvent.Type.ParentChange, QEvent.Type.Hide,
+    )
+
+    def __init__(self, hub=None):
         super().__init__()
+        # The event filter shared with the icon swapper (studio_events).
+        if hub is None:
+            from .studio_events import EventHub  # pylint: disable=import-outside-toplevel
+            hub = EventHub()
+        self._hub = hub
         self._color = QColor()
         self._rule = QColor()
         self._row_rule = QColor()
+        self._background = None
         self._windows = []
         self._window_slots = {}
         self._labels = {}
@@ -288,16 +352,18 @@ class ToolbarLabels(QObject):
         # Empty toolbars already shrunk to their own size (_collapse_empty).
         self._collapsed = set()
 
-    def attach(self, window, color, rule, row_rule=None):
+    def attach(self, window, color, rule, row_rule=None, background=None):
         """Name every toolbar of `window` (a QMainWindow): text in
-        `color`, dividers between toolbars in `rule`, lines under rows of
-        toolbars in `row_rule` (by default `rule`)."""
+        `color` on the toolbars' `background`, dividers between toolbars in
+        `rule`, lines under rows of toolbars in `row_rule` (by default
+        `rule`)."""
         self._color = QColor(color)
         self._rule = QColor(rule)
         self._row_rule = QColor(rule if row_rule is None else row_rule)
+        self._background = None if background is None else QColor(background)
         if window not in self._windows:
             self._windows.append(window)
-            window.installEventFilter(self)
+            self._hub.watch(window, self, self.WINDOW_EVENTS, self._window_event)
             # Layout designers close: forget them, not loop over them.
             # Disconnected on detach, or each theme switch would add one.
             slot = lambda _obj=None, window=window: self._drop_window(window)  # noqa: E731
@@ -313,26 +379,35 @@ class ToolbarLabels(QObject):
             self._windows.remove(window)
         self._rows_pending.discard(window)
 
-    def set_color(self, color, rule, row_rule=None):
+    def set_color(self, color, rule, row_rule=None, background=None):
         self._color = QColor(color)
         self._rule = QColor(rule)
         self._row_rule = QColor(rule if row_rule is None else row_rule)
+        self._background = None if background is None else QColor(background)
         self._frames = {}  # another theme, other metrics
         for label in self._labels.values():
             if not sip.isdeleted(label):
                 label.color = self._color
-                label.update()
+                label.background = self._background
+                label.refresh()
         for lines, color in ((self._dividers, self._rule), (self._ends, self._rule),
                              (self._row_lines, self._row_rule)):
             for line in lines.values():
                 if not sip.isdeleted(line):
                     line.rule = color
-                    line.update()
+                    line.refresh()
+
+    def _rescaled(self):
+        """A window moved to a screen with another scaling: every picture
+        is drawn again at the new scaling (each skips it if unchanged)."""
+        for table in (self._labels, self._dividers, self._ends, self._row_lines):
+            for overlay in table.values():
+                if not sip.isdeleted(overlay):
+                    overlay.refresh()
 
     def detach(self):
         for window in self._windows:
-            if not sip.isdeleted(window):
-                window.removeEventFilter(self)
+            self._hub.unwatch(window, self)
         for window, slot in self._window_slots.values():
             try:
                 window.destroyed.disconnect(slot)
@@ -341,9 +416,9 @@ class ToolbarLabels(QObject):
         self._windows = []
         self._window_slots = {}
         for toolbar, label in list(self._labels.items()):
+            self._hub.unwatch(toolbar, self)
             if sip.isdeleted(toolbar):
                 continue
-            toolbar.removeEventFilter(self)
             for signal, slot in self._slots.pop(toolbar, ()):
                 signal.disconnect(slot)
             self._set_mode(toolbar, None)
@@ -353,6 +428,9 @@ class ToolbarLabels(QObject):
             for widget in (label, self._dividers.get(toolbar), self._row_lines.get(toolbar),
                            self._ends.get(toolbar)):
                 if widget is not None and not sip.isdeleted(widget):
+                    # Gone at once, even before Qt deletes it (deleteLater
+                    # waits for the event loop the call was made from).
+                    widget.hide()
                     widget.deleteLater()
             # Buttons centred by hand go back to where the layout puts them.
             toolbar.updateGeometry()
@@ -381,13 +459,13 @@ class ToolbarLabels(QObject):
         if toolbar in self._labels:
             return
         self._filled[toolbar] = has_items(toolbar)
-        label = _Label(toolbar, self._color)
+        label = _Label(toolbar, self._color, self._background)
         self._labels[toolbar] = label
         self._dividers[toolbar] = _Divider(toolbar, self._rule)
         self._row_lines[toolbar] = _Divider(toolbar, self._row_rule, row=True)
         self._ends[toolbar] = _Divider(toolbar, self._rule)
         self._extensions[toolbar] = toolbar.findChild(QToolButton, "qt_toolbar_ext_button")
-        toolbar.installEventFilter(self)
+        self._hub.watch(toolbar, self, self.TOOLBAR_EVENTS, self._toolbar_event)
         moved = lambda *_args, toolbar=toolbar: self._moved(toolbar)  # noqa: E731
         forget = lambda _obj=None, toolbar=toolbar: self._forget(toolbar)  # noqa: E731
         slots = [(signal, moved) for signal in (
@@ -576,12 +654,12 @@ class ToolbarLabels(QObject):
                 self._tooltips[toolbar] = toolbar.toolTip()
             if not self._tooltips[toolbar]:
                 toolbar.setToolTip(name)
-        label.setFont(font)
+        label.title_font = font
         label.text = text
         label.setGeometry(rect)
+        label.refresh()
         label.show()
         label.raise_()
-        label.update()
 
     def _place_divider(self, toolbar, mode, frame, extent):
         """The divider between a titled toolbar and its left neighbour, in
@@ -731,6 +809,7 @@ class ToolbarLabels(QObject):
     def _show(line, rect):
         if line.geometry() != rect or not line.isVisible():
             line.setGeometry(rect)
+            line.refresh()
             line.show()
             line.raise_()
 
@@ -782,14 +861,19 @@ class ToolbarLabels(QObject):
             return None
         return min(s[0] for s in spans), max(s[1] for s in spans)
 
-    def eventFilter(self, watched, event):  # pylint: disable=invalid-name
+    def _window_event(self, watched, event):
+        """Events of the named windows (WINDOW_EVENTS, via the hub)."""
+        if event.type() == QEvent.Type.ChildPolished:
+            child = event.child()
+            if isinstance(child, QToolBar) and child.parent() is watched:
+                self._add(child)
+        else:
+            self._rescaled()
+
+    def _toolbar_event(self, watched, event):
+        """Events of the named toolbars (TOOLBAR_EVENTS, via the hub)."""
         kind = event.type()
-        if isinstance(watched, QMainWindow):
-            if kind == QEvent.Type.ChildPolished:
-                child = event.child()
-                if isinstance(child, QToolBar) and child.parent() is watched:
-                    self._add(child)
-        elif kind == QEvent.Type.LayoutRequest:
+        if kind == QEvent.Type.LayoutRequest:
             # Qt has laid the toolbar out already (layouts see events before
             # event filters): re-centre now, before anything is painted.
             self._update(watched)

@@ -7,6 +7,7 @@ Built themes live in the profile's themes folder, which QGIS also searches
 for theme icons, so dialogs opened later pick up the modern icons natively.
 """
 import ctypes
+import functools
 import hashlib
 import json
 import os
@@ -37,6 +38,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons
+from .studio_events import EventHub
 from .studio_toolbars import TITLE_SPACE, ToolbarLabels
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -49,7 +51,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "23"
+BUILD_FORMAT = "24"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -169,13 +171,23 @@ ICON_STATES = (
     ("disabled", QIcon.Mode.Disabled),
     ("selected", QIcon.Mode.Selected),
 )
-# Pre-rendered icons live in one atlas per (pixel size, line width, state):
-# every distinct drawing in a cell of a grid this many cells wide, in
-# atlas_specs() order. One file per atlas instead of one per icon: Qt reads
-# a few images instead of thousands, and on Windows every small file opened
-# also costs a virus scan.
+# Pre-rendered icons live in atlases: every distinct drawing in a cell of a
+# grid this many cells wide, in atlas_specs() order. One file per atlas
+# instead of one per icon: Qt reads a few images instead of thousands, and
+# on Windows every small file opened also costs a virus scan.
 ATLAS_COLUMNS = 32
-ATLAS_FORMAT = 2
+# The atlases are drawn once as colourless masks per (pixel size, line
+# width, glyph scale), shared by every theme and state, and coloured when
+# loaded (see compose_atlas): a glyph layer (everything in the icon colour)
+# and the two coloured badge layers. Badges never touch the glyph (it is
+# cut away around them), so tinting each layer is exact. Masks are drawn
+# once per profile in the background (a fraction of a second per size).
+MASK_FORMAT = 1
+MASK_LAYERS = {
+    "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
+    "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
+    "danger": {"icon": "none", "accent": "none", "danger": "#000000"},
+}
 
 
 def atlas_specs():
@@ -192,28 +204,68 @@ def atlas_cell(index, size):
     return QRect((index % ATLAS_COLUMNS) * size, (index // ATLAS_COLUMNS) * size, size, size)
 
 
-def atlas_path(icons_dir, size, width, state):
-    return icons_dir / "png" / f"{size}w{width}-{state}.png"
+@functools.lru_cache(maxsize=1)
+def masks_key():
+    """Names the masks of these drawings, as studio_icons draws them: masks
+    of another plugin version are never used."""
+    digest = hashlib.sha1(f"{MASK_FORMAT}|{ATLAS_COLUMNS}|{'|'.join(atlas_specs())}".encode())
+    digest.update(Path(studio_icons.__file__).read_bytes().replace(b"\r\n", b"\n"))
+    return digest.hexdigest()[:16]
 
 
-def png_marker(icons_dir):
-    return icons_dir / "png" / ".done"
+def mask_folders(profile_masks):
+    """Where masks are looked up (and drawn): the folder of this version's
+    drawings in the profile's mask folder `profile_masks`."""
+    return (profile_masks / masks_key(),)
 
 
-def _specs_key():
-    return hashlib.sha1("|".join(atlas_specs()).encode()).hexdigest()
+def mask_path(folder, size, width, scale, layer):
+    return folder / f"{size}w{width}s{scale:g}-{layer}.png"
 
 
-def rendered_sizes(icons_dir):
-    """(pixel size, line width) pairs whose atlases are complete for a
-    built theme (none if they were drawn for another set of drawings)."""
-    try:
-        marker = json.loads(png_marker(icons_dir).read_text(encoding="utf-8"))
-        if marker.get("format") != ATLAS_FORMAT or marker.get("specs") != _specs_key():
-            return frozenset()
-        return frozenset((size, width) for size, width in marker["sizes"])
-    except (OSError, ValueError, TypeError, KeyError, AttributeError):
-        return frozenset()
+def find_masks(folders, size, width, scale):
+    """The folder holding the complete masks of one size, or None. The
+    glyph layer is written last, so it marks a complete set."""
+    for folder in folders:
+        if mask_path(folder, size, width, scale, "glyph").exists():
+            return folder
+    return None
+
+
+def missing_masks(folders, sizes, scale):
+    """The (pixel size, line width) pairs of `sizes` without masks."""
+    return frozenset(pair for pair in sizes if find_masks(folders, *pair, scale) is None)
+
+
+def badge_layer(spec):
+    """The mask layer of a drawing's coloured badge (None if it has none:
+    +, - and check marks are drawn in the icon colour)."""
+    badge = spec.partition("+")[2]
+    if not badge or badge in studio_icons.BADGE_MARKS:
+        return None
+    return "danger" if badge == "x" else "accent"
+
+
+def tinted(mask, color):
+    """A mask (Alpha8) in one colour."""
+    image = mask.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    painter.fillRect(image.rect(), color)
+    painter.end()
+    return image
+
+
+def compose_atlas(masks, colors):
+    """One state's atlas from the masks of a size: the glyph layer in the
+    icon colour, the badge layers in theirs (QColor values in `colors`).
+    A few image operations in Qt, instead of drawing every icon again."""
+    atlas = tinted(masks["glyph"], colors["icon"])
+    painter = QPainter(atlas)
+    for layer in ("accent", "danger"):
+        painter.drawImage(0, 0, tinted(masks[layer], colors[layer]))
+    painter.end()
+    return QPixmap.fromImage(atlas)
 
 
 def write_atomic(path, data):
@@ -231,36 +283,56 @@ def state_path(icons_dir, name, state):
     return icons_dir / state / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
-def render_atlas(icons_dir, size, width, state, colors, scale, stop):
-    """Draw every distinct icon at one (pixel size, line width) in one
-    state into its atlas, each drawn for that exact size with its lines on
+def render_masks(folder, size, width, scale, stop):
+    """Draw the masks of every distinct icon at one (pixel size, line
+    width, glyph scale), each drawn for that exact size with its lines on
     the pixel grid (studio_icons.render_icon_px), so it is shown 1:1,
     never resampled. Safe in a worker thread (QImage painting needs no GUI
     thread). False if stopped."""
     specs = atlas_specs()
     rows = -(-len(specs) // ATLAS_COLUMNS)
-    image = QImage(ATLAS_COLUMNS * size, rows * size, QImage.Format.Format_ARGB32_Premultiplied)
-    image.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(image)
+    images = {}
+    painters = {}
+    for layer in MASK_LAYERS:
+        image = QImage(ATLAS_COLUMNS * size, rows * size, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(Qt.GlobalColor.transparent)
+        images[layer] = image
+        painters[layer] = QPainter(image)
     try:
         for index, spec in enumerate(specs):
             if stop.is_set():
                 return False
-            svg = studio_icons.render_icon_px(spec, colors, size, scale, width)
-            QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painter, QRectF(atlas_cell(index, size)))
-            time.sleep(0.001)  # yield Python's lock to the GUI thread
+            cell = QRectF(atlas_cell(index, size))
+            for layer in ("glyph", badge_layer(spec)):
+                if layer is not None:
+                    svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
+                    QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
+            time.sleep(0)  # let the GUI thread take Python's lock if it waits
     finally:
-        painter.end()
-    path = atlas_path(icons_dir, size, width, state)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = QByteArray()
-    buffer = QBuffer(data)
-    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-    if not image.save(buffer, "PNG"):
-        raise OSError(f"could not encode {path.name}")
-    buffer.close()
-    write_atomic(path, bytes(data))
+        for painter in painters.values():
+            painter.end()
+    folder.mkdir(parents=True, exist_ok=True)
+    # The glyph layer last: it marks the set complete (see find_masks).
+    for layer in ("accent", "danger", "glyph"):
+        data = QByteArray()
+        buffer = QBuffer(data)
+        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+        if not images[layer].convertToFormat(QImage.Format.Format_Alpha8).save(buffer, "PNG"):
+            raise OSError(f"could not encode the {layer} masks")
+        buffer.close()
+        write_atomic(mask_path(folder, size, width, scale, layer), bytes(data))
     return True
+
+
+def load_masks(folder, size, width, scale):
+    """The three mask layers of one size (Alpha8), None if unreadable."""
+    masks = {}
+    for layer in MASK_LAYERS:
+        image = QImage(str(mask_path(folder, size, width, scale, layer)))
+        if image.isNull():
+            return None
+        masks[layer] = image.convertToFormat(QImage.Format.Format_Alpha8)
+    return masks
 
 
 def write_if_changed(path, text, written):
@@ -292,24 +364,15 @@ def load_tokens(folder):
     ))
 
 
-def prerender_pngs(icons_dir, sizes, colors, scale, stop):
-    """Pre-render the atlases of a built theme at the (pixel size, line
-    width) pairs `sizes` that are not done yet (worker thread), every
-    state of ICON_STATES; `colors` gives each state's colours. The marker
-    is updated after each size, so an interrupted run keeps what it
-    finished. Returns True once all are written, False if stopped or
-    failed."""
-    done = set(rendered_sizes(icons_dir))
+def prerender_masks(folders, sizes, scale, stop):
+    """Draw the masks of the (pixel size, line width) pairs `sizes` that
+    are not there yet into the profile's mask folder (worker thread), one
+    size at a time, so an interrupted run keeps what it finished. Returns
+    True once all are written, False if stopped or failed."""
     try:
-        for size, width in sorted(set(sizes) - done):
-            for (state, _mode), state_colors in zip(ICON_STATES, colors):
-                if not render_atlas(icons_dir, size, width, state, state_colors, scale, stop):
-                    return False
-            done.add((size, width))
-            png_marker(icons_dir).parent.mkdir(parents=True, exist_ok=True)
-            write_atomic(png_marker(icons_dir), json.dumps({
-                "format": ATLAS_FORMAT, "specs": _specs_key(), "sizes": sorted(done),
-            }).encode("utf-8"))
+        for size, width in sorted(missing_masks(folders, sizes, scale)):
+            if not render_masks(folders[-1], size, width, scale, stop):
+                return False
     except OSError:
         return False
     return True
@@ -333,7 +396,8 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     # Values that depend on the user's QGIS settings (part of shared_stamp).
     tokens.update(extra_tokens or {})
     icons = target / "icons"
-    # The atlases follow the theme's colours: drawn again in the background.
+    # Per-theme atlases of earlier versions (now composed from the shared
+    # masks when loaded).
     if (icons / "png").exists():
         shutil.rmtree(icons / "png")
     (icons / "studio").mkdir(parents=True, exist_ok=True)
@@ -425,12 +489,17 @@ def set_popup_shadows(enabled):
         probe.deleteLater()
 
 
+def qcolor(value):
+    """A resolved token colour as a QColor."""
+    r, g, b, a = parse_color(value)
+    return QColor(round(r), round(g), round(b), round(a * 255))
+
+
 def make_palette(tokens):
     """Qt palette for the theme: plain widgets get their colours from here
     instead of from broad stylesheet rules."""
     def color(token):
-        r, g, b, a = parse_color(tokens[token])
-        return QColor(r, g, b, round(a * 255))
+        return qcolor(tokens[token])
 
     role = QPalette.ColorRole
     group = QPalette.ColorGroup
@@ -616,9 +685,17 @@ class IconSwapper(QObject):
     _ACTION_ADDED = QEvent.Type.ActionAdded
     _PALETTE_CHANGE = QEvent.Type.PaletteChange
 
-    def __init__(self, cache_file=None):
+    def __init__(self, cache_file=None, profile_masks=None, hub=None):
         super().__init__()
         self._cache_file = cache_file
+        # The event filter shared with the toolbar names (see studio_events).
+        self._hub = hub if hub is not None else EventHub()
+        # Where the icon masks are found (see mask_folders), the glyph scale
+        # they are drawn at and the active theme's icon colours per state
+        # (QColor values, see icon_colors).
+        self._mask_folders = mask_folders(profile_masks) if profile_masks is not None else ()
+        self._scale = studio_icons.SCALE
+        self._colors = None
         self._swapped = []
         self._watched = {}
         self._models = {}
@@ -639,15 +716,18 @@ class IconSwapper(QObject):
         self._pickers = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
-        # (screen ratios, logical sizes) while the active theme's PNGs are
+        # (screen ratios, logical sizes) while the pre-rendered icons are
         # used, else None (see _pngs_usable).
         self._png = None
         # Icons cut from the atlases per (spec, pixel size, state, ratio),
-        # shared by every icon name with the same drawing, and the loaded
-        # atlases per (pixel size, line width, state) (None if unreadable).
+        # shared by every icon name with the same drawing, the active
+        # theme's atlases per (pixel size, line width, state) (None if
+        # unreadable) and the masks they are composed from, kept across
+        # theme switches, per (pixel size, line width, scale).
         self._pixmaps = {}
         self._atlases = {}
         self._atlas_index = {}
+        self._masks = {}
         # QGIS's toolbar and dialog page list icon sizes, which get PNGs of
         # their own.
         self._extra_sizes = (24, self.PAGE_LIST_ICON)
@@ -674,12 +754,29 @@ class IconSwapper(QObject):
         # Icon names of icons drawn by the Browser and Layers delegates,
         # by cacheKey (bounded; pixmap icons are never remembered).
         self._key_names = {}
+        # Icon names by icon slot (window class, parent and widget names,
+        # slot; see _slot), for the icons only fingerprints can identify:
+        # dialogs load new copies of their .ui icons on every open, which
+        # are then recognised without fingerprinting them again. Kept in
+        # the fingerprint cache (per QGIS build), so across sessions too.
+        self._slots = {}
+        self._slots_dirty = False
+        # Class of the window being scanned (slots are only remembered
+        # within a scan, where the widget's place is known).
+        self._scan_window = None
         self._icons = {}
         self._pending = []
         self._theme = None
         self._icons_dir = None
 
-    def apply(self, theme, icons_dir, main_window):
+    def apply(self, theme, icons_dir, main_window, colors=None, scale=studio_icons.SCALE):
+        """Show `theme`'s icons: the SVGs in `icons_dir`, or the icons
+        composed from the masks in the theme's `colors` (normal, disabled
+        and selected state, see icon_colors) at glyph `scale`."""
+        self._colors = colors
+        if scale != self._scale:
+            self._scale = scale
+            self._masks = {}
         if self._theme is not None:
             self._retheme(theme, icons_dir)
             return
@@ -693,7 +790,7 @@ class IconSwapper(QObject):
         self._atlases = {}
         self._main_window = main_window
         self._extra_sizes = self._current_extra_sizes()
-        self._png = self._pngs_usable(icons_dir)
+        self._png = self._pngs_usable()
         self._base_names = {
             QgsApplication.getThemeIcon(name).cacheKey(): name for name in studio_icons.ICON_MAP
         }
@@ -710,7 +807,7 @@ class IconSwapper(QObject):
                 self._scan(window, deferred=True)
         if self._pending:
             QTimer.singleShot(0, self._drain)
-        self._filter(main_window)
+        self._filter(main_window, self._CHILD_POLISHED)
         QGuiApplication.instance().focusWindowChanged.connect(self._on_focus_window)
 
     def _retheme(self, theme, icons_dir):
@@ -726,7 +823,7 @@ class IconSwapper(QObject):
         self._atlases = {}
         self._icons_dir = icons_dir
         self._extra_sizes = self._current_extra_sizes()
-        self._png = self._pngs_usable(icons_dir)
+        self._png = self._pngs_usable()
         # Each setIcon repaints its toolbar or menu: suspend painting and
         # repaint every window once at the end.
         windows = [w for w in QApplication.topLevelWidgets() if w.isVisible() and w.updatesEnabled()]
@@ -763,24 +860,30 @@ class IconSwapper(QObject):
         name = self._ours.get(icon.cacheKey())
         return None if name is None else self._icon(name)
 
-    def use_pngs(self, icons_dir):
-        """The active theme's PNGs are ready: every icon handed out so far
-        (drawn from the SVGs meanwhile, or from PNGs for other screens)
-        moves to its pixel-snapped version in place, with a single
-        repaint."""
-        if self._theme is not None and icons_dir == self._icons_dir:
-            if self._pngs_usable(icons_dir) != self._png:
-                self._retheme(self._theme, icons_dir)
+    def use_pngs(self):
+        """Masks were drawn: every icon handed out so far (drawn from the
+        SVGs meanwhile, or pre-rendered for other screens) moves to its
+        pixel-snapped version in place, with a single repaint."""
+        if self._theme is not None and self._pngs_usable() != self._png:
+            self._retheme(self._theme, self._icons_dir)
 
     def refresh_sizes(self):
-        """Screens or QGIS's icon size changed: icons whose PNGs no longer
+        """Screens or QGIS's icon size changed: icons whose masks no longer
         cover every screen and size go back to the SVGs (sharp at any size,
-        not stretched pixels) until the missing PNGs are drawn."""
+        not stretched pixels) until the missing masks are drawn."""
         if self._theme is None:
             return
         self._extra_sizes = self._current_extra_sizes()
-        if self._pngs_usable(self._icons_dir) != self._png:
+        if self._pngs_usable() != self._png:
             self._retheme(self._theme, self._icons_dir)
+
+    @property
+    def mask_folders(self):
+        return self._mask_folders
+
+    @property
+    def scale(self):
+        return self._scale
 
     def _current_extra_sizes(self):
         """QGIS's toolbar icon size and dialog page list size, as now set."""
@@ -818,16 +921,18 @@ class IconSwapper(QObject):
         widget.setIconSize(QSize(size, size))
 
     def needed_png_sizes(self):
-        """(pixel size, line width) of the PNGs these screens need."""
+        """(pixel size, line width) of the masks these screens need."""
         ratios = screen_ratios()
         return device_sizes(ratios, logical_sizes(ratios, self._extra_sizes))
 
-    def _pngs_usable(self, icons_dir):
-        """(screen ratios, logical sizes) when the theme's PNGs cover every
-        size on every screen, else None: the SVGs are used until then."""
+    def _pngs_usable(self):
+        """(screen ratios, logical sizes) when masks cover every size on
+        every screen, else None: the SVGs are used until then."""
+        if self._colors is None or not self._mask_folders:
+            return None
         ratios = screen_ratios()
         sizes = logical_sizes(ratios, self._extra_sizes)
-        if device_sizes(ratios, sizes) <= rendered_sizes(icons_dir):
+        if not missing_masks(self._mask_folders, device_sizes(ratios, sizes), self._scale):
             return ratios, sizes
         return None
 
@@ -852,8 +957,10 @@ class IconSwapper(QObject):
         self._names.update(dict.fromkeys(self._ours))
         self._compact_at = max(self.COMPACT_MIN, 2 * (len(self._scanned) + len(self._swapped)))
 
-    def _filter(self, obj):
-        obj.installEventFilter(self)
+    def _filter(self, obj, *types):
+        """Watch `obj` for events of `types` (see _on_event), through the
+        hub shared with the toolbar names."""
+        self._hub.watch(obj, self, types, self._on_event)
         self._filtered.append(obj)
 
     # Feature pickers (expression builder > Feature, relation references):
@@ -875,7 +982,7 @@ class IconSwapper(QObject):
         else:
             return
         self._pickers[id(edit)] = edit
-        self._filter(edit)
+        self._filter(edit, self._PALETTE_CHANGE)
         self._fix_picker_text(edit)
 
     @staticmethod
@@ -887,10 +994,15 @@ class IconSwapper(QObject):
             edit.setPalette(palette)
 
     def eventFilter(self, watched, event):  # pylint: disable=invalid-name
-        kind = event.type()
-        if kind == self._SHOW and isinstance(watched, QMenu):
+        """Menus about to open (a filter of their own, only while opening)."""
+        if event.type() == self._SHOW and isinstance(watched, QMenu):
             self._menu_shown(watched)
-        elif kind == self._ACTION_ADDED and isinstance(watched, (QToolBar, QMenuBar)):
+        return False
+
+    def _on_event(self, watched, event):
+        """Events the hub passes on (only the types asked for in _filter)."""
+        kind = event.type()
+        if kind == self._ACTION_ADDED and isinstance(watched, (QToolBar, QMenuBar)):
             # Swap once the code adding the action has finished setting it
             # up (some set the icon after addAction).
             action = event.action()
@@ -941,7 +1053,49 @@ class IconSwapper(QObject):
             return False
         self._reference_table = cached["digests"]
         self._png_signatures = {tuple(map(tuple, sig)) for sig in cached["png_sizes"]}
+        slots = cached.get("slots")
+        if isinstance(slots, dict):
+            self._slots = {**slots, **self._slots}
         return True
+
+    def _save_reference(self):
+        """Write the fingerprint table and the remembered slots to disk."""
+        self._slots_dirty = False
+        if self._cache_file is None or self._reference_table is None:
+            return
+        try:
+            write_atomic(self._cache_file, json.dumps({
+                "key": self._reference_key(),
+                "digests": self._reference_table,
+                "png_sizes": sorted(self._png_signatures),
+                "slots": self._slots,
+            }).encode("utf-8"))
+        except OSError:
+            pass
+
+    SLOT_LIMIT = 20000
+
+    def _slot(self, owner, kind, index):
+        """A stable name for an icon slot within the window being scanned
+        (None outside a scan, or for unnamed widgets and model items):
+        Designer gives every widget and action a name unique in its form."""
+        if self._scan_window is None or kind == "model":
+            return None
+        name = owner.objectName()
+        if not name:
+            return None
+        parent = owner.parent()
+        parent_name = parent.objectName() if parent is not None else ""
+        return f"{self._scan_window}|{parent_name}|{name}|{kind or ''}|{'' if index is None else index}"
+
+    def _remember_slot(self, slot, name):
+        if len(self._slots) >= self.SLOT_LIMIT:
+            self._slots = {}
+        self._slots[slot] = name
+        if not self._slots_dirty:
+            self._slots_dirty = True
+            # Written once things are quiet, not per dialog.
+            QTimer.singleShot(15000, self._save_reference)
 
     def _reference_step(self, count):
         """Fingerprint up to `count` more built-in icons; True when done."""
@@ -964,15 +1118,7 @@ class IconSwapper(QObject):
             return False
         self._reference_table = self._reference_partial
         self._reference_queue = self._reference_partial = None
-        if self._cache_file is not None:
-            try:
-                write_atomic(self._cache_file, json.dumps({
-                    "key": self._reference_key(),
-                    "digests": self._reference_table,
-                    "png_sizes": sorted(self._png_signatures),
-                }).encode("utf-8"))
-            except OSError:
-                pass
+        self._save_reference()
         return True
 
     def _request_reference(self):
@@ -1009,18 +1155,28 @@ class IconSwapper(QObject):
     def _signature(icon):
         return tuple(sorted((size.width(), size.height()) for size in icon.availableSizes()))
 
-    def _replacement(self, icon, deferred=False):
+    def _replacement(self, icon, deferred=False, slot=None):
         """Our icon for `icon`, None if it has none, or _UNKNOWN when it
-        needs the (slower) data comparison and `deferred` is set."""
+        needs the (slower) data comparison and `deferred` is set. `slot`
+        (see _slot) remembers what the icon in that place turned out to be:
+        only for icons without pixmaps, which the comparison fingerprints."""
         if icon.isNull():
             return None
         key = icon.cacheKey()
         name = self._names.get(key, self._UNKNOWN)
         if name is self._UNKNOWN:
+            if slot is not None and not icon.availableSizes():
+                self._load_reference()
+                name = self._slots.get(slot, self._UNKNOWN)
+            else:
+                slot = None
+        if name is self._UNKNOWN:
             if deferred:
                 return self._UNKNOWN
             name = self._identify(icon)
-            self._names[key] = name
+            if slot is not None:
+                self._remember_slot(slot, name)
+        self._names[key] = name
         if name is None:
             return None
         return self._icon(name)
@@ -1162,8 +1318,9 @@ class IconSwapper(QObject):
             width = studio_icons.screen_stroke_px(ratio)
             atlas_key = (size, width, state)
             if atlas_key not in self._atlases:
-                atlas = QPixmap(str(atlas_path(self._icons_dir, size, width, state)))
-                self._atlases[atlas_key] = None if atlas.isNull() else atlas
+                masks = self._load_masks(size, width)
+                colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
+                self._atlases[atlas_key] = None if masks is None else compose_atlas(masks, colors)
             atlas = self._atlases[atlas_key]
             if not self._atlas_index:
                 self._atlas_index = atlas_index()
@@ -1174,6 +1331,17 @@ class IconSwapper(QObject):
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
         return pixmap
+
+    def _load_masks(self, size, width):
+        """The masks of one size (read once, shared by every theme)."""
+        key = (size, width, self._scale)
+        masks = self._masks.get(key)
+        if masks is None:
+            folder = find_masks(self._mask_folders, *key)
+            masks = None if folder is None else load_masks(folder, *key)
+            if masks is not None:
+                self._masks[key] = masks
+        return masks
 
     def _builtin(self, icon):
         """The stock icon for one of our icons (used when restoring)."""
@@ -1235,17 +1403,20 @@ class IconSwapper(QObject):
         else:
             owner.setItemIcon(index, icon)
 
-    def _swap(self, owner, kind, index, deferred):
+    def _swap(self, owner, kind, index, deferred, slot=None):
         """Swap one icon slot; True when it shows (or is queued to show)
         one of our icons."""
         if self._theme is None or sip.isdeleted(owner):
             return False
         icon = self._get(owner, kind, index)
-        if icon.cacheKey() in self._ours:
+        key = icon.cacheKey()
+        if key in self._ours:
             return True
-        new = self._replacement(icon, deferred)
+        if slot is None and key not in self._names:
+            slot = self._slot(owner, kind, index)
+        new = self._replacement(icon, deferred, slot)
         if new is self._UNKNOWN:
-            self._pending.append((owner, kind, index))
+            self._pending.append((owner, kind, index, slot))
             return True
         if new is None:
             return False
@@ -1283,19 +1454,24 @@ class IconSwapper(QObject):
         # skipped?), instead of listing each page's widgets again: most of
         # a large dialog's widgets are on its hidden pages.
         hidden = {id(root): False}
-        for widget in widgets:
-            if len(hidden) > 1 and self._on_skipped_page(widget, hidden):
-                continue
-            self._visit(widget, deferred)
-            if isinstance(widget, QStackedWidget):
-                self._hook_stack(widget)
-                current = widget.currentWidget()
-                for index in range(widget.count()):
-                    page = widget.widget(index)
-                    if page is current and page.property(self.PROPERTY) != self._theme:
-                        self._mark(page)
-                    else:
-                        hidden[id(page)] = True
+        outer = self._scan_window
+        self._scan_window = root.window().metaObject().className()
+        try:
+            for widget in widgets:
+                if len(hidden) > 1 and self._on_skipped_page(widget, hidden):
+                    continue
+                self._visit(widget, deferred)
+                if isinstance(widget, QStackedWidget):
+                    self._hook_stack(widget)
+                    current = widget.currentWidget()
+                    for index in range(widget.count()):
+                        page = widget.widget(index)
+                        if page is current and page.property(self.PROPERTY) != self._theme:
+                            self._mark(page)
+                        else:
+                            hidden[id(page)] = True
+        finally:
+            self._scan_window = outer
         del everything
 
     @staticmethod
@@ -1331,7 +1507,7 @@ class IconSwapper(QObject):
 
         stacked.currentChanged.connect(current_changed)
         self._stacks[id(stacked)] = (stacked, current_changed)
-        self._filter(stacked)
+        self._filter(stacked, self._CHILD_POLISHED)
 
     def _visit(self, widget, deferred):
         """Swap the icons one widget shows itself (not its children).
@@ -1366,7 +1542,7 @@ class IconSwapper(QObject):
                 self._swap(action, None, None, deferred)
             if id(widget) not in self._bars:
                 self._bars.add(id(widget))
-                self._filter(widget)
+                self._filter(widget, self._ACTION_ADDED)
         elif isinstance(widget, QAbstractButton):
             self._swap(widget, None, None, deferred)
             self._mark_help(widget)
@@ -1392,7 +1568,7 @@ class IconSwapper(QObject):
             # was scanned.
             if id(widget) not in self._docks:
                 self._docks.add(id(widget))
-                self._filter(widget)
+                self._filter(widget, self._CHILD_POLISHED)
         elif isinstance(widget, QAbstractItemView):
             if widget.inherits("QgsProcessingToolboxTreeView"):
                 self._delegate_view(widget)
@@ -1569,8 +1745,8 @@ class IconSwapper(QObject):
             self._pending = []
             return
         batch, self._pending = self._pending[:self.BATCH], self._pending[self.BATCH:]
-        for owner, kind, index in batch:
-            self._swap(owner, kind, index, False)
+        for owner, kind, index, slot in batch:
+            self._swap(owner, kind, index, False, slot)
         if self._pending:
             QTimer.singleShot(0, self._drain)
 
@@ -1598,12 +1774,13 @@ class IconSwapper(QObject):
     def restore(self):
         if self._theme is not None:
             QGuiApplication.instance().focusWindowChanged.disconnect(self._on_focus_window)
+        if self._slots_dirty:
+            self._save_reference()
         self._theme = None
         self._warming = False
         self._pending = []
         for obj in self._filtered:
-            if not sip.isdeleted(obj):
-                obj.removeEventFilter(self)
+            self._hub.unwatch(obj, self)
         self._filtered = []
         self._docks = set()
         self._bars = set()
@@ -1708,8 +1885,12 @@ class QgisStudioThemesPlugin:
         self._active = None
         self._tokens = {}
         self._original_palette, self._original_font = self._original_look()
+        themes_folder = Path(QgsApplication.userThemesFolder())
+        # One event filter per watched object for the icons and the toolbar
+        # names, which both watch the main window and every toolbar.
+        self._hub = EventHub()
         self._icons = IconSwapper(
-            Path(QgsApplication.userThemesFolder()) / ".studio-icon-digests.json"
+            themes_folder / ".studio-icon-digests.json", themes_folder / ".studio-masks", self._hub
         )
         # Message bar items styled, with the slots connected to each.
         self._message_bar_slots = {}
@@ -1736,7 +1917,7 @@ class QgisStudioThemesPlugin:
         self._size_timer.setInterval(500)
         self._size_timer.timeout.connect(self._refresh_icon_sizes)
         self._size_hooks = []
-        self._labels = ToolbarLabels()
+        self._labels = ToolbarLabels(self._hub)
         self._compact = False
         self._extra_tokens = {}
         self._dock_icon_sizes = {}
@@ -2082,13 +2263,17 @@ class QgisStudioThemesPlugin:
         set_popup_shadows(False)
         name = studio[theme][0]
         icons_dir = self.theme_target(name) / "icons"
-        self._icons.apply(theme, icons_dir, self.iface.mainWindow())
+        scale = studio_icons.COMPACT_SCALE if self._compact else studio_icons.SCALE
+        colors = tuple(
+            {role: qcolor(value) for role, value in state.items()} for state in icon_colors(self._tokens)
+        )
+        self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale)
         self._style_message_bar()
         QTimer.singleShot(0, self._recolor_status_message)
         self._apply_labels()
         # After QGIS's own startup sizing, which would undo it.
         QTimer.singleShot(0, self._size_dock_toolbars)
-        self._prerender(icons_dir)
+        self._prerender()
 
     def _size_dock_toolbars(self):
         """Panel toolbars (Browser, Layers, Processing Toolbox...) get
@@ -2154,46 +2339,52 @@ class QgisStudioThemesPlugin:
             self._labels.detach()
             return
         color, rule, row_rule = self._label_color(), self._label_rule(), self._label_row_rule()
-        self._labels.set_color(color, rule, row_rule)
-        self._labels.attach(self.iface.mainWindow(), color, rule, row_rule)
+        background = self._label_background()
+        self._labels.set_color(color, rule, row_rule, background)
+        self._labels.attach(self.iface.mainWindow(), color, rule, row_rule, background)
         for designer in self.iface.openLayoutDesigners():
-            self._labels.attach(designer.window(), color, rule, row_rule)
+            self._labels.attach(designer.window(), color, rule, row_rule, background)
 
     def _label_designer(self, designer):
         if self._active is not None and self._labels_enabled():
             self._labels.attach(
-                designer.window(), self._label_color(), self._label_rule(), self._label_row_rule()
+                designer.window(), self._label_color(), self._label_rule(), self._label_row_rule(),
+                self._label_background(),
             )
 
-    def _prerender(self, icons_dir):
-        """Pre-render the theme's icons as pixel-snapped PNGs for these
-        screens in a worker thread, off startup's critical path; icons
-        shown meanwhile move to them once they are ready."""
-        sizes = self._icons.needed_png_sizes()
-        if icons_dir in self._rendering or sizes <= rendered_sizes(icons_dir):
+    def _label_background(self):
+        """The toolbars' background (QToolBar in style.qss), which the
+        names are drawn on."""
+        return qcolor(self._tokens["@bg_window"])
+
+    def _prerender(self):
+        """Draw the icon masks these screens need and the profile does not
+        hold yet (first start, other screens, sizes or plugin versions) in a
+        worker thread, off startup's critical path; icons
+        shown meanwhile move to them once they are ready. Every theme
+        shares them, so switching themes draws nothing."""
+        folders, scale = self._icons.mask_folders, self._icons.scale
+        sizes = missing_masks(folders, self._icons.needed_png_sizes(), scale)
+        if not folders or not sizes or scale in self._rendering:
             return
-        self._rendering.add(icons_dir)
-        colors = icon_colors(self._tokens)
-        scale = studio_icons.COMPACT_SCALE if self._compact else studio_icons.SCALE
+        self._rendering.add(scale)
 
         def work():
             try:
-                if prerender_pngs(icons_dir, sizes, colors, scale, self._stop):
-                    self._relay.pngs_ready.emit(icons_dir)
+                if prerender_masks(folders, sizes, scale, self._stop):
+                    self._relay.pngs_ready.emit(scale)
             finally:
                 # Also after an error, so the next request tries again.
-                self._rendering.discard(icons_dir)
+                self._rendering.discard(scale)
 
         QTimer.singleShot(3000, lambda: self._start(work))
 
-    def _pngs_ready(self, icons_dir):
-        """A worker finished drawing PNGs: move icons over, and draw any
+    def _pngs_ready(self, _scale):
+        """A worker finished drawing masks: move icons over, and draw any
         sizes asked for meanwhile (a screen plugged in during the run)."""
-        self._icons.use_pngs(icons_dir)
+        self._icons.use_pngs()
         if self._active is not None:
-            name = self._studio_themes()[self._active][0]
-            if self.theme_target(name) / "icons" == icons_dir:
-                self._prerender(icons_dir)
+            self._prerender()
 
     # ---- Screens and icon sizes -------------------------------------------
 
@@ -2225,12 +2416,11 @@ class QgisStudioThemesPlugin:
 
     def _refresh_icon_sizes(self):
         """Icons that no longer fit the screens go back to the SVGs, and the
-        missing PNGs are drawn in the background (then swapped in)."""
+        missing masks are drawn in the background (then swapped in)."""
         if self._active is None:
             return
         self._icons.refresh_sizes()
-        name = self._studio_themes()[self._active][0]
-        self._prerender(self.theme_target(name) / "icons")
+        self._prerender()
 
     def _deactivate(self):
         if self._active is None and self._prepared is None:

@@ -407,6 +407,16 @@ QToolBar[studioLabel="title"] > QLineEdit,
 QToolBar[studioLabel="title"] > QLabel {
     margin-top: @toolbar_title_height;
 }
+/* The toolbar names and lines (pictures drawn by the plugin, see
+ * studio_toolbars): placed by hand, never pushed down like the items. */
+QLabel#studioToolbarLabel,
+QLabel#studioToolbarDivider,
+QLabel#studioToolbarRowLine {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
 QToolBar[studioLabel="title"]::separator {
     margin: @toolbar_title_separator_margin;
 }
@@ -710,7 +720,7 @@ QComboBox::down-arrow {
 QComboBox::down-arrow:disabled {
     image: url(@theme_path/icons/studio/chevron-down-disabled.svg);
 }
-QComboBox QAbstractItemView {
+QComboBoxPrivateContainer > QAbstractItemView {
     background-color: @bg_menu;
     color: @text;
     border: 1px solid @menu_edge;
@@ -721,13 +731,13 @@ QComboBox QAbstractItemView {
     selection-color: @text_bright;
 }
 /* Rows as dense as the sub-page lists (Labels, Diagrams): 28 px. */
-QComboBox QAbstractItemView::item {
+QComboBoxPrivateContainer > QAbstractItemView::item {
     padding: 3px 8px;
     min-height: 18px;
     border-radius: @radius_sm;
 }
-QComboBox QAbstractItemView::item:hover,
-QComboBox QAbstractItemView::item:selected {
+QComboBoxPrivateContainer > QAbstractItemView::item:hover,
+QComboBoxPrivateContainer > QAbstractItemView::item:selected {
     background-color: @menu_hover;
     color: @text_bright;
 }
@@ -744,7 +754,7 @@ QAbstractItemView {
 QTableView {
     gridline-color: @grid;
 }
-QTableView QTableCornerButton::section {
+QTableView > QTableCornerButton::section {
     background-color: @header_bg;
     border: none;
     border-right: 1px solid @divider;
@@ -778,12 +788,12 @@ QHeaderView::section:checked {
 QgsAttributeTableView {
     qproperty-showGrid: false;
 }
-QgsAttributeTableView QHeaderView::section:horizontal {
+QgsAttributeTableView > QHeaderView::section:horizontal {
     background-color: @bg_base;
     border-right: 1px solid @grid;
     border-bottom: 1px solid @divider_strong;
 }
-QgsAttributeTableView QHeaderView::section:vertical {
+QgsAttributeTableView > QHeaderView::section:vertical {
     background-color: @bg_base;
     color: @text_disabled;
     font-weight: normal;
@@ -791,7 +801,7 @@ QgsAttributeTableView QHeaderView::section:vertical {
     border-bottom: 1px solid @grid;
     padding: 0 8px;
 }
-QgsAttributeTableView QTableCornerButton::section {
+QgsAttributeTableView > QTableCornerButton::section {
     background-color: @bg_base;
     border-right: 1px solid @grid;
     border-bottom: 1px solid @divider_strong;
@@ -821,17 +831,17 @@ QTableWidget#mAttributeActionTable::item:selected:!active {
     background-color: @row_selected_inactive;
     color: @text;
 }
-QTableWidget#mFieldsList QHeaderView::section:horizontal,
-QTableWidget#mAttributeActionTable QHeaderView::section:horizontal {
+QTableWidget#mFieldsList > QHeaderView::section:horizontal,
+QTableWidget#mAttributeActionTable > QHeaderView::section:horizontal {
     background-color: @bg_base;
     border-right: none;
     border-bottom: 1px solid @line;
 }
-QTableWidget#mFieldsList QComboBox {
+QTableWidget#mFieldsList > QWidget > QComboBox {
     background-color: transparent;
     border-color: transparent;
 }
-QTableWidget#mFieldsList QComboBox:hover {
+QTableWidget#mFieldsList > QWidget > QComboBox:hover {
     border-color: @field_border_hover;
 }
 /* Cell editors fit the row: no field height, padding or focus ring. */
