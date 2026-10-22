@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.1
+version=1.0
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -17,167 +17,71 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.1 (21.10.2026):
-          - Flat menus, drop-down lists and tooltips: no more Windows drop
-            shadow along their right and bottom edges, just the theme's
-            thin outline (the shadow comes back when leaving the Studio
-            themes).
-          - Processing History (and Query History) entries show the modern
-            icon of their algorithm instead of the old built-in one.
-          - Clearer SQL icon (Add and New Virtual Layer, SQL windows): the
-            "Q" is drawn like the "S" and the "SHP" letters, straight sides
-            with small rounded corners and a short slanted tail below the
-            bowl, so it stays open and readable at small sizes instead of
-            a rounded "0"-like shape.
-          - The map canvas has no frame of its own: the panel dividers, the
-            line under the toolbars and the status bar edge outline it, so
-            each edge of the map shows one line instead of two.
-          - Toolbar titles a touch bolder (Segoe UI Bold on Windows, Inter
-            SemiBold elsewhere), easier to read at their small size.
-
-     ** v1.0 (21.10.2026):
-          - Sharper icons on every screen: each icon is drawn for the exact
-            pixel size it is shown at, with its lines on the pixel grid
-            (solid 1-2 px lines instead of blurred ones), at normal and at
-            higher display scaling alike; icons shown before they are ready
-            switch over in place.
-          - Calmer badges: add and new actions show a small + in the icon's
-            colour, remove-from a -, save and accept a check mark; delete
-            keeps its red dot.
-          - Stronger Identify "i" and larger SQL letters; New Shapefile Layer
-            shows "SHP" in the same letters, and the SpatiaLite feather is
-            simpler (one barb less, no quill through the vane).
-          - Toolbar titles: each toolbar's name is shown centred above its
-            buttons (Project, Map Navigation, Data Sources...), with divider
-            lines between and after toolbars and a line under each row of
-            toolbars like the one under the menu bar, as sharp as the rest of
-            the UI text; a toolbar wider than its buttons has them centred;
-            vertical toolbars show a three-letter name on their handle, in
-            the same small capitals, centred over their icons.
-          - Fixed distorted icons (Processing History, rotate, refresh, world,
-            settings and others drawn with partial circles) and lines cut off
-            at the icon edge.
-          - One line weight for every icon, whatever its size: toolbars,
-            menus, panels and dialog page lists (Layer Properties, Data
-            Source Manager, Options) alike; 1 px lines on unscaled screens,
-            2 px on scaled laptop screens.
-          - Toolbar icons on large desktop monitors match the size of QGIS's
-            own icons; laptops keep their slightly larger icons.
-          - Sharper widget glyphs (combo, spin box, menu and header arrows,
-            check marks, radio dots, tab and panel close/float buttons):
-            each drawn for the exact size it is shown at; disabled combo
-            arrows now match the enabled chevron.
-          - Compact sizes picked automatically on large, low-density monitors.
-          - Toolbar names are always shown; the View menu no longer has the
-            Studio Toolbar Labels and Studio Compact Sizes items.
-          - Upgrading in a running QGIS keeps the Studio theme and its modern
-            Processing Toolbox and provider icons.
-          - Fixed missing modern icons in the Processing Toolbox (group
-            folders and tool icons) and in search boxes on QGIS builds where
-            these panels are built natively, such as recent Linux builds.
-          - Smoother, faster toolbars: centred toolbars no longer flicker when
-            tools are switched, and toolbar names add a third of the work
-            they did to every selection or layer change; toolbar names are
-            never cut short.
-          - One line colour for the menu bar, toolbar rows and dividers,
-            clearly visible in dark themes; lighter separators inside a
-            toolbar; drop-down arrows centred beside the icon; one outline
-            chevron style for spin boxes, menus and the panels' expand arrows;
-            even heights for the snapping fields; stronger checked buttons in
-            dark themes.
-          - Clearer icons: a touch more line weight on every icon (the line
-            stays on the pixel grid), larger glyphs with + and - badges in
-            menus and trees, and new Zoom Full, raster, vertex snapping and
-            topological editing icons.
-          - Lighter UI text: Inter Regular and Italic at weight 350 instead
-            of 400 (from Inter's variable font), which no longer reads as
-            bold, especially light on dark.
-          - Disabled icons and arrows are clearly dimmed, so an unavailable
-            tool no longer looks like a thinner version of the icon.
-          - Browser and Layers panels use the same sharp, pixel-snapped icons
-            as the toolbars (their lines looked heavier before); Layers groups
-            get a folder icon.
-          - Faster icons: pre-rendered icons are stored in a few atlas images
-            per theme instead of thousands of small files, so QGIS reads a
-            handful of files and theme switches are quicker; theme updates
-            rewrite only the files that changed.
-          - Smoother toolbars and panels: resizing the window, dragging
-            panels and changing the selection do less work for the toolbar
-            names; the Layers, Browser and Processing panels never compute
-            icon fingerprints while drawing; actions and drop-down lists no
-            longer run plugin code on every enable, disable or row added.
-          - Icons stay sharp when a monitor is plugged in or out, the display
-            scaling changes or the QGIS icon size is changed, without a
-            restart.
-          - Selected rows (dialog page lists, Layer Styling, Plugins, Browser,
-            Processing Toolbox) show their icon in the selected text's colour
-            (white in the dark themes), like checked tool buttons; the
-            selected page's accent bar is straight instead of curved.
-          - Toolbar names in semibold small capitals (easier to read) with a
-            slimmer title strip; empty
-            toolbars (Database, Web, Vector without plugins) no longer show
-            a labelled empty box: they shrink to a sliver, even where the
-            saved window layout had made them wide, and the line under the
-            row runs on beneath them.
-          - Fields, drop-down lists, spin boxes and buttons share one height
-            (28 px, compact sizes 26 px), so rows of them line up; drop-down
-            arrows of buttons stay inside the button.
-          - Panel title buttons (float, close) are clearly visible instead of
-            two faint dots; panel search fields are rounded and filled.
-          - Menus, drop-down lists and tooltips are lifted off the window by
-            a firm edge and a light top edge; hovered menu rows take an
-            accent tint; digits are tabular, so changing numbers (status bar
-            coordinates, scale) no longer jitter.
-          - Fixed: after updating or reloading the plugin while a Studio theme
-            was shown, switching to another theme kept the Studio palette and
-            font.
-          - Visual polish:
-            - Layers, Browser and Processing rows are soft rounded pills;
-              hover and selection run the whole row, expand arrows
-              included.
-            - Collapsible sections in dialogs keep the modern arrows after
-              they are opened or closed.
-            - A thin line in the splitters between panels and the map.
-            - Group boxes in dialogs are sections (title above a hairline)
-              instead of nested rounded boxes.
-            - Attribute tables without the column grid, a firm rule under
-              the header and quieter row numbers.
-            - Checkboxes in the Layers and Browser panels and the symbol
-              layer tree match the dialog checkboxes; the symbol layer tree
-              uses outline chevrons.
-            - Status bar: dimmed labels and filled value fields of one
-              height, their border shown on hover and focus.
-            - Help in dialog button rows is a quiet text button.
-            - Plugins dialog: the checkboxes keep clear of the list's border.
-            - Drop-down lists open below the field and show all their items
-              (short lists such as the labelling mode no longer need
-              scrolling).
-            - Tabbed panels switch with a segmented control.
-            - A 2 px accent focus ring that does not shift the text.
-            - Slim scrollbar handles that widen on hover.
-          - Code editors (expressions, Field Calculator, Python console,
-            SQL) take the theme's colours: dark in the dark themes instead of
-            a white block, with the accent for keywords.
-          - Numbers in spin boxes and text in editable drop-down lists are
-            centred (they sat a few pixels low).
-          - Expression builder: function groups without grey blocks, and
-            outline chevrons.
-          - Faster large dialogs: finding the icons to modernise in Layer
-            Properties and similar dialogs takes about a third less time.
-          - Fixed: the status bar message kept the previous theme's colour
-            (invisible after switching from a dark to a light theme, or back
-            to QGIS's own theme).
-          - Fixed: after updating the plugin in a running QGIS, the previous
-            version's stylesheet stayed in use until a restart.
-          - Fixed: disabling or uninstalling the plugin while a Studio theme
-            was shown left its stylesheet over QGIS's colours until a
-            restart; disabling it no longer waits for background work.
-          - Fixed: one failed background task stopped all later theme builds
-            and icon pre-rendering until QGIS was restarted.
-          - Fixed: an icon file cut short by a crash or forced exit stayed
-            broken (blank icon) for good.
-          - Fixed: leaving a Studio theme could put icons on the wrong rows of
-            lists and drop-down lists that changed in the meantime.
+     ** v1.0 (23.10.2026):
+          - Sharper icons, each drawn for its exact pixel size on the pixel grid.
+          - One line weight for every icon, in toolbars, menus, panels and dialogs.
+          - Calmer badges: a small +, - or check mark; delete keeps its red dot.
+          - Clearer Identify, SQL, SHP, SpatiaLite, Zoom Full and snapping icons.
+          - Fixed distorted icons and lines cut off at the icon edge.
+          - Disabled icons and arrows are clearly dimmed.
+          - Browser and Layers panels use the same sharp icons as the toolbars.
+          - Layers groups and Processing Toolbox groups show a folder icon.
+          - Processing and Query History entries show modern algorithm icons.
+          - Fixed missing modern icons in the Processing Toolbox on some builds.
+          - Selected rows and pages show a white icon, like their text.
+          - Icons stay sharp when screens, scaling or the icon size change.
+          - Toolbar icons on large desktop monitors match QGIS's own size.
+          - Each toolbar shows its name above its buttons.
+          - Vertical toolbars show a three-letter name on their handle.
+          - Divider lines separate toolbars, and a line runs under each row.
+          - Toolbar names use a bolder face that reads well at small sizes.
+          - Toolbar names are never cut short, and wide toolbars centre their buttons.
+          - Empty toolbars shrink to a sliver instead of an empty box.
+          - Premium Dark uses a softer, lighter grey and one soft text colour.
+          - Premium Dark has a cleaner green accent.
+          - Menus, drop-down lists and tooltips are flat, without a drop shadow.
+          - Fields, drop-down lists, spin boxes and buttons share one height.
+          - Secondary buttons are tonal, and disabled buttons are outlined.
+          - A thin accent focus edge replaces the thick focus ring.
+          - Section titles are semibold in sentence case.
+          - Dialog page lists have rounded pills and fit all Layer Properties pages.
+          - The Labels and Diagrams sub-page lists match the dialog page lists.
+          - The Labels tabs have soft separators between them.
+          - The selected Options page stays fully highlighted on hover.
+          - Unfocused selections keep a faint accent instead of plain grey.
+          - Checkboxes, radio buttons and slider knobs are no longer clipped.
+          - Checked menu items show an accent check mark.
+          - The message bar is a raised card with a stripe in its level's colour.
+          - Fields and Actions tables use row lines instead of a grid.
+          - Attribute tables have no grid lines and a firm header rule.
+          - Drop-down lists open below the field and show all their items.
+          - The map canvas has one edge line instead of two.
+          - Layers, Browser and Processing rows are rounded, full-width pills.
+          - Tabbed panels switch with a segmented control.
+          - Code editors use the theme's colours.
+          - Numbers in spin boxes and editable lists are centred.
+          - Digits are tabular, so changing numbers no longer jitter.
+          - UI text is lighter and no longer reads as bold.
+          - Compact sizes are chosen automatically on low-density monitors.
+          - Collapsible sections keep the modern arrows.
+          - Help in dialog button rows is a quiet text button.
+          - The Plugins dialog checkboxes keep clear of the list border.
+          - Icons are drawn once and shared by every theme.
+          - Theme switches no longer redraw any icons.
+          - Hover, selection changes and resizing run half as much plugin code.
+          - Toolbar names and lines are painted by Qt without plugin code.
+          - Large dialogs reopen faster because their icons are remembered.
+          - Theme updates rewrite only the files that changed.
+          - Upgrading in a running QGIS keeps the theme and its icons.
+          - The View menu no longer has the toolbar labels and compact items.
+          - Fixed unreadable dark text in the expression builder's Feature picker.
+          - Fixed the Studio palette and font staying after a plugin reload.
+          - Fixed the status bar message keeping the previous theme's colour.
+          - Fixed an outdated stylesheet staying after an update.
+          - Fixed the stylesheet staying after disabling the plugin.
+          - Fixed one failed background task stopping later builds.
+          - Fixed icons left broken after a crash.
+          - Fixed icons on the wrong rows after leaving a Studio theme.
 
      ** v0.9 (18.10.2026):
           - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,

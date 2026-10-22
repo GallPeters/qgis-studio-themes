@@ -184,7 +184,7 @@ footer.notes p { max-width: 960px; margin: 0 0 8px; }
 
 /* =====================================================================
    QGIS mock: shared structure. Every visual value is a token, so the
-   "before" frame (v1.1 Premium Dark, measured) and the "after" frame
+   "before" frame (Premium Dark before the review, measured) and the "after" frame
    (proposed) render the same markup with different design tokens, plus
    a few structural overrides scoped to .after.
    ===================================================================== */
@@ -199,7 +199,7 @@ footer.notes p { max-width: 960px; margin: 0 0 8px; }
 .qg * { box-sizing: border-box; }
 .qg svg.ic { display: block; flex: none; }
 
-/* ---- before: Studio Premium Dark v1.1, resolved tokens --------------- */
+/* ---- before: Studio Premium Dark before the review, resolved tokens --------------- */
 .qg.before {
   --bg-window: #2b2b2b; --bg-dock: #282828; --bg-base: #232323; --bg-menu: #2d2d2d;
   --text: #e8e8e8; --text-bright: #ffffff; --text-dim: #b0b0b0; --text-disabled: #7d7d7d;
@@ -498,7 +498,7 @@ footer.notes p { max-width: 960px; margin: 0 0 8px; }
 <body>
 <header class="top">
   <div class="wrap">
-    <p class="eyebrow">QGIS Studio Themes · Studio Premium Dark · v1.1 → proposed</p>
+    <p class="eyebrow">QGIS Studio Themes · Studio Premium Dark · before → proposed</p>
     <h1>Top 10 visual improvements, before and after</h1>
     <p class="lede">A design review of the Premium Dark theme as it renders in QGIS 4.2 today. The “before” frames use the theme's own resolved colours and the same Tabler icons the plugin draws; the “after” frames apply all ten proposals to the same screens. Drag the divider to compare, or switch to side by side.</p>
     <div class="facts">
@@ -862,7 +862,7 @@ function render() {
   if (mode === "split") {
     stage.innerHTML = ["before", "after"].map(v => `
       <div class="pane">
-        <div class="pane-label ${v}"><span class="dot"></span>${v === "before" ? "Before · v1.1" : "After · proposed"}</div>
+        <div class="pane-label ${v}"><span class="dot"></span>${v === "before" ? "Before" : "After · proposed"}</div>
         <div class="viewport${state.actual ? " actual" : ""}${hideMk}"><div class="frame" data-variant="${v}">${build(v)}</div></div>
       </div>`).join("");
   } else if (mode === "wipe") {
@@ -882,7 +882,7 @@ function render() {
   } else {
     stage.innerHTML = `
       <div class="pane" style="width:100%">
-        <div class="pane-label ${mode}"><span class="dot"></span>${mode === "before" ? "Before · v1.1" : "After · proposed"}</div>
+        <div class="pane-label ${mode}"><span class="dot"></span>${mode === "before" ? "Before" : "After · proposed"}</div>
         <div class="viewport${state.actual ? " actual" : ""}${hideMk}"><div class="frame">${build(mode)}</div></div>
       </div>`;
   }
