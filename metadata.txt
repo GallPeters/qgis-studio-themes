@@ -100,35 +100,26 @@ changelog=
           - Fixed icons on the wrong rows after leaving a Studio theme.
 
      ** v0.9 (18.10.2026):
-          - Themes renamed with Light/Dark: Studio Premium Dark, Web Dark,
-            Orange Dark, Orange Light (saved choices follow automatically).
-          - Brighter Premium green; stronger accents and text where contrast
-            was low; theme list in Options sorted alphabetically.
-          - About 260 more QGIS icons modernised (Options, Project Properties,
-            Advanced Digitizing, Data Source Manager, Browser, layout designer,
-            styling panel, Processing Toolbox incl. GDAL tools, Python console,
-            script editor and more), incl. drop-down buttons, sub-menus and
-            option trees.
-          - Lighter, slightly larger icons; simple accent-dot badges.
-          - Toolbar name labels on each toolbar handle (View > Studio Toolbar
-            Labels to turn off).
-          - Larger, more spaced main menu; larger panel toolbar icons; clearer
-            panel titles; Browser, Layers and Processing panels share roomier
-            rows.
-          - Processing Toolbox: folder icons for groups, distinct tool icon.
-          - Clearer disabled text and icons in every theme.
-          - Faster startup: only the active theme is prepared up front; icons
-            are pre-rendered and identified in the background.
-          - Faster dialogs, menus and tab switching (lighter icon scan, no
-            fingerprinting of symbol previews, cached toolbar labels).
-          - Smoother Processing Toolbox and Browser, and theme switching with a
-            single repaint.
-          - Icons stay modern when plugins (e.g. Processing) are turned on at
-            runtime, and in mode buttons such as snapping overlap.
-          - Sharp icons on scaled (HiDPI) screens; DB Manager, Oracle and more
-            provider icons modernised; dialog page lists fit when collapsed.
-          - Stable memory use and theme switching over long sessions.
-          - Smaller, faster-loading fonts.
+          - Themes renamed with Light or Dark, and saved choices follow.
+          - A brighter Premium green and stronger low-contrast colours.
+          - The theme list in Options is sorted alphabetically.
+          - About 260 more QGIS icons are modernised.
+          - Icons are lighter and slightly larger, with simple accent-dot badges.
+          - Each toolbar shows its name on its handle.
+          - The main menu is larger and more spaced.
+          - Panel toolbar icons are larger and panel titles are clearer.
+          - Browser, Layers and Processing panels share roomier rows.
+          - The Processing Toolbox shows folder icons for groups.
+          - Disabled text and icons are clearer in every theme.
+          - Faster startup, with icons prepared in the background.
+          - Faster dialogs, menus and tab switching.
+          - Smoother Processing Toolbox, Browser and theme switching.
+          - Icons stay modern when plugins are turned on at runtime.
+          - Icons are sharp on scaled (HiDPI) screens.
+          - More provider icons are modernised, such as DB Manager and Oracle.
+          - Dialog page lists fit when collapsed.
+          - Memory use and theme switching stay stable in long sessions.
+          - Fonts are smaller and load faster.
 
      ** v0.8 (15.10.2026):
           - New modern icon set and Inter font.
@@ -141,10 +132,9 @@ changelog=
           - Fixed unreadable selected table cells in dark themes.
 
      ** v0.7 (26.07.2026):
-          - New Studio Light Orange theme (Kartoza brand colours, WCAG-checked contrast).
-          - New Studio QGIS Light theme (QGIS brand style guide colours).
-          - Light Studio themes now force a light Qt colour scheme even when
-            the desktop is in dark mode (dark themes force dark likewise).
+          - New Studio Light Orange theme in Kartoza brand colours.
+          - New Studio QGIS Light theme in QGIS brand colours.
+          - Light themes stay light when the desktop is in dark mode.
 
      ** v0.6 (13.07.2026):
           - Fixed marker symbol grid layout in the Layer Styling panel.
@@ -153,7 +143,7 @@ changelog=
           - Fixed Layer Styling layout width and icon alignment.
           - Improved panel scrollbar width and hover color.
           - Updated icon.
-     
+
      ** v0.4 (21.06.2026):
           - Fixed operator button icons.
           - Fixed layer panel extension button icon.
