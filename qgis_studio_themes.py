@@ -32,7 +32,7 @@ from qgis.PyQt.QtGui import (
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
-    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
+    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialog, QDialogButtonBox, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
     QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView, QWidget,
 )
@@ -714,8 +714,11 @@ class IconSwapper(QObject):
         # picker text fields (see _hook_picker).
         self._page_lists = {}
         self._pickers = {}
-        # Trees whose row-wide focus frame is turned off (see _row_focus).
+        # Trees whose row-wide focus frame is turned off (see _row_focus),
+        # and dialogs kept large enough for their contents, with QGIS's own
+        # minimum size (see _hold_room).
         self._row_focus = {}
+        self._rooms = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the pre-rendered icons are
@@ -953,7 +956,7 @@ class IconSwapper(QObject):
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
         for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
-                      self._row_focus):
+                      self._row_focus, self._rooms):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1010,6 +1013,8 @@ class IconSwapper(QObject):
             # up (some set the icon after addAction).
             action = event.action()
             QTimer.singleShot(0, lambda action=action: self._swap(action, None, None, False))
+        elif kind == self._LAYOUT_REQUEST and id(watched) in self._rooms:
+            self._fit_room(watched)
         elif kind == self._PALETTE_CHANGE and id(watched) in self._pickers:
             self._fix_picker_text(watched)
         elif kind == self._CHILD_POLISHED:
@@ -1028,15 +1033,41 @@ class IconSwapper(QObject):
     # ---- Identification ---------------------------------------------------
 
     @staticmethod
-    def _digest(icon):
+    def _serialized(icon):
         data = QByteArray()
         stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream << icon  # pylint: disable=pointless-statement
-        return hashlib.sha1(bytes(data)).hexdigest()
+        return bytes(data)
+
+    @staticmethod
+    def _digest(icon):
+        return hashlib.sha1(IconSwapper._serialized(icon)).hexdigest()
+
+    # A built-in icon's file as an SVG icon stores it (UTF-16 text).
+    _RESOURCE_FILE = re.compile(r":/images/themes/default/([\w./ -]+?\.(?:svg|png))")
+
+    def _match(self, icon):
+        """The QGIS icon name of `icon` by its data: its fingerprint, or
+        else the built-in file it names. Some QGIS widgets build their
+        icons so that the data differs from the plain icon's (the layout
+        designer's guide buttons), while still naming the file."""
+        data = self._serialized(icon)
+        name = self._reference().get(hashlib.sha1(data).hexdigest())
+        if name is None:
+            for start in (0, 1):
+                text = data[start:].decode("utf-16-be", errors="ignore")
+                for found in self._RESOURCE_FILE.finditer(text):
+                    if found.group(1) in studio_icons.ICON_MAP:
+                        return found.group(1)
+        return name
+
+    # Bump when identification changes, so remembered answers (slots) made
+    # by an earlier version are dropped (2: icons named by their file).
+    MATCH_FORMAT = 2
 
     def _reference_key(self):
         names = "|".join(studio_icons.ICON_MAP)
-        return f"{Qgis.version()}|{qVersion()}|{hashlib.sha1(names.encode()).hexdigest()}"
+        return f"{self.MATCH_FORMAT}|{Qgis.version()}|{qVersion()}|{hashlib.sha1(names.encode()).hexdigest()}"
 
     def _load_reference(self):
         """The fingerprint table from the disk cache (per QGIS/Qt build and
@@ -1210,7 +1241,7 @@ class IconSwapper(QObject):
         signature = self._signature(icon)
         if signature and signature not in self._png_signature_set():
             return None
-        return self._reference().get(self._digest(icon))
+        return self._match(icon)
 
     def keyed_icon(self, icon):
         """Our version of an icon the Browser or Layers delegate draws,
@@ -1233,7 +1264,7 @@ class IconSwapper(QObject):
             if not self._load_reference():
                 self._request_reference()
                 return None
-            name = self._reference().get(self._digest(icon))
+            name = self._match(icon)
             if len(self._key_names) > 4096:
                 self._key_names.clear()
             self._key_names[key] = name
@@ -1443,6 +1474,8 @@ class IconSwapper(QObject):
         if len(self._scanned) + len(self._swapped) >= self._compact_at:
             self._compact()
         self._mark(root)
+        if isinstance(root, QDialog) and root.isWindow():
+            self._hold_room(root)
         # All widgets, filtered here: faster than findChildren() with a
         # tuple of types, which PyQt matches type by type. The full list
         # stays referenced during the scan: its Python wrappers make the
@@ -1607,6 +1640,35 @@ class IconSwapper(QObject):
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
+
+    _LAYOUT_REQUEST = QEvent.Type.LayoutRequest
+
+    def _hold_room(self, dialog):
+        """Dialogs QGIS gives a fixed minimum size suited to its own,
+        smaller controls (Layout Manager: 300 px for 335 px of contents
+        with the theme's 28 px fields): Qt then squeezes rows into each
+        other instead of growing the window. Such a dialog's minimum is
+        raised to what its contents need whenever its layout changes
+        (choosing a template shows another row), never below QGIS's own."""
+        own = dialog.minimumSize()
+        if dialog.layout() is None or id(dialog) in self._rooms or (own.width() == 0 and own.height() == 0):
+            return
+        self._rooms[id(dialog)] = (dialog, own)
+        self._filter(dialog, self._LAYOUT_REQUEST)
+        self._fit_room(dialog)
+
+    def _fit_room(self, dialog):
+        entry = self._rooms.get(id(dialog))
+        if entry is None or sip.isdeleted(dialog):
+            return
+        own = entry[1]
+        need = dialog.minimumSizeHint()
+        screen = dialog.screen()
+        limit = screen.availableGeometry().size() if screen is not None else need
+        width = max(own.width(), min(need.width(), limit.width()))
+        height = max(own.height(), min(need.height(), limit.height()))
+        if (width, height) != (dialog.minimumWidth(), dialog.minimumHeight()):
+            dialog.setMinimumSize(width, height)
 
     def _hide_row_focus(self, tree):
         """Trees showing focus across all columns (renderer categories,
@@ -1841,6 +1903,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(tree):
                 tree.setAllColumnsShowFocus(True)
         self._row_focus = {}
+        for dialog, own in self._rooms.values():
+            if not sip.isdeleted(dialog):
+                dialog.setMinimumSize(own)
+        self._rooms = {}
         for edit in self._pickers.values():
             # Back to QGIS's own black (its filter is removed above).
             if not sip.isdeleted(edit):
