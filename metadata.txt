@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.0
+version=1.1
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,12 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.1 (23.10.2026):
+          - Checkboxes in lists and tables, such as renderer categories, match the theme.
+          - Selected rows no longer show a blue checkbox or a white frame.
+          - Option dialogs have a soft line between the page list and the page.
+          - The search field and page list of option dialogs keep clear of the edges.
 
      ** v1.0 (23.10.2026):
           - Sharper icons, each drawn for its exact pixel size on the pixel grid.

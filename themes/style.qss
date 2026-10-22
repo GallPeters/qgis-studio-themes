@@ -329,45 +329,35 @@ QTreeView#mOptionsTreeView::branch:open:has-children:has-siblings {
 QgsExpressionTreeView::item {
     background: transparent;
 }
-/* Checkboxes in these trees (layer and legend visibility, symbol layers)
- * match the dialog checkboxes instead of the native tick. */
-QgsLayerTreeView::indicator,
-QgsBrowserTreeView::indicator,
-QTreeView#layersTree::indicator {
+/* Checkboxes in lists, trees and tables (layer visibility, symbol layers,
+ * renderer categories...) match the dialog checkboxes instead of the
+ * native tick, which stays black on dark themes and turns blue when its
+ * row is selected. */
+QAbstractItemView::indicator {
     width: 14px;
     height: 14px;
     border: 1px solid @field_border_hover;
     background-color: @bg_base;
     border-radius: @radius_sm;
 }
-QgsLayerTreeView::indicator:hover,
-QgsBrowserTreeView::indicator:hover,
-QTreeView#layersTree::indicator:hover {
+QAbstractItemView::indicator:hover {
     border-color: @accent;
 }
-QgsLayerTreeView::indicator:checked,
-QgsBrowserTreeView::indicator:checked,
-QTreeView#layersTree::indicator:checked {
+QAbstractItemView::indicator:checked {
     background-color: @accent;
     border-color: @accent;
     image: url(@theme_path/icons/studio/checkbox-check.svg);
 }
-QgsLayerTreeView::indicator:indeterminate,
-QgsBrowserTreeView::indicator:indeterminate,
-QTreeView#layersTree::indicator:indeterminate {
+QAbstractItemView::indicator:indeterminate {
     background-color: @accent_indeterminate;
     border-color: @accent_indeterminate;
     image: url(@theme_path/icons/studio/checkbox-indeterminate.svg);
 }
-QgsLayerTreeView::indicator:disabled,
-QgsBrowserTreeView::indicator:disabled,
-QTreeView#layersTree::indicator:disabled {
+QAbstractItemView::indicator:disabled {
     background-color: @bg_window;
     border-color: @divider_strong;
 }
-QgsLayerTreeView::indicator:checked:disabled,
-QgsBrowserTreeView::indicator:checked:disabled,
-QTreeView#layersTree::indicator:checked:disabled {
+QAbstractItemView::indicator:checked:disabled {
     background-color: @accent_disabled;
     border-color: @accent_disabled;
 }
@@ -1272,6 +1262,16 @@ QgsCodeEditor {
 }
 
 /* ---- Options / properties navigation lists ------------------------------ */
+/* The left column of option dialogs (Options, Layer and Project
+ * Properties...): a sidebar set off from the page by a soft line, its
+ * search field and page list inset from the window's edge and the line.
+ * (Padding on the frame, not a margin on the field: Qt places the field's
+ * search and clear icons by its full size.) */
+QFrame#mOptionsListFrame {
+    border: none;
+    border-right: 1px solid @divider;
+    padding: 8px 8px 0 8px;
+}
 QListWidget#mOptionsListWidget,
 QListWidget#mOptListWidget,
 QListView#mOptionsListWidget,

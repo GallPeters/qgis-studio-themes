@@ -34,7 +34,7 @@ from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
-    QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QWidget,
+    QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView, QWidget,
 )
 
 from . import studio_icons
@@ -714,6 +714,8 @@ class IconSwapper(QObject):
         # picker text fields (see _hook_picker).
         self._page_lists = {}
         self._pickers = {}
+        # Trees whose row-wide focus frame is turned off (see _row_focus).
+        self._row_focus = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the pre-rendered icons are
@@ -950,7 +952,8 @@ class IconSwapper(QObject):
         self._bars = {id(obj) for obj in self._filtered if isinstance(obj, (QToolBar, QMenuBar))}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
-        for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists):
+        for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
+                      self._row_focus):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1570,6 +1573,8 @@ class IconSwapper(QObject):
                 self._docks.add(id(widget))
                 self._filter(widget, self._CHILD_POLISHED)
         elif isinstance(widget, QAbstractItemView):
+            if isinstance(widget, QTreeView):
+                self._hide_row_focus(widget)
             if widget.inherits("QgsProcessingToolboxTreeView"):
                 self._delegate_view(widget)
                 # Every row has the same height (theme rule): let Qt measure
@@ -1599,6 +1604,16 @@ class IconSwapper(QObject):
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
+
+    def _hide_row_focus(self, tree):
+        """Trees showing focus across all columns (renderer categories,
+        ranges...) draw that frame without naming the tree to the style, so
+        the stylesheet cannot turn it off: a native white frame around the
+        current row. Rows stay selected whole; the frame goes while the
+        theme is shown."""
+        if tree.allColumnsShowFocus() and id(tree) not in self._row_focus:
+            self._row_focus[id(tree)] = (tree,)
+            tree.setAllColumnsShowFocus(False)
 
     def _hook_collapse(self, button):
         """The collapse button of a collapsible group box: QGIS keeps its
@@ -1814,6 +1829,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(widget):
                 widget.setIconSize(size)
         self._page_lists = {}
+        for (tree,) in self._row_focus.values():
+            if not sip.isdeleted(tree):
+                tree.setAllColumnsShowFocus(True)
+        self._row_focus = {}
         for edit in self._pickers.values():
             # Back to QGIS's own black (its filter is removed above).
             if not sip.isdeleted(edit):
