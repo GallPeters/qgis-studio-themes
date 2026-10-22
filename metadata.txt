@@ -22,6 +22,7 @@ changelog=
           - Selected rows no longer show a blue checkbox or a white frame.
           - Option dialogs have a soft line between the page list and the page.
           - The search field and page list of option dialogs keep clear of the edges.
+          - Options > Processing shows the theme's icons.
 
      ** v1.0 (23.10.2026):
           - Sharper icons, each drawn for its exact pixel size on the pixel grid.

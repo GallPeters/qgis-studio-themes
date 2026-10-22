@@ -1594,13 +1594,16 @@ class IconSwapper(QObject):
             model = widget.model()
             while isinstance(model, QAbstractProxyModel):
                 model = model.sourceModel()
-            # Only navigation-style lists (one column, few rows, e.g. the
-            # Options page tree); data tables are skipped outright. A combo
-            # box's popup view shares the model already hooked by _rows.
+            # Only navigation-style lists and settings trees (a name column
+            # and at most a value beside it, few rows, e.g. the Options page
+            # tree and Options > Processing); wider data tables are skipped
+            # outright. Only the first column's icons are looked at. A
+            # combo box's popup view shares the model already hooked by
+            # _rows.
             if (
                 isinstance(model, QStandardItemModel)
                 and id(model) not in self._models
-                and model.columnCount() == 1
+                and model.columnCount() <= 2
                 and model.rowCount() <= self.MODEL_LIMIT
             ):
                 self._model_items(model, deferred)
@@ -1725,22 +1728,27 @@ class IconSwapper(QObject):
     def _model_items(self, model, deferred):
         """Swap the item icons of a small QStandardItemModel, and of rows
         added to it later (watched as in _rows)."""
-        found = [False]
-
-        def walk(parent, budget):
-            for row in range(model.rowCount(parent)):
-                if budget[0] <= 0:
-                    return
-                budget[0] -= 1
-                index = model.index(row, 0, parent)
-                if isinstance(model.data(index, self._DECORATION), QIcon):
-                    if self._swap(model, "model", QPersistentModelIndex(index), deferred):
-                        found[0] = True
-                if model.hasChildren(index):
-                    walk(index, budget)
-
-        walk(QModelIndex(), [self.MODEL_LIMIT])
-        if model.rowCount() and not found[0]:
+        found = False
+        # Level by level, so every top-level row (a settings group) is
+        # swapped before the budget goes to one group's many children
+        # (Options > Processing > Menus holds a row per algorithm).
+        level = [QModelIndex()]
+        budget = self.MODEL_LIMIT
+        while level and budget > 0:
+            below = []
+            for parent in level:
+                for row in range(model.rowCount(parent)):
+                    if budget <= 0:
+                        break
+                    budget -= 1
+                    index = model.index(row, 0, parent)
+                    if isinstance(model.data(index, self._DECORATION), QIcon):
+                        if self._swap(model, "model", QPersistentModelIndex(index), deferred):
+                            found = True
+                    if model.hasChildren(index):
+                        below.append(index)
+            level = below
+        if model.rowCount() and not found:
             return
 
         def inserted(parent, first, last, model=model):
