@@ -531,23 +531,6 @@ QPushButton:disabled {
     border-color: @divider_strong;
     color: @text_disabled;
 }
-/* Help in dialog button rows: a quiet text button, so the actions stand
- * out (the plugin marks it, see IconSwapper._visit). */
-QPushButton[studioRole="help"] {
-    background-color: transparent;
-    border-color: transparent;
-    color: @text_dim;
-}
-QPushButton[studioRole="help"]:hover {
-    background-color: @tool_hover;
-    color: @text;
-}
-QPushButton[studioRole="help"]:pressed {
-    background-color: @tool_pressed;
-}
-QPushButton[studioRole="help"]:focus {
-    border-color: @accent;
-}
 /* Inside the button, in its right padding (not on its border). */
 QPushButton::menu-indicator {
     image: url(@theme_path/icons/studio/chevron-down-small.svg);
@@ -1272,6 +1255,11 @@ QgsCodeEditor {
  * (Padding on the frame, not a margin on the field: Qt places the field's
  * search and clear icons by its full size.) Only in dialogs: the Dev
  * Tools panel's rail has a frame of that name too, with its own line. */
+/* The page side: its buttons (OK, Cancel, Apply, Help) and the page kept
+ * clear of the window's right and bottom edges (QGIS leaves 3 px). */
+QgsOptionsDialogBase QFrame#mOptionsFrame {
+    padding: 0 6px 6px 0;
+}
 QgsOptionsDialogBase QFrame#mOptionsListFrame {
     border: none;
     border-right: 1px solid @divider;

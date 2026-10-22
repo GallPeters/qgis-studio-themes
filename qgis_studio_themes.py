@@ -32,9 +32,9 @@ from qgis.PyQt.QtGui import (
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
-    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialog, QDialogButtonBox, QDockWidget,
+    QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialog, QDockWidget,
     QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
-    QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView, QWidget,
+    QLineEdit, QSizePolicy, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView, QWidget,
 )
 
 from . import studio_icons
@@ -719,6 +719,8 @@ class IconSwapper(QObject):
         # minimum size (see _hold_room).
         self._row_focus = {}
         self._rooms = {}
+        # Option dialog pages whose width policy is relaxed (_relax_page).
+        self._relaxed = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the pre-rendered icons are
@@ -956,7 +958,7 @@ class IconSwapper(QObject):
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
         for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
-                      self._row_focus, self._rooms):
+                      self._row_focus, self._rooms, self._relaxed):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1057,8 +1059,11 @@ class IconSwapper(QObject):
             for start in (0, 1):
                 text = data[start:].decode("utf-16-be", errors="ignore")
                 for found in self._RESOURCE_FILE.finditer(text):
-                    if found.group(1) in studio_icons.ICON_MAP:
-                        return found.group(1)
+                    # QGIS writes some paths with a doubled slash
+                    # (".../default//classification_methods/...").
+                    found_name = found.group(1).lstrip("/")
+                    if found_name in studio_icons.ICON_MAP:
+                        return found_name
         return name
 
     # Bump when identification changes, so remembered answers (slots) made
@@ -1543,10 +1548,32 @@ class IconSwapper(QObject):
                 page = stacked.widget(index)
                 if page is not None:
                     self._scan(page, deferred=False)
+                    self._relax_page(stacked)
 
         stacked.currentChanged.connect(current_changed)
         self._stacks[id(stacked)] = (stacked, current_changed)
         self._filter(stacked, self._CHILD_POLISHED)
+        self._relax_page(stacked)
+
+    _MINIMUM_EXPANDING = QSizePolicy.Policy.MinimumExpanding
+
+    def _relax_page(self, stacked):
+        """Option dialogs size their page area to the current page. A page
+        whose width policy is MinimumExpanding (Layer Properties >
+        Diagrams) makes its preferred width, ~800 px, a minimum, so the
+        page list cannot be widened in a smaller window. Expanding keeps
+        the page growing while its minimum is what it really needs; QGIS
+        sets the policy again on each page change, so this follows it."""
+        if stacked.objectName() != "mOptionsStackedWidget":
+            return
+        page = stacked.currentWidget()
+        if page is None:
+            return
+        policy = page.sizePolicy()
+        if policy.horizontalPolicy() == self._MINIMUM_EXPANDING:
+            self._relaxed[id(page)] = (page,)
+            policy.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+            page.setSizePolicy(policy)
 
     def _visit(self, widget, deferred):
         """Swap the icons one widget shows itself (not its children).
@@ -1584,7 +1611,6 @@ class IconSwapper(QObject):
                 self._filter(widget, self._ACTION_ADDED)
         elif isinstance(widget, QAbstractButton):
             self._swap(widget, None, None, deferred)
-            self._mark_help(widget)
         elif isinstance(widget, QListWidget):
             self._page_list(widget)
             self._rows(widget, "row", deferred)
@@ -1710,22 +1736,6 @@ class IconSwapper(QObject):
 
         box.collapsedStateChanged.connect(changed)
         self._collapsibles[id(box)] = (box, changed)
-
-    HELP_ROLE = "studioRole"
-
-
-    @classmethod
-    def _mark_help(cls, button):
-        """Mark the Help button of a dialog button row, so the stylesheet
-        draws it as a quiet text button (QPushButton[studioRole="help"]):
-        the stylesheet alone cannot tell it from the other buttons."""
-        box = button.parentWidget()
-        if (isinstance(box, QDialogButtonBox) and button.property(cls.HELP_ROLE) is None
-                and box.buttonRole(button) == QDialogButtonBox.ButtonRole.HelpRole):
-            button.setProperty(cls.HELP_ROLE, "help")
-            # Already polished: the property only applies once polished again.
-            button.style().unpolish(button)
-            button.style().polish(button)
 
     @staticmethod
     def _sort_themes(combo):
@@ -1910,6 +1920,13 @@ class IconSwapper(QObject):
             if not sip.isdeleted(dialog):
                 dialog.setMinimumSize(own)
         self._rooms = {}
+        for (page,) in self._relaxed.values():
+            if not sip.isdeleted(page):
+                policy = page.sizePolicy()
+                if policy.horizontalPolicy() == QSizePolicy.Policy.Expanding:
+                    policy.setHorizontalPolicy(self._MINIMUM_EXPANDING)
+                    page.setSizePolicy(policy)
+        self._relaxed = {}
         for edit in self._pickers.values():
             # Back to QGIS's own black (its filter is removed above).
             if not sip.isdeleted(edit):

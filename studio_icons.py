@@ -369,6 +369,13 @@ ICON_MAP = {
     "rendererSingleSymbol.svg": "square-rounded",
     "rendererCategorizedSymbol.svg": "category",
     "rendererGraduatedSymbol.svg": "chart-bar-popular",
+    "classification_methods/mClassificationEqualCount.svg": "class-equal-count",
+    "classification_methods/mClassificationEqualInterval.svg": "class-equal-interval",
+    "classification_methods/mClassificationFixedInterval.svg": "class-fixed-interval",
+    "classification_methods/mClassificationLogarithmic.svg": "class-logarithmic",
+    "classification_methods/mClassificationNaturalBreak.svg": "class-natural-breaks",
+    "classification_methods/mClassificationPrettyBreak.svg": "class-pretty-breaks",
+    "classification_methods/mClassificationStandardDeviation.svg": "class-std-dev",
     "rendererRuleBasedSymbol.svg": "list-tree",
     "rendererPointDisplacementSymbol.svg": "circles",
     "rendererPointClusterSymbol.svg": "circles-relation",
@@ -831,6 +838,37 @@ def unique_icons():
 #   quill, blurred together at toolbar sizes; here without the middle one,
 #   and the quill only below the vane.
 CUSTOM_GLYPHS = {
+    # Classification methods (Graduated renderer > Mode): a bell curve over
+    # a baseline, the class breaks rising from the baseline to the curve,
+    # spaced as each method spaces them.
+    "class-equal-interval": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M8 20V12.69"/><path d="M12 20V7"/><path d="M16 20V12.69"/>'
+    ),
+    "class-equal-count": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M9.5 20V9.33"/><path d="M12 20V7"/><path d="M14.5 20V9.33"/>'
+    ),
+    "class-fixed-interval": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M6.5 20V15.98"/><path d="M10 20V8.46"/><path d="M14 20V8.46"/><path d="M17.5 20V15.98"/>'
+    ),
+    "class-logarithmic": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M7 20V14.99"/><path d="M9 20V10.34"/><path d="M13.5 20V7.8"/>'
+    ),
+    "class-natural-breaks": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M7.5 20V13.9"/><path d="M11 20V7.35"/><path d="M16.5 20V13.9"/>'
+    ),
+    "class-pretty-breaks": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M8 20V10.69"/><path d="M6.75 10.69h2.5"/><path d="M12 20V5"/><path d="M10.75 5h2.5"/><path d="M16 20V10.69"/><path d="M14.75 10.69h2.5"/>'
+    ),
+    "class-std-dev": (
+        '<path d="M3 20h18"/><path d="M3 19c4.5 0 5.5 -12 9 -12s4.5 12 9 12"/>'
+        '<path d="M12 20V4"/><path d="M8.5 20V11.48"/><path d="M15.5 20V11.48"/>'
+    ),
     # Tabler's help-circle with a larger question mark: its own one is too
     # small to read inside the circle at toolbar and rail sizes.
     "help-circle": (

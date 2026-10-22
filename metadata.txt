@@ -28,6 +28,10 @@ changelog=
           - Panel search fields have a soft edge, so they stand out in every theme.
           - The Debugging/Development Tools panel has one divider line and a modern QGIS icon.
           - Help icons have a larger, easier to read question mark.
+          - The page list of Layer Properties can be widened on the Diagrams page too.
+          - Dialog buttons keep a little space from the window's edges.
+          - Help buttons look like the other dialog buttons.
+          - The Graduated renderer's classification modes have new icons.
 
      ** v1.0 (23.10.2026):
           - Sharper icons, each drawn for its exact pixel size on the pixel grid.
