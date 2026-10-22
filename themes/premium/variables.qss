@@ -19,15 +19,15 @@
 @accent_translucent:     rgba(134, 181, 83, 0.15);
 
 /* ---- Backgrounds -------------------------------------------------------- */
-/* Three levels: chrome (window, toolbars and panels, one surface),
- * recessed (fields, lists, tables) and raised (menus, tooltips, message
- * cards), each a clear step apart. */
-@bg_window:              #252626;
-@bg_base:                #1c1d1d;
-@bg_alt:                 #202121;
-@bg_dock:                #252626;
-@bg_statusbar:           #222323;
-@bg_menu:                #303231;
+/* A soft, relaxed grey, low in contrast and easy on the eyes, in three
+ * levels: chrome (window, toolbars and panels, one surface), recessed
+ * (fields, lists, tables) and raised (menus, tooltips, message cards). */
+@bg_window:              #2c2d2d;
+@bg_base:                #242525;
+@bg_alt:                 #282929;
+@bg_dock:                #2c2d2d;
+@bg_statusbar:           #2a2b2b;
+@bg_menu:                #363837;
 @bg_disabled:            #2e2e2e;
 @bg_btn_status_hover:    #2f2f2f;
 @bg_pressed:             #2c2c2c;
@@ -53,13 +53,15 @@
 @separator_bg:           #222222;
 
 /* ---- Text --------------------------------------------------------------- */
-@text:                   #ececec;
+/* One soft grey for text (labels, values, titles alike: hierarchy comes
+ * from size and weight); white only on selected rows and checked tools. */
+@text:                   #d9dbd9;
 @text_bright:            #ffffff;
-@text_dim:               #a2a6a3;
-@text_disabled:          #6e726f;
+@text_dim:               #a7aba8;
+@text_disabled:          #737774;
 @text_light:             #d8d8d8;
 @text_header:            #d0d0d0;
-@text_placeholder:       #6e726f;
+@text_placeholder:       #737774;
 @text_dark:              #14200a;
 
 
@@ -84,10 +86,3 @@
 @field_border_hover:     mix(@bg_base, @text, 0.30);
 @field_focus:            mix(@bg_base, @text, 0.02);
 @panel_row_hover:        mix(@bg_dock, @text, 0.05);
-/* Selected rows and pages show their icon in the accent. */
-@icon_selected:          @accent_hover;
-@slider_knob:            #eceeec;
-@slider_knob_border:     mix(@bg_base, #000000, 0.30);
-@slider_knob_hover:      #ffffff;
-/* Labels a step quieter than the values beside them. */
-@text_label:             mix(@text, @bg_window, 0.16);

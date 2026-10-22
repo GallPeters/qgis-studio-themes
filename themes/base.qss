@@ -50,10 +50,6 @@
 /* Secondary push buttons are tonal: a fill and no visible edge. */
 @button_border:          transparent;
 @button_border_hover:    transparent;
-/* Slider knob: solid, so it never reads as a radio button. */
-@slider_knob:            #ffffff;
-@slider_knob_border:     @field_border_hover;
-@slider_knob_hover:      mix(#ffffff, @accent, 0.18);
 
 /* ---- Item views --------------------------------------------------------- */
 @row_hover:              mix(@bg_base, @text, 0.05);
@@ -71,11 +67,6 @@
 @row_selected_window:    mix(@bg_window, @accent, 0.24);
 @header_bg:              mix(@bg_base, @text, 0.03);
 @grid:                   mix(@bg_base, @text, 0.07);
-
-/* ---- Text roles --------------------------------------------------------- */
-/* Labels beside values, and section (group box) titles. */
-@text_label:             @text;
-@section_title:          @text_dim;
 
 /* ---- Popups ------------------------------------------------------------- */
 @menu_border:            mix(@bg_menu, @text, 0.14);

@@ -720,9 +720,10 @@ QComboBox QAbstractItemView {
     selection-background-color: @menu_hover;
     selection-color: @text_bright;
 }
+/* Rows as dense as the sub-page lists (Labels, Diagrams): 28 px. */
 QComboBox QAbstractItemView::item {
-    padding: 4px 8px;
-    min-height: 20px;
+    padding: 3px 8px;
+    min-height: 18px;
     border-radius: @radius_sm;
 }
 QComboBox QAbstractItemView::item:hover,
@@ -1012,11 +1013,6 @@ QAbstractScrollArea::corner {
  * 8. CHECKBOXES, RADIO BUTTONS & ITEM INDICATORS
  * ========================================================================= */
 
-/* Labels a step quieter than the values beside them (a theme token; the
- * text colour in themes that do not set it). */
-QLabel {
-    color: @text_label;
-}
 QCheckBox,
 QRadioButton {
     background: transparent;
@@ -1101,16 +1097,15 @@ QgsCollapsibleGroupBoxBasic {
     margin-top: 22px;
     padding: 8px 0 2px 0;
 }
-/* Titles are overlines, in the toolbar titles' voice: capitals (the plugin
- * capitalises the text, IconSwapper._overline), dim and a size down from
- * the content, so a section introduces its fields instead of competing
- * with them. */
+/* Titles in the panel titles' voice: the text colour, semibold and a step
+ * above the content (sizes filled in by the plugin), in their own case;
+ * hierarchy comes from size and weight, not colour or capitals. */
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
     left: 0;
     padding: 0 4px 0 0;
-    color: @section_title;
+    color: @text;
     font-size: @section_font_size;
     font-weight: 600;
 }
@@ -1159,23 +1154,22 @@ QSlider::add-page:vertical {
     background-color: @accent;
     border-radius: 2px;
 }
-/* A solid light knob: a hollow accent ring read as a radio button. */
 QSlider::handle:horizontal,
 QSlider::handle:vertical {
-    background-color: @slider_knob;
-    border: 1px solid @slider_knob_border;
-    width: 12px;
-    height: 12px;
-    border-radius: 7px;
+    background-color: @bg_base;
+    border: 3px solid @accent;
+    width: 10px;
+    height: 10px;
+    border-radius: 8px;
 }
 QSlider::handle:horizontal {
-    margin: -5px 0;
+    margin: -6px 0;
 }
 QSlider::handle:vertical {
-    margin: 0 -5px;
+    margin: 0 -6px;
 }
 QSlider::handle:hover {
-    background-color: @slider_knob_hover;
+    border-color: @accent_hover;
 }
 
 QToolTip {
@@ -1259,10 +1253,11 @@ QgsOptionsTreeView {
 /* Narrow horizontal padding: when a dialog is too narrow, QGIS collapses
  * this list to an icon-only column, which wider padding pushed the icons
  * out of. */
-/* The selected page: a soft pill rounded all round, its icon in the
- * selected icon colour (@icon_selected). The sub-page lists of the text
- * format widgets (Labels: Text, Formatting, Buffer...) look the same, one
- * size down, instead of a framed box with a grey selection. */
+/* The selected page: a soft pill rounded all round, its icon white like
+ * its text (@icon_selected). The sub-page lists of the Labels (Text,
+ * Formatting, Buffer...) and Diagrams (Attributes, Rendering, Size...)
+ * pages look the same, one size down, instead of a framed box with a grey
+ * selection. */
 QListWidget#mOptionsListWidget::item,
 QListWidget#mOptListWidget::item,
 QListView#mOptionsListWidget::item,
@@ -1277,7 +1272,8 @@ QListWidget#mOptListWidget::item:hover,
 QListView#mOptionsListWidget::item:hover,
 QTreeView#mOptionsTreeView::item:hover,
 QgsOptionsTreeView::item:hover,
-QListWidget#mLabelingOptionsListWidget::item:hover {
+QListWidget#mLabelingOptionsListWidget::item:hover,
+QListWidget#mDiagramOptionsListWidget::item:hover {
     background-color: @row_hover_window;
 }
 QListWidget#mOptionsListWidget::item:selected,
@@ -1285,18 +1281,39 @@ QListWidget#mOptListWidget::item:selected,
 QListView#mOptionsListWidget::item:selected,
 QTreeView#mOptionsTreeView::item:selected,
 QgsOptionsTreeView::item:selected,
-QListWidget#mLabelingOptionsListWidget::item:selected {
+QListWidget#mLabelingOptionsListWidget::item:selected,
+QListWidget#mDiagramOptionsListWidget::item:selected {
     background-color: @row_selected_window;
     color: @text_bright;
 }
-QListWidget#mLabelingOptionsListWidget {
+/* The Options page tree: like the main panels' trees, a selected or
+ * hovered row runs from the tree's edge, its indentation and expand arrow
+ * in the same colour, so the row reads as one piece (a pill starting at
+ * the item left the indentation as a separate block beside it). */
+QTreeView#mOptionsTreeView::item,
+QgsOptionsTreeView::item {
+    margin: 0 4px 0 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+QTreeView#mOptionsTreeView::branch:selected,
+QgsOptionsTreeView::branch:selected {
+    background-color: @row_selected_window;
+}
+QTreeView#mOptionsTreeView::branch:hover,
+QgsOptionsTreeView::branch:hover {
+    background-color: @row_hover_window;
+}
+QListWidget#mLabelingOptionsListWidget,
+QListWidget#mDiagramOptionsListWidget {
     background-color: transparent;
     border: none;
     border-right: 1px solid @divider;
     border-radius: 0;
     padding: 0;
 }
-QListWidget#mLabelingOptionsListWidget::item {
+QListWidget#mLabelingOptionsListWidget::item,
+QListWidget#mDiagramOptionsListWidget::item {
     padding: 4px;
     margin: 0 4px 1px 0;
     border-radius: @radius;

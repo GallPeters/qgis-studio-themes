@@ -32,7 +32,7 @@ from qgis.PyQt.QtGui import (
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialogButtonBox, QDockWidget,
-    QGroupBox, QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
+    QListWidget, QMenu, QMenuBar, QStackedWidget, QStyle, QStyledItemDelegate,
     QLineEdit, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QWidget,
 )
 
@@ -593,7 +593,7 @@ class IconSwapper(QObject):
     # instead of walking every widget of a window from Python.
     ICON_TYPES = (
         QAbstractButton, QToolBar, QMenuBar, QListWidget, QComboBox, QTabBar, QMenu, QStackedWidget,
-        QAbstractItemView, QgsFilterLineEdit, QDockWidget, QGroupBox,
+        QAbstractItemView, QgsFilterLineEdit, QDockWidget,
     )
     # Item views on a QStandardItemModel (e.g. the Options page tree) are
     # swapped item by item; larger models hold data, not navigation icons.
@@ -614,6 +614,7 @@ class IconSwapper(QObject):
     _CHILD_POLISHED = QEvent.Type.ChildPolished
     _SHOW = QEvent.Type.Show
     _ACTION_ADDED = QEvent.Type.ActionAdded
+    _PALETTE_CHANGE = QEvent.Type.PaletteChange
 
     def __init__(self, cache_file=None):
         super().__init__()
@@ -632,11 +633,10 @@ class IconSwapper(QObject):
         # Collapsible group boxes whose collapse button is swapped again on
         # every open and close (see _hook_collapse).
         self._collapsibles = {}
-        # Group boxes whose title is shown in capitals, with their own title
-        # (see _overline), and page lists with their own icon size (see
-        # _page_list).
-        self._titles = {}
+        # Page lists with their own icon size (see _page_list), and feature
+        # picker text fields (see _hook_picker).
         self._page_lists = {}
+        self._pickers = {}
         # Icon names of rows drawn by delegated views, per row identity.
         self._view_names = {}
         # (screen ratios, logical sizes) while the active theme's PNGs are
@@ -844,7 +844,8 @@ class IconSwapper(QObject):
         self._docks = {id(obj) for obj in self._filtered if isinstance(obj, QDockWidget)}
         self._bars = {id(obj) for obj in self._filtered if isinstance(obj, (QToolBar, QMenuBar))}
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
-        for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles):
+        self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
+        for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -855,6 +856,36 @@ class IconSwapper(QObject):
         obj.installEventFilter(self)
         self._filtered.append(obj)
 
+    # Feature pickers (expression builder > Feature, relation references):
+    # QGIS writes black into their text field's palette whenever the feature
+    # changes, which the stylesheet cannot override (dark text on a dark
+    # field). The text colour is put back after each such change.
+    PICKERS = ("QgsFeaturePickerWidget", "QgsFeatureListComboBox")
+
+    def _hook_picker(self, edit):
+        if id(edit) in self._pickers:
+            return
+        parent = edit.parentWidget()
+        for _ in range(3):
+            if parent is None:
+                return
+            if any(parent.inherits(name) for name in self.PICKERS):
+                break
+            parent = parent.parentWidget()
+        else:
+            return
+        self._pickers[id(edit)] = edit
+        self._filter(edit)
+        self._fix_picker_text(edit)
+
+    @staticmethod
+    def _fix_picker_text(edit):
+        text = QApplication.palette().color(QPalette.ColorRole.Text)
+        palette = edit.palette()
+        if palette.color(QPalette.ColorRole.Text) == QColor(Qt.GlobalColor.black) != text:
+            palette.setColor(QPalette.ColorRole.Text, text)
+            edit.setPalette(palette)
+
     def eventFilter(self, watched, event):  # pylint: disable=invalid-name
         kind = event.type()
         if kind == self._SHOW and isinstance(watched, QMenu):
@@ -864,6 +895,8 @@ class IconSwapper(QObject):
             # up (some set the icon after addAction).
             action = event.action()
             QTimer.singleShot(0, lambda action=action: self._swap(action, None, None, False))
+        elif kind == self._PALETTE_CHANGE and id(watched) in self._pickers:
+            self._fix_picker_text(watched)
         elif kind == self._CHILD_POLISHED:
             child = event.child()
             if child is not None and child.isWidgetType() and (
@@ -1328,8 +1361,6 @@ class IconSwapper(QObject):
                     self._swap(choice, None, None, deferred)
         elif isinstance(widget, QMenu):
             self._hook_menu(widget)
-        elif isinstance(widget, QGroupBox):
-            self._overline(widget)
         elif isinstance(widget, (QToolBar, QMenuBar)):
             for action in widget.actions():
                 self._swap(action, None, None, deferred)
@@ -1355,6 +1386,7 @@ class IconSwapper(QObject):
             if not isinstance(widget.parent(), QAbstractSpinBox):
                 for action in widget.actions():
                     self._swap(action, None, None, deferred)
+                self._hook_picker(widget)
         elif isinstance(widget, QDockWidget):
             # Panels may get (or replace) their contents after the window
             # was scanned.
@@ -1422,19 +1454,6 @@ class IconSwapper(QObject):
 
     HELP_ROLE = "studioRole"
 
-    def _overline(self, box):
-        """Show a group box title in capitals: section titles are overlines
-        in the voice of the toolbar titles (dim and a size down, see the
-        stylesheet), and Qt stylesheets cannot change letter case. The
-        title is given back when the theme is left (restore)."""
-        title = box.title()
-        if not title or id(box) in self._titles:
-            return
-        upper = title.upper()
-        if upper == title:
-            return
-        self._titles[id(box)] = (box, title, upper)
-        box.setTitle(upper)
 
     @classmethod
     def _mark_help(cls, button):
@@ -1614,15 +1633,17 @@ class IconSwapper(QObject):
             if not sip.isdeleted(box):
                 box.collapsedStateChanged.disconnect(changed)
         self._collapsibles = {}
-        for box, title, upper in self._titles.values():
-            # Only titles QGIS has not set again meanwhile.
-            if not sip.isdeleted(box) and box.title() == upper:
-                box.setTitle(title)
-        self._titles = {}
         for widget, size in self._page_lists.values():
             if not sip.isdeleted(widget):
                 widget.setIconSize(size)
         self._page_lists = {}
+        for edit in self._pickers.values():
+            # Back to QGIS's own black (its filter is removed above).
+            if not sip.isdeleted(edit):
+                palette = edit.palette()
+                palette.setColor(QPalette.ColorRole.Text, QColor(Qt.GlobalColor.black))
+                edit.setPalette(palette)
+        self._pickers = {}
         for action, recheck in self._watched.items():
             if sip.isdeleted(action):
                 continue
@@ -1811,8 +1832,8 @@ class QgisStudioThemesPlugin:
         self._extra_tokens = {
             "@menu_font_size": f"{menu_size:g}pt",
             "@panel_title_font_size": f"{base_size + (0 if compact else 1):g}pt",
-            # Section (group box) titles: capitals, a size down from the UI.
-            "@section_font_size": f"{base_size - 1:g}pt",
+            # Section (group box) titles: the panel titles' size.
+            "@section_font_size": f"{base_size + (0 if compact else 1):g}pt",
             "@ui_font_size": f"{base_size:g}pt",
             "@menu_item_padding_x": "11px" if compact else "14px",
             # One height for fields, combo boxes and push buttons (28 px,
