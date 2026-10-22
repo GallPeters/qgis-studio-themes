@@ -23,9 +23,9 @@ from qgis.core import (
     QgsVectorLayer, QgsVectorLayerSimpleLabeling,
 )
 from qgis.gui import QgsVectorLayerProperties
-from qgis.PyQt.QtCore import QPoint, QTimer
+from qgis.PyQt.QtCore import QPoint, Qt, QTimer
 from qgis.PyQt.QtGui import QColor, QFont
-from qgis.PyQt.QtWidgets import QApplication, QDockWidget
+from qgis.PyQt.QtWidgets import QApplication, QDockWidget, QToolBar
 from qgis.utils import iface
 
 from qgis_studio_themes.qgis_studio_themes import QgisStudioThemesPlugin, load_tokens
@@ -122,6 +122,32 @@ def capture(theme, layer):
     pump()
 
 
+def layout(window):
+    """The same window layout whatever the profile saved: Browser over
+    Layers on the left, Layer Styling over Processing on the right, and
+    only the toolbars docked at the top."""
+    docks = {dock.objectName(): dock for dock in window.findChildren(QDockWidget)}
+    for dock in docks.values():
+        if dock.objectName() not in PANELS:
+            dock.hide()
+    for name, area in (("Browser", Qt.DockWidgetArea.LeftDockWidgetArea),
+                       ("Layers", Qt.DockWidgetArea.LeftDockWidgetArea),
+                       ("LayerStyling", Qt.DockWidgetArea.RightDockWidgetArea),
+                       ("ProcessingToolbox", Qt.DockWidgetArea.RightDockWidgetArea)):
+        dock = docks[name]
+        dock.setFloating(False)
+        window.addDockWidget(area, dock, Qt.Orientation.Vertical)
+        dock.show()
+    for toolbar in window.findChildren(QToolBar):
+        if toolbar.parent() is window and window.toolBarArea(toolbar) != Qt.ToolBarArea.TopToolBarArea:
+            toolbar.hide()
+    pump()
+    left, right = [docks["Browser"], docks["Layers"]], [docks["LayerStyling"], docks["ProcessingToolbox"]]
+    window.resizeDocks([left[0], right[0]], [345, 710], Qt.Orientation.Horizontal)
+    window.resizeDocks(left, [240, 600], Qt.Orientation.Vertical)
+    window.resizeDocks(right, [500, 400], Qt.Orientation.Vertical)
+
+
 def run():
     os.makedirs(OUT, exist_ok=True)
     window = iface.mainWindow()
@@ -129,9 +155,7 @@ def run():
     window.resize(1600, 1000)
     layer = QgsVectorLayer(LAYER, "Countries", "ogr")
     QgsProject.instance().addMapLayer(layer)
-    for dock in window.findChildren(QDockWidget):
-        if dock.objectName() in PANELS:
-            dock.show()
+    layout(window)
     pump()
     iface.mapCanvas().setExtent(layer.extent())
     pump()
