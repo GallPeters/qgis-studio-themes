@@ -92,10 +92,14 @@ TITLE_SPACING = 1.0
 # Room either side of a name when a toolbar is widened to fit it.
 RULE_ROOM = 6
 # "bottom": the strip below the buttons (logical px), shared with
-# style.qss (@toolbar_line_title_height). The name's strip reaches into
-# the toolbar's padding under it, and the row's line runs through its
-# middle; the name breaks the line with LINE_GAP either side.
-LINE_SPACE = 7
+# style.qss (@toolbar_line_title_height). With the toolbar's padding under
+# it, it holds the names in the row's line, LINE_BELOW above the toolbar's
+# bottom: the capitals keep a few pixels from the buttons and, under the
+# last row, from the map. The name breaks the line with LINE_GAP either
+# side, in a label LINE_HEIGHT tall centred on it.
+LINE_SPACE = 10
+LINE_BELOW = 8
+LINE_HEIGHT = 11
 LINE_GAP = 4
 # Names left of the buttons: the room taken beside a name across (its width
 # plus this), and the column for a name reading upwards. The room is
@@ -902,10 +906,12 @@ class ToolbarLabels(QObject):
         # its items out again at once.
         items = self._items_span(toolbar) if mode in ROW_MODES else None
         items = self._fit_items(toolbar, mode, frame, extent, items, lead)
+        if mode == "handle":
+            self._place_edge(toolbar)
         self._place_divider(toolbar, mode, frame, extent)
         line = self._row_lines.get(toolbar)
         if line is not None and not sip.isdeleted(line) and line.isVisible():
-            y = self._line_y(toolbar, frame) if self._position == "bottom" else toolbar.height() - 1
+            y = self._line_y(toolbar) if self._position == "bottom" else toolbar.height() - 1
             if self._show(line, QRect(0, y - 1, toolbar.width(), 2)) and mode == "bottom":
                 # The name stays on top: it breaks the line.
                 label = self._labels.get(toolbar)
@@ -914,11 +920,10 @@ class ToolbarLabels(QObject):
         self._place(toolbar, mode, frame, extent, items, text, lead)
 
     @staticmethod
-    def _line_y(toolbar, frame):
-        """The row's line with names in it ("bottom"): through the middle of
-        the strip under the buttons and the toolbar's padding below it."""
-        strip = LINE_SPACE + frame
-        return toolbar.height() - strip + strip // 2
+    def _line_y(toolbar):
+        """The row's line with names in it ("bottom"), in the strip under
+        the buttons."""
+        return toolbar.height() - LINE_BELOW
 
     def _place(self, toolbar, mode, frame, extent, items, text, lead):
         label = self._labels.get(toolbar)
@@ -937,8 +942,8 @@ class ToolbarLabels(QObject):
             if mode == "top":
                 rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
             else:
-                strip = LINE_SPACE + frame
-                rect = QRect(frame + handle, toolbar.height() - strip, toolbar.width() - 2 * frame - handle, strip)
+                rect = QRect(frame + handle, self._line_y(toolbar) - LINE_HEIGHT // 2,
+                             toolbar.width() - 2 * frame - handle, LINE_HEIGHT)
             if right_to_left:
                 rect.moveLeft(frame)
             if items is not None:
@@ -1030,7 +1035,24 @@ class ToolbarLabels(QObject):
         # The toolbar's full height, title strip included, meeting the lines
         # under the rows: it divides the names too, and is never mistaken
         # for a separator inside a toolbar.
-        self._show(divider, QRect(middle - 1, 0, 3, self._rule_height(toolbar, mode, frame)))
+        self._show(divider, QRect(middle - 1, 0, 3, self._rule_height(toolbar, mode)))
+
+    def _place_edge(self, toolbar):
+        """A toolbar docked at the window's left or right side: a line along
+        its edge facing the panels and map, like the line under the rows
+        (drawn by its row-closing divider, which such a toolbar has no use
+        for)."""
+        end = self._ends.get(toolbar)
+        if end is None or sip.isdeleted(end):
+            return
+        window = toolbar.parentWidget()
+        area = window.toolBarArea(toolbar) if isinstance(window, QMainWindow) else None
+        if area == Qt.ToolBarArea.LeftToolBarArea:
+            self._show(end, QRect(toolbar.width() - 1, 0, 1, toolbar.height()))
+        elif area == Qt.ToolBarArea.RightToolBarArea:
+            self._show(end, QRect(0, 0, 1, toolbar.height()))
+        else:
+            end.hide()
 
     def _middle(self, toolbar, frame, extent):
         """Where the divider goes: the middle of the handle's own width (a
@@ -1039,10 +1061,10 @@ class ToolbarLabels(QObject):
             return 0
         return frame + (extent - self._leads.get(toolbar, 0)) // 2
 
-    def _rule_height(self, toolbar, mode, frame):
+    def _rule_height(self, toolbar, mode):
         """Dividers run down to the row's line: the toolbar's bottom, or
         the line through the names under the buttons."""
-        return self._line_y(toolbar, frame) + 1 if mode == "bottom" else toolbar.height()
+        return self._line_y(toolbar) + 1 if mode == "bottom" else toolbar.height()
 
     def _fit_items(self, toolbar, mode, frame, extent, items, lead=0):
         """Centre a toolbar's buttons in its width (not the last of a row,
@@ -1053,7 +1075,8 @@ class ToolbarLabels(QObject):
         if end is None or sip.isdeleted(end):
             return items
         if mode not in ROW_MODES or items is None or toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
-            end.hide()
+            if mode != "handle":
+                end.hide()
             return items
         middle = self._middle(toolbar, frame, extent)
         # Where the layout put the buttons: the current positions, less a
@@ -1090,7 +1113,7 @@ class ToolbarLabels(QObject):
         if x >= toolbar.width() - 2:
             end.hide()
         else:
-            self._show(end, QRect(x - 1, 0, 3, self._rule_height(toolbar, mode, frame)))
+            self._show(end, QRect(x - 1, 0, 3, self._rule_height(toolbar, mode)))
         return items
 
     def _schedule_rows(self, window):
@@ -1140,6 +1163,7 @@ class ToolbarLabels(QObject):
                     self._last[toolbar] = is_last
                     changed.add(toolbar)
             self._collapse_empty(window, row)
+            self._release_wide(window, row)
         for toolbar in changed:
             self._update(toolbar)
 
@@ -1165,6 +1189,22 @@ class ToolbarLabels(QObject):
             self._collapsed.add(toolbar)
             window.insertToolBar(min(after, key=lambda other: other.x()), toolbar)
             toolbar.show()
+
+    def _release_wide(self, window, row):
+        """A row too short for its toolbars squeezes them from its end,
+        hiding their last buttons behind the overflow arrow, while a toolbar
+        before them may keep a width it was once given (dragged, or saved
+        with the window layout) far beyond its buttons, its room empty.
+        Such a toolbar is inserted again at its place, which drops that
+        width, so the room goes to the squeezed ones."""
+        if not any(self._filled.get(toolbar, True) and toolbar.width() < toolbar.sizeHint().width()
+                   for toolbar in row):
+            return
+        ordered = sorted(row, key=lambda toolbar: toolbar.x())
+        for toolbar, after in zip(ordered, ordered[1:]):
+            if toolbar.width() > toolbar.sizeHint().width() + 1:
+                window.insertToolBar(after, toolbar)
+                toolbar.show()
 
     @staticmethod
     def _show(line, rect):

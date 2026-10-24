@@ -39,7 +39,7 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from . import studio_icons
+from . import studio_icons, studio_toolbars
 from .studio_events import EventHub
 from .studio_toolbars import LINE_SPACE, NAME_STYLES, POSITIONS, TITLE_SPACE, ToolbarLabels, side_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
@@ -53,7 +53,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "25"
+BUILD_FORMAT = "26"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -111,7 +111,11 @@ def shared_sources():
     git checkout (development) tracks every source file."""
     if not (PLUGIN_DIR / ".git").exists():
         return [METADATA]
-    sources = [METADATA, SHARED_STYLE, SHARED_TOKENS, Path(studio_icons.__file__), Path(__file__)]
+    # studio_toolbars gives the toolbar name rules and sizes (tokens).
+    sources = [
+        METADATA, SHARED_STYLE, SHARED_TOKENS, Path(studio_icons.__file__), Path(studio_toolbars.__file__),
+        Path(__file__),
+    ]
     sources += sorted(WIDGET_GLYPHS.glob("*.svg"))
     sources += sorted(studio_icons.GLYPHS_DIR.glob("*.svg"))
     return sources
@@ -1024,6 +1028,11 @@ class IconSwapper(QObject):
             # up (some set the icon after addAction).
             action = event.action()
             QTimer.singleShot(0, lambda action=action: self._swap(action, None, None, False))
+        elif kind == self._SHOW and isinstance(watched, QToolButton):
+            # A collapsible group box's collapse button (_hook_collapse).
+            entry = self._collapsibles.get(id(watched.parentWidget()))
+            if entry is not None:
+                entry[1]()
         elif kind == self._LAYOUT_REQUEST and id(watched) in self._rooms:
             self._fit_room(watched)
         elif kind == self._PALETTE_CHANGE and id(watched) in self._pickers:
@@ -1687,9 +1696,16 @@ class IconSwapper(QObject):
         with the theme's 28 px fields): Qt then squeezes rows into each
         other instead of growing the window. Such a dialog's minimum is
         raised to what its contents need whenever its layout changes
-        (choosing a template shows another row), never below QGIS's own."""
+        (choosing a template shows another row), never below QGIS's own,
+        and only in the sizes QGIS fixed.
+
+        Option dialogs (Layer Properties...) are left alone: their pages
+        scroll, and following each page's height would resize the window on
+        every page change (on Wayland, each change is also a request to the
+        compositor, which can stall moving the window)."""
         own = dialog.minimumSize()
-        if dialog.layout() is None or id(dialog) in self._rooms or (own.width() == 0 and own.height() == 0):
+        if (dialog.layout() is None or id(dialog) in self._rooms or (own.width() == 0 and own.height() == 0)
+                or dialog.findChild(QStackedWidget, "mOptionsStackedWidget") is not None):
             return
         self._rooms[id(dialog)] = (dialog, own)
         self._filter(dialog, self._LAYOUT_REQUEST)
@@ -1703,8 +1719,8 @@ class IconSwapper(QObject):
         need = dialog.minimumSizeHint()
         screen = dialog.screen()
         limit = screen.availableGeometry().size() if screen is not None else need
-        width = max(own.width(), min(need.width(), limit.width()))
-        height = max(own.height(), min(need.height(), limit.height()))
+        width = max(own.width(), min(need.width(), limit.width())) if own.width() else dialog.minimumWidth()
+        height = max(own.height(), min(need.height(), limit.height())) if own.height() else dialog.minimumHeight()
         if (width, height) != (dialog.minimumWidth(), dialog.minimumHeight()):
             dialog.setMinimumSize(width, height)
 
@@ -1721,8 +1737,10 @@ class IconSwapper(QObject):
     def _hook_collapse(self, button):
         """The collapse button of a collapsible group box: QGIS keeps its
         own expand and collapse icons and sets one of them on every open
-        and close, which would bring the built-in arrow back. Swap the
-        button again after each change (once QGIS has set its icon)."""
+        and close, and again when the box is shown (after it was scanned,
+        e.g. Layer Styling > Layer Rendering), which would bring the
+        built-in arrow back. Swap the button again after each change and
+        each show (once QGIS has set its icon)."""
         box = button.parentWidget()
         if box is None or id(box) in self._collapsibles or not box.inherits("QgsCollapsibleGroupBoxBasic"):
             return
@@ -1745,6 +1763,7 @@ class IconSwapper(QObject):
 
         box.collapsedStateChanged.connect(changed)
         self._collapsibles[id(box)] = (box, changed)
+        self._filter(button, self._SHOW)
 
     @staticmethod
     def _sort_themes(combo):

@@ -23,7 +23,11 @@ changelog=
           - Toolbar names can be turned off.
           - Toolbar names can be full, short, or full only where they fit.
           - Hovering a toolbar with a short name shows its full name.
-          - The model designer's Inputs list shows the theme's icons.
+          - Toolbars no longer hide buttons while a wider neighbour has empty room.
+          - Toolbars docked at the window's sides have a line along their inner edge.
+          - The model designer's Inputs list shows a modern plus icon.
+          - Collapsible sections, such as Layer Rendering, keep the modern arrow.
+          - Layer Properties no longer resizes on page changes, so it moves and responds smoothly.
 
      ** v1.1 (24.10.2026):
           - Checkboxes in lists and tables, such as renderer categories, match the theme.

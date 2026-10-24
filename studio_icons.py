@@ -594,7 +594,7 @@ ICON_MAP = {
     "providerQgis.svg": "hexagon-letter-q",
     "qgis_icon.svg": "hexagon-letter-q",
     "mIconIterate.svg": "repeat",
-    "mIconModelInput.svg": "forms",
+    "mIconModelInput.svg": "plus",
     "mActionRunSelected.svg": "player-play+check",
     "mesh/Elevation.svg": "mountain",
     "mActionEditHelpContent.svg": "message-question",
