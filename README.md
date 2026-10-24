@@ -53,8 +53,10 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   set based on [Tabler Icons](https://tabler.io/icons), coloured per theme.
 - **Sharp at any scaling** – icons are pre-rendered for each screen's exact
   pixel size and stay crisp when monitors or scaling change.
-- **Toolbar titles** – each toolbar is named above its buttons; empty
-  toolbars collapse.
+- **Toolbar names** – each toolbar is named next to its buttons; empty
+  toolbars collapse. In **Plugins → QGIS Studio Themes → Settings**, choose
+  where the names go (above or below the buttons, left of them across or
+  vertical, or off) and whether they are full, short or chosen to fit.
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes

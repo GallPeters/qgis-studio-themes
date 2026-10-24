@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.1
+version=1.2
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,14 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.2 (24.10.2026):
+          - New settings window in Plugins > QGIS Studio Themes > Settings.
+          - Toolbar names can go above or below the buttons, or left of them across or vertical.
+          - Toolbar names can be turned off.
+          - Toolbar names can be full, short, or full only where they fit.
+          - Hovering a toolbar with a short name shows its full name.
+          - The model designer's Inputs list shows the theme's icons.
 
      ** v1.1 (24.10.2026):
           - Checkboxes in lists and tables, such as renderer categories, match the theme.

@@ -386,16 +386,25 @@ QToolBar QAbstractSpinBox:focus {
     padding-right: 20px;
 }
 /* Toolbar names (studio_toolbars.py). A docked horizontal toolbar gets a
- * title strip above its buttons: every item gets a top margin of the
- * strip's height (from the plugin), so the toolbar grows by the strip and
- * its items keep their own layout. A vertical toolbar gets its short name
- * across the top of a taller handle. */
-QToolBar[studioLabel="title"] > QToolButton,
-QToolBar[studioLabel="title"] > QComboBox,
-QToolBar[studioLabel="title"] > QAbstractSpinBox,
-QToolBar[studioLabel="title"] > QLineEdit,
-QToolBar[studioLabel="title"] > QLabel {
+ * title strip above its buttons ("top") or a thinner one below them, where
+ * the name sits in the row's line ("bottom"): every item gets a margin of
+ * the strip's height (from the plugin), so the toolbar grows by the strip
+ * and its items keep their own layout. Names left of the buttons need no
+ * rules here. A vertical toolbar gets its short name across the top of a
+ * taller handle. */
+QToolBar[studioLabel="top"] > QToolButton,
+QToolBar[studioLabel="top"] > QComboBox,
+QToolBar[studioLabel="top"] > QAbstractSpinBox,
+QToolBar[studioLabel="top"] > QLineEdit,
+QToolBar[studioLabel="top"] > QLabel {
     margin-top: @toolbar_title_height;
+}
+QToolBar[studioLabel="bottom"] > QToolButton,
+QToolBar[studioLabel="bottom"] > QComboBox,
+QToolBar[studioLabel="bottom"] > QAbstractSpinBox,
+QToolBar[studioLabel="bottom"] > QLineEdit,
+QToolBar[studioLabel="bottom"] > QLabel {
+    margin-bottom: @toolbar_line_title_height;
 }
 /* The toolbar names and lines (pictures drawn by the plugin, see
  * studio_toolbars): placed by hand, never pushed down like the items. */
@@ -407,12 +416,18 @@ QLabel#studioToolbarRowLine {
     border: none;
     background: transparent;
 }
-QToolBar[studioLabel="title"]::separator {
+QToolBar[studioLabel="top"]::separator {
     margin: @toolbar_title_separator_margin;
+}
+QToolBar[studioLabel="bottom"]::separator {
+    margin: @toolbar_line_separator_margin;
 }
 QToolBar[studioLabel="handle"]::handle {
     height: 16px;
 }
+/* Names left of the buttons: the handle is widened by the room for the
+ * name (a rule per width step, from the plugin). */
+@toolbar_side_rules
 QToolBar::extension-button,
 QToolButton#qt_toolbar_ext_button {
     qproperty-icon: url();
