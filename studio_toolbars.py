@@ -479,7 +479,7 @@ class _Label(_Overlay):
         left, when `mirrored`), pointing at the buttons: it ties the name
         to them in the room of a few pixels. Its base sits on a whole
         device pixel, so that edge stays sharp."""
-        height = max(10, min(20, round(self.height() * 0.55)))
+        height = max(8, min(14, round(self.height() * 0.4)))
         base = _snap(self.width() - ARROW_AFTER - ARROW_WIDTH, ratio)
         tip = base + ARROW_WIDTH
         if mirrored:
