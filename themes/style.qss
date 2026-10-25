@@ -420,6 +420,73 @@ QToolBar::extension-button:hover,
 QToolButton#qt_toolbar_ext_button:hover {
     background-color: @tool_hover;
 }
+/* The ribbon (studio_ribbon.py): tabs over a page of groups, each named
+ * in small capitals beneath and set apart by a soft line; large buttons
+ * (icon over label), small ones (icon beside label, or icon only). The
+ * ribbon closes off the window's top with the line under the menu bar's
+ * colour. */
+QToolBar#studioRibbonHost {
+    padding: 0px;
+    spacing: 0px;
+    border: none;
+}
+QWidget#studioRibbon {
+    background-color: @bg_window;
+    border-bottom: 1px solid @line;
+}
+QTabBar#studioRibbonTabs::tab:top {
+    padding: 5px 14px 4px 14px;
+    margin: 0 1px;
+}
+QTabBar#studioRibbonTabs::tab:top:selected {
+    color: @text_bright;
+}
+QScrollArea#studioRibbonPage,
+QWidget#studioRibbonContent {
+    background: transparent;
+    border: none;
+}
+QFrame#studioRibbonGroup {
+    background: transparent;
+    border: none;
+    border-right: 1px solid @divider;
+}
+QLabel#studioRibbonCaption {
+    color: @text_dim;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+QToolButton[studioRibbon="large"] {
+    padding: 4px 6px 3px 6px;
+}
+QToolButton[studioRibbon="small"] {
+    padding: 2px 6px 2px 3px;
+}
+QToolButton[studioRibbon="icon"] {
+    padding: 2px;
+}
+QToolButton[studioRibbon="large"][popupMode="1"] {
+    padding-right: 16px;
+}
+QToolButton[studioRibbon="small"][popupMode="1"],
+QToolButton[studioRibbon="small"][popupMode="2"] {
+    padding-right: 16px;
+}
+QToolButton#studioRibbonCollapse {
+    qproperty-icon: url();
+    image: url(@theme_path/icons/studio/chevron-up.svg);
+    padding: 4px;
+}
+QToolButton#studioRibbonCollapse:checked {
+    background: transparent;
+}
+QToolButton#studioRibbonCollapse:hover {
+    background-color: @tool_hover;
+}
+QToolButton#studioRibbonCollapse[collapsed="true"] {
+    image: url(@theme_path/icons/studio/chevron-down.svg);
+}
 QToolBar[studioLabel="handle"] > QToolButton#qt_toolbar_ext_button {
     image: url(@theme_path/icons/studio/toolbar-more-down.svg);
 }
@@ -486,6 +553,12 @@ QToolButton::menu-arrow:disabled {
 /* Secondary buttons are tonal in themes that set @button_border to the
  * fill (a fill and no visible edge), so the default button is the only
  * coloured one in a row; the edge stays in the box so focus can show. */
+/* Dialog buttons (Save, Cancel, Close without Saving...) show text only:
+ * desktops such as Linux Mint otherwise put their icon theme's old-style
+ * icons on them, unlike every other button of the theme. */
+QDialogButtonBox {
+    dialogbuttonbox-buttons-have-icons: 0;
+}
 QPushButton {
     background-color: @control_bg;
     border: 1px solid @button_border;

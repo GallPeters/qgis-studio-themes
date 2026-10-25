@@ -19,9 +19,17 @@ changelog=
 
      ** v1.2 (25.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
+          - New ribbon interface, chosen in the settings window under Interface.
+          - The ribbon shows every toolbar button in tabs: Home, Layer, Edit, Modify, Annotate, View, Raster, Mesh, GPS and Plugins.
+          - Ribbon buttons use the modern icons, with large buttons for the main tools.
+          - Plugin toolbars get their own groups on the ribbon, also when added later.
+          - The ribbon collapses to its tabs with its arrow button or a double-click on a tab.
+          - Turning the ribbon off brings back the toolbars as they were.
+          - In ribbon mode the settings window offers only the settings that apply to it.
+          - The Temporal Controller panel shows modern icons.
+          - Dialog buttons such as Save and Cancel no longer show old-style icons on Linux.
           - Toolbar names are slightly larger.
           - The settings window chooses the size and weight of toolbar names.
-          - Names left of the buttons end in a small arrow pointing at them.
           - Names below the buttons leave more room above the map.
           - The overflow arrow of a toolbar is a double chevron, unlike drop-down arrows.
           - A dragged toolbar moves as a whole and pushes the toolbars after it.

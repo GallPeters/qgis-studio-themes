@@ -10,7 +10,6 @@ QGIS Studio Themes > Settings, see POSITIONS):
   left_vertical  the name left of the buttons, reading upwards: the
                  narrowest, for short names.
 
-Names left of the buttons end in a narrow, tall arrow pointing at them.
 The names' size and weight are settings too (TITLE_SIZES, WEIGHTS), and
 every room below follows the size.
 
@@ -74,9 +73,7 @@ import functools
 import re
 
 from qgis.PyQt.QtCore import QEvent, QMargins, QObject, QPointF, QRect, Qt, QTimer
-from qgis.PyQt.QtGui import (
-    QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap, QPolygonF,
-)
+from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap
 from qgis.PyQt.QtWidgets import (
     QAbstractSpinBox, QApplication, QComboBox, QLabel, QLineEdit, QMainWindow, QStyle, QStyleOptionToolBar,
     QToolBar, QToolButton, QWidget,
@@ -117,16 +114,10 @@ RULE_ROOM = 6
 # names and the map or panels (see line_space).
 LINE_GAP = 4
 ROW_END_ROOM = 4
-# Names left of the buttons: the room left of a name across, and the
-# arrow after a name pointing at its buttons (a narrow chevron, ARROW_WIDTH
-# wide, ARROW_GAP after the name and ARROW_AFTER before the buttons). The
-# room is rounded up to LEAD_STEP, the steps the stylesheet has rules for,
-# up to LEAD_MAX (longer names show the short one).
-SIDE_ROOM = 4
-ARROW_WIDTH = 4
-ARROW_GAP = 1
-ARROW_AFTER = 2
-ARROW_ROOM = ARROW_GAP + ARROW_WIDTH + ARROW_AFTER
+# Names left of the buttons: the room beside a name across (its width
+# plus this), rounded up to LEAD_STEP, the steps the stylesheet has rules
+# for, up to LEAD_MAX (longer names show the short one).
+SIDE_ROOM = 8
 LEAD_STEP = 2
 LEAD_MAX = 240
 # The handle's own width (QToolBar::handle in style.qss).
@@ -262,7 +253,7 @@ def handle_height(size):
 
 
 def upright_column(size):
-    """The width a name reading upwards takes, left of its arrow."""
+    """The width a name reading upwards takes."""
     return size + 2
 
 
@@ -414,9 +405,8 @@ class _Overlay(QLabel):
 
 class _Label(_Overlay):
     """One toolbar's name: in a strip above or below the buttons, left of
-    them (across, or reading upwards when `upright`) with an `arrow`
-    pointing at them, or a short name across the top of a vertical
-    toolbar. Drawn on the toolbar's background colour (when known): text
+    them (across, or reading upwards when `upright`), or a short name
+    across the top of a vertical toolbar. Drawn on the toolbar's background colour (when known): text
     on an opaque picture keeps ClearType's subpixel smoothing, like text
     drawn on the window, and a name in the row's line breaks the line."""
 
@@ -426,7 +416,6 @@ class _Label(_Overlay):
         self.background = background
         self.text = ""
         self.upright = False
-        self.arrow = False
         self.title_font = QFont()
         # What _place last applied, so unchanged layout requests are free.
         self.placed = None
@@ -438,20 +427,14 @@ class _Label(_Overlay):
 
     def _content(self):
         background = self.background.rgba() if self.background is not None else None
-        return self.text, self.upright, self.arrow, self.color.rgba(), background, self.title_font.key()
+        return self.text, self.upright, self.color.rgba(), background, self.title_font.key()
 
     def _paint(self, painter, ratio):
         if not self.text:
             return
-        # The arrow after the name (before it right to left), pointing at
-        # the buttons; the name centred in the rest.
-        mirrored = self.layoutDirection() == Qt.LayoutDirection.RightToLeft
-        offset = ARROW_ROOM if self.arrow and mirrored else 0
-        if self.arrow:
-            self._paint_arrow(painter, ratio, mirrored)
         metrics = QFontMetricsF(self.title_font)
         width = metrics.horizontalAdvance(self.text)
-        across, high = self.width() - (ARROW_ROOM if self.arrow else 0), self.height()
+        across, high = self.width(), self.height()
         if self.upright:
             # Reading upwards: drawn across a turned painter, whose width is
             # the widget's height.
@@ -464,35 +447,11 @@ class _Label(_Overlay):
         # where hinting keeps stems sharp.
         x = _snap((across - width) / 2, ratio)
         baseline = _snap((high + metrics.capHeight()) / 2, ratio)
-        if self.upright:
-            baseline += offset
-        else:
-            x += offset
         painter.setFont(self.title_font)
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
         if self.upright:
             painter.restore()
-
-    def _paint_arrow(self, painter, ratio, mirrored=False):
-        """A narrow, tall solid triangle at the right edge (left, pointing
-        left, when `mirrored`), pointing at the buttons: it ties the name
-        to them in the room of a few pixels. Its base sits on a whole
-        device pixel, so that edge stays sharp."""
-        height = max(8, min(14, round(self.height() * 0.4)))
-        base = _snap(self.width() - ARROW_AFTER - ARROW_WIDTH, ratio)
-        tip = base + ARROW_WIDTH
-        if mirrored:
-            tip = _snap(ARROW_AFTER, ratio)
-            base = tip + ARROW_WIDTH
-        top = _snap((self.height() - height) / 2, ratio)
-        bottom = top + height
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(self.color)
-        painter.drawPolygon(QPolygonF([QPointF(base, top), QPointF(tip, (top + bottom) / 2), QPointF(base, bottom)]))
-        painter.restore()
 
 
 class _Divider(_Overlay):
@@ -597,7 +556,7 @@ class ToolbarLabels(QObject):
         # their own margins to restore: {toolbar: {widget: QMargins}}.
         self._shifted = {}
         # Whether each toolbar shows anything (see has_items), and the
-        # visibility of its actions as last seen, by id: action changes are
+        # visibility of its actions as last seen, by C++ object: action changes are
         # frequent (enabling), visibility changes rare.
         self._filled = {}
         self._action_visible = {}
@@ -954,12 +913,12 @@ class ToolbarLabels(QObject):
             extension.setGeometry(extension.x(), frame, extension.width(), height)
 
     def _lead(self, mode, text):
-        """The room a name left of the buttons and its arrow take, in the
-        stylesheet's steps."""
+        """The room a name left of the buttons takes, in the stylesheet's
+        steps."""
         if mode == "left" and text:
-            need = SIDE_ROOM + self._width(text) + ARROW_ROOM
+            need = self._width(text) + SIDE_ROOM
         elif mode == "left_vertical" and text:
-            need = upright_column(self._size) + ARROW_ROOM
+            need = upright_column(self._size)
         else:
             return 0
         return min(LEAD_MAX, -(-need // LEAD_STEP) * LEAD_STEP)
@@ -1155,13 +1114,12 @@ class ToolbarLabels(QObject):
         # titles of horizontal ones.
         metrics = QFontMetrics(font)
         upright = mode == "left_vertical"
-        arrow = mode in SIDE_MODES
         if mode in ("top", "bottom"):
             text = metrics.elidedText(text, Qt.TextElideMode.ElideRight, rect.width() - 2)
-        elif mode == "left" and metrics.horizontalAdvance(text) > rect.width() - ARROW_ROOM - 2:
+        elif mode == "left" and metrics.horizontalAdvance(text) > rect.width() - 2:
             # Squeezed (a crowded row): the short name, or none.
             short = self._short(toolbar)
-            text = short if metrics.horizontalAdvance(short) <= rect.width() - ARROW_ROOM - 2 else ""
+            text = short if metrics.horizontalAdvance(short) <= rect.width() - 2 else ""
         else:
             room = (rect.height() if upright else rect.width()) - 2
             if upright and metrics.horizontalAdvance(text) > room:
@@ -1179,7 +1137,6 @@ class ToolbarLabels(QObject):
             toolbar.setToolTip(name if text != title(toolbar) else "")
         label.title_font = font
         label.upright = upright
-        label.arrow = arrow
         label.text = text
         label.setGeometry(rect)
         label.refresh()
@@ -1519,8 +1476,11 @@ class ToolbarLabels(QObject):
             # action's visibility can empty or fill the toolbar.
             action = event.action()
             visible = action.isVisible()
-            if self._action_visible.get(id(action)) is not visible:
-                self._action_visible[id(action)] = visible
+            # By C++ object: QGIS's actions get a new Python wrapper (and id)
+            # on each access.
+            key = sip.unwrapinstance(action)
+            if self._action_visible.get(key) is not visible:
+                self._action_visible[key] = visible
                 self._schedule_refresh(watched)
         elif kind in (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved):
             # A widget added later (a plugin's) exists once the toolbar has

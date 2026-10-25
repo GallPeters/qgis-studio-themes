@@ -61,6 +61,10 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Smooth toolbar dragging** – a dragged toolbar moves as a whole, pushes
   the ones after it and swaps places with the one before it when dragged
   over it, without hiding any buttons the row has room for.
+- **Ribbon interface** – optionally, every toolbar button in tabs of
+  grouped large and small buttons (Home, Layer, Edit, Modify, Annotate,
+  View, Raster, Mesh, GPS, Plugins), with the modern icons; plugin toolbars
+  get groups of their own. Turn it on in **Settings → Interface**.
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes

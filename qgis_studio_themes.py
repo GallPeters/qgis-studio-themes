@@ -41,6 +41,7 @@ from qgis.PyQt.QtWidgets import (
 
 from . import studio_icons, studio_toolbars
 from .studio_events import EventHub
+from .studio_ribbon import StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -53,7 +54,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "27"
+BUILD_FORMAT = "29"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -75,6 +76,10 @@ LABELS_SETTING = "studio_themes/toolbarLabels"
 POSITION_SETTING = "studio_themes/toolbarNamePosition"
 NAMES_SETTING = "studio_themes/toolbarNameText"
 SIZE_SETTING = "studio_themes/toolbarNameSize"
+# The interface: QGIS's toolbars ("toolbars") or the ribbon ("ribbon",
+# studio_ribbon), set in the settings dialog.
+INTERFACE_SETTING = "studio_themes/interface"
+INTERFACES = ("toolbars", "ribbon")
 WEIGHT_SETTING = "studio_themes/toolbarNameWeight"
 MENU_NAME = "QGIS Studio Themes"
 # Compact sizes: "auto" (by the screen's pixel density), "on" or "off".
@@ -2002,9 +2007,16 @@ class _Relay(QObject):
 
 
 class SettingsDialog(QDialog):
-    """Plugins > QGIS Studio Themes > Settings: where the toolbar names go,
-    which name they show and in what size and weight. Every change shows
-    at once, so the dialog only has Close."""
+    """Plugins > QGIS Studio Themes > Settings: the interface (toolbars or
+    the ribbon), where the toolbar names go, which name they show and in
+    what size and weight (the ribbon's group names too). Only what applies
+    to the interface chosen can be changed. Every change shows at once, so
+    the dialog only has Close."""
+
+    INTERFACES = (
+        ("toolbars", "Toolbars"),
+        ("ribbon", "Ribbon"),
+    )
 
     POSITIONS = (
         ("off", "Off"),
@@ -2030,6 +2042,10 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("QGIS Studio Themes Settings")
         self.setMinimumWidth(460)
         position, names, size, weight = plugin.label_style()
+        self._interface = QComboBox()
+        for value, text in self.INTERFACES:
+            self._interface.addItem(text, value)
+        self._interface.setCurrentIndex(max(0, self._interface.findData(plugin.interface())))
         self._position = QComboBox()
         for value, text in self.POSITIONS:
             self._position.addItem(text, value)
@@ -2047,15 +2063,12 @@ class SettingsDialog(QDialog):
             self._weight.addItem(text, value)
         self._weight.setCurrentIndex(max(0, self._weight.findData(weight)))
         form = QFormLayout()
+        form.addRow("Interface", self._interface)
         form.addRow("Toolbar name position", self._position)
         form.addRow("Toolbar name", self._names)
         form.addRow("Font size", self._size)
         form.addRow("Font weight", self._weight)
-        note = QLabel(
-            "Applies to toolbars docked in rows. Toolbars docked at the window's sides keep a short "
-            "name on their handle, and floating toolbars show their name in their title bar. "
-            "Hover over a toolbar to see its full name."
-        )
+        self._note = note = QLabel()
         note.setWordWrap(True)
         self._inactive = QLabel("Toolbar names show while a Studio theme is in use.")
         self._inactive.setWordWrap(True)
@@ -2070,10 +2083,15 @@ class SettingsDialog(QDialog):
         self._fit_names()
         for combo in (self._position, self._names, self._size, self._weight):
             combo.currentIndexChanged.connect(self._changed)
+        self._interface.currentIndexChanged.connect(self._interface_changed)
 
     def showEvent(self, event):  # pylint: disable=invalid-name
         self._inactive.setVisible(not self._plugin.studio_shown())
         super().showEvent(event)
+
+    def _interface_changed(self, _index=None):
+        self._plugin.set_interface(self._interface.currentData())
+        self._changed()
 
     def _changed(self, _index=None):
         self._fit_names()
@@ -2086,10 +2104,25 @@ class SettingsDialog(QDialog):
     def _fit_names(self):
         """No name to choose without names; no full names reading upwards
         (they rarely fit a toolbar's height): Auto shows them where they
-        do."""
+        do. The ribbon names its groups in the font chosen; where toolbar
+        names go does not apply to it."""
         position = self._position.currentData()
-        for combo in (self._names, self._size, self._weight):
-            combo.setEnabled(position != "off")
+        ribbon = self._interface.currentData() == "ribbon"
+        self._position.setEnabled(not ribbon)
+        self._names.setEnabled(not ribbon and position != "off")
+        for combo in (self._size, self._weight):
+            combo.setEnabled(ribbon or position != "off")
+        if ribbon:
+            self._note.setText(
+                "The ribbon shows every toolbar button in tabs, its groups named in the font chosen. "
+                "Double-click a tab to collapse the ribbon. Toolbars in layout designers keep their names."
+            )
+        else:
+            self._note.setText(
+                "Applies to toolbars docked in rows. Toolbars docked at the window's sides keep a short "
+                "name on their handle, and floating toolbars show their name in their title bar. "
+                "Hover over a toolbar to see its full name."
+            )
         vertical = position == "left_vertical"
         self._names.model().item(self._names.findData("full")).setEnabled(not vertical)
         if vertical and self._names.currentData() == "full":
@@ -2159,6 +2192,10 @@ class QgisStudioThemesPlugin:
         self._size_timer.timeout.connect(self._refresh_icon_sizes)
         self._size_hooks = []
         self._labels = ToolbarLabels(self._hub)
+        self._ribbon = StudioRibbon(iface, self._hub)
+        # QGIS has finished starting (every toolbar, plugins' too, is in
+        # place): the ribbon is only built then.
+        self._ready = False
         self._settings_action = None
         self._settings_dialog = None
         self._compact = False
@@ -2235,6 +2272,9 @@ class QgisStudioThemesPlugin:
         QgsApplication.instance().themeChanged.connect(self._sync)
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self.iface.layoutDesignerOpened.connect(self._label_designer)
+        self.iface.initializationCompleted.connect(self._initialized)
+        # Enabled in a running QGIS: no initializationCompleted to come.
+        self._ready = self.iface.mainWindow().isVisible()
         self._connected = True
         self._settings_action = QAction(
             QgsApplication.getThemeIcon("mActionOptions.svg"), "Settings…", self.iface.mainWindow()
@@ -2396,6 +2436,7 @@ class QgisStudioThemesPlugin:
             QgsApplication.instance().themeChanged.disconnect(self._sync)
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self.iface.layoutDesignerOpened.disconnect(self._label_designer)
+            self.iface.initializationCompleted.disconnect(self._initialized)
             self._connected = False
         if self._settings_action is not None:
             self.iface.removePluginMenu(MENU_NAME, self._settings_action)
@@ -2595,6 +2636,20 @@ class QgisStudioThemesPlugin:
     def _labels_enabled(self):
         return self.label_style()[0] != "off"
 
+    @staticmethod
+    def interface():
+        """The interface set in the settings dialog (INTERFACES)."""
+        value = QgsSettings().value(INTERFACE_SETTING, "toolbars", type=str)
+        return value if value in INTERFACES else "toolbars"
+
+    @staticmethod
+    def set_interface(interface):
+        QgsSettings().setValue(INTERFACE_SETTING, interface)
+
+    def _initialized(self):
+        self._ready = True
+        self._apply_labels()
+
     def studio_shown(self):
         """Whether a Studio theme is shown (the toolbar names with it)."""
         return self._active is not None
@@ -2628,15 +2683,32 @@ class QgisStudioThemesPlugin:
         return QColor(round(r), round(g), round(b), round(a * 255))
 
     def _apply_labels(self):
-        """Attach (or update) the toolbar labels for the active theme."""
-        if self._active is None or not self._labels_enabled():
+        """Attach (or update) the toolbar labels for the active theme, or
+        show the ribbon (the main window's toolbars hidden, so not named;
+        layout designers keep their names)."""
+        if self._active is None:
+            self._ribbon.deactivate()
             self._labels.detach()
             return
-        self._labels.set_style(*self.label_style())
+        style = self.label_style()
+        ribbon = self.interface() == "ribbon" and self._ready
+        if ribbon:
+            # Names off before the toolbars are hidden: they restore the
+            # toolbars' own sizes.
+            self._labels.detach()
+            self._ribbon.set_caption_font(style[2], style[3])
+            self._ribbon.activate()
+        else:
+            self._ribbon.deactivate(forget=self.interface() != "ribbon")
+        if not self._labels_enabled():
+            self._labels.detach()
+            return
+        self._labels.set_style(*style)
         color, rule, row_rule = self._label_color(), self._label_rule(), self._label_row_rule()
         background = self._label_background()
         self._labels.set_color(color, rule, row_rule, background)
-        self._labels.attach(self.iface.mainWindow(), color, rule, row_rule, background)
+        if not ribbon:
+            self._labels.attach(self.iface.mainWindow(), color, rule, row_rule, background)
         for designer in self.iface.openLayoutDesigners():
             self._labels.attach(designer.window(), color, rule, row_rule, background)
 
@@ -2722,6 +2794,7 @@ class QgisStudioThemesPlugin:
             return
         self._active = None
         self._prepared = None
+        self._ribbon.deactivate()
         self._labels.detach()
         for toolbar, size in self._dock_icon_sizes.items():
             if not sip.isdeleted(toolbar):

@@ -151,6 +151,23 @@ ICON_MAP = {
     "mActionNewBookmark.svg": "bookmark+plus",
     "mActionShowBookmarks.svg": "bookmarks",
     "temporal.svg": "clock-play",
+    # Temporal Controller panel: navigation modes and playback.
+    "mTemporalNavigationOff.svg": "clock-off",
+    "mTemporalNavigationFixedRange.svg": "calendar-time",
+    "mTemporalNavigationAnimated.svg": "clock-play",
+    "mTemporalNavigationMovie.svg": "movie",
+    "temporal_navigation/back.svg": "player-play-back",
+    "temporal_navigation/forward.svg": "player-play",
+    "temporal_navigation/next.svg": "player-track-next",
+    "temporal_navigation/previous.svg": "player-track-prev",
+    "temporal_navigation/pause.svg": "player-pause",
+    "temporal_navigation/stop.svg": "player-stop",
+    "temporal_navigation/rewindToStart.svg": "player-skip-back",
+    "temporal_navigation/skipToEnd.svg": "player-skip-forward",
+    "mActionPlay.svg": "player-play",
+    "mActionStop.svg": "player-stop",
+    "mActionNext.svg": "player-track-next",
+    "mActionPrevious.svg": "player-track-prev",
     "mActionRefresh.svg": "refresh",
     "mActionDraw.svg": "refresh",
     "tracking.svg": "route",
@@ -838,6 +855,8 @@ def unique_icons():
 #   quill, blurred together at toolbar sizes; here without the middle one,
 #   and the quill only below the vane.
 CUSTOM_GLYPHS = {
+    # Playing backwards (Temporal Controller): Tabler's play, mirrored.
+    "player-play-back": '<path d="M17 4v16l-13 -8l13 -8"/>',
     # Classification methods (Graduated renderer > Mode): a bell curve over
     # a baseline, the class breaks rising from the baseline to the curve,
     # spaced as each method spaces them.
