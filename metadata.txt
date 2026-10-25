@@ -19,31 +19,30 @@ changelog=
 
      ** v1.2 (25.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
-          - New ribbon interface, chosen in the settings window under Interface.
+          - New ribbon interface, turned on in the settings window under Interface.
           - The ribbon shows every toolbar button in tabs: Home, Layer, Edit, Modify, Annotate, View, Raster, Mesh, GPS and Plugins.
           - Ribbon buttons use the modern icons, with large buttons for the main tools.
           - Plugin toolbars get their own groups on the ribbon, also when added later.
           - The ribbon collapses to its tabs with its arrow button or a double-click on a tab.
           - Turning the ribbon off brings back the toolbars as they were.
           - In ribbon mode the settings window offers only the settings that apply to it.
-          - The Temporal Controller panel shows modern icons.
-          - Dialog buttons such as Save and Cancel no longer show old-style icons on Linux.
-          - Toolbar names are slightly larger.
-          - The settings window chooses the size and weight of toolbar names.
+          - Toolbar names can go above or below the buttons, or left of them across or vertical.
+          - Toolbar names can be full, short, or full only where they fit.
+          - Toolbar names can be turned off.
+          - Toolbar names are slightly larger, and their size and weight can be chosen.
+          - Hovering a toolbar with a short name shows its full name.
           - Names below the buttons leave more room above the map.
-          - The overflow arrow of a toolbar is a double chevron, unlike drop-down arrows.
+          - Toolbars docked at the window's sides have a line along their inner edge.
+          - A toolbar's overflow arrow is a double chevron, unlike drop-down arrows.
           - A dragged toolbar moves as a whole and pushes the toolbars after it.
           - Dragging a toolbar over the one before it swaps their places.
           - Toolbars no longer stick, overlap or hide buttons while being dragged.
+          - Toolbars no longer hide buttons while their row has room for them.
           - Dragging a toolbar no longer moves the buttons of its neighbour.
-          - Toolbar names can go above or below the buttons, or left of them across or vertical.
-          - Toolbar names can be turned off.
-          - Toolbar names can be full, short, or full only where they fit.
-          - Hovering a toolbar with a short name shows its full name.
-          - Toolbars no longer hide buttons while a wider neighbour has empty room.
-          - Toolbars docked at the window's sides have a line along their inner edge.
+          - The Temporal Controller panel shows modern icons.
           - The model designer's Inputs list shows a modern plus icon.
           - Collapsible sections, such as Layer Rendering, keep the modern arrow.
+          - Dialog buttons such as Save and Cancel no longer show old-style icons on Linux.
           - Layer Properties no longer resizes on page changes, so it moves and responds smoothly.
 
      ** v1.1 (24.10.2026):
