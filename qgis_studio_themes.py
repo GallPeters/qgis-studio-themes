@@ -41,7 +41,7 @@ from qgis.PyQt.QtWidgets import (
 
 from . import studio_icons, studio_toolbars
 from .studio_events import EventHub
-from .studio_toolbars import LINE_SPACE, NAME_STYLES, POSITIONS, TITLE_SPACE, ToolbarLabels, side_rules
+from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
 PLUGIN_DIR = Path(__file__).parent
@@ -53,7 +53,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "26"
+BUILD_FORMAT = "27"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -66,13 +66,16 @@ LOG_TAG = "Studio Themes"
 # plugin object) still restores them, not the theme's.
 ORIGINAL_PALETTE = "_studioOriginalPalette"
 ORIGINAL_FONT = "_studioOriginalFont"
-# Toolbar names: where they go and which name shows (studio_toolbars
-# POSITIONS, NAME_STYLES), set in Plugins > QGIS Studio Themes > Settings.
+# Toolbar names: where they go, which name shows and its size and weight
+# (studio_toolbars POSITIONS, NAME_STYLES, TITLE_SIZES, WEIGHTS), set in
+# Plugins > QGIS Studio Themes > Settings.
 # LABELS_SETTING, the on/off switch before 1.2, still turns them off when
 # no position was chosen yet.
 LABELS_SETTING = "studio_themes/toolbarLabels"
 POSITION_SETTING = "studio_themes/toolbarNamePosition"
 NAMES_SETTING = "studio_themes/toolbarNameText"
+SIZE_SETTING = "studio_themes/toolbarNameSize"
+WEIGHT_SETTING = "studio_themes/toolbarNameWeight"
 MENU_NAME = "QGIS Studio Themes"
 # Compact sizes: "auto" (by the screen's pixel density), "on" or "off".
 COMPACT_SETTING = "studio_themes/compactSizes"
@@ -1999,9 +2002,9 @@ class _Relay(QObject):
 
 
 class SettingsDialog(QDialog):
-    """Plugins > QGIS Studio Themes > Settings: where the toolbar names go
-    and which name they show. Every change shows at once, so the dialog
-    only has Close."""
+    """Plugins > QGIS Studio Themes > Settings: where the toolbar names go,
+    which name they show and in what size and weight. Every change shows
+    at once, so the dialog only has Close."""
 
     POSITIONS = (
         ("off", "Off"),
@@ -2015,13 +2018,18 @@ class SettingsDialog(QDialog):
         ("full", "Full"),
         ("short", "Short (up to four letters)"),
     )
+    WEIGHTS = (
+        ("bold", "Bold"),
+        ("regular", "Regular"),
+        ("light", "Light"),
+    )
 
     def __init__(self, plugin, parent=None):
         super().__init__(parent)
         self._plugin = plugin
         self.setWindowTitle("QGIS Studio Themes Settings")
         self.setMinimumWidth(460)
-        position, names = plugin.label_style()
+        position, names, size, weight = plugin.label_style()
         self._position = QComboBox()
         for value, text in self.POSITIONS:
             self._position.addItem(text, value)
@@ -2030,9 +2038,19 @@ class SettingsDialog(QDialog):
         for value, text in self.NAMES:
             self._names.addItem(text, value)
         self._names.setCurrentIndex(max(0, self._names.findData(names)))
+        self._size = QComboBox()
+        for value in TITLE_SIZES:
+            self._size.addItem(f"{value} px" + (" (default)" if value == TITLE_SIZE else ""), value)
+        self._size.setCurrentIndex(max(0, self._size.findData(size)))
+        self._weight = QComboBox()
+        for value, text in self.WEIGHTS:
+            self._weight.addItem(text, value)
+        self._weight.setCurrentIndex(max(0, self._weight.findData(weight)))
         form = QFormLayout()
         form.addRow("Toolbar name position", self._position)
         form.addRow("Toolbar name", self._names)
+        form.addRow("Font size", self._size)
+        form.addRow("Font weight", self._weight)
         note = QLabel(
             "Applies to toolbars docked in rows. Toolbars docked at the window's sides keep a short "
             "name on their handle, and floating toolbars show their name in their title bar. "
@@ -2050,8 +2068,8 @@ class SettingsDialog(QDialog):
         layout.addStretch(1)
         layout.addWidget(buttons)
         self._fit_names()
-        self._position.currentIndexChanged.connect(self._changed)
-        self._names.currentIndexChanged.connect(self._changed)
+        for combo in (self._position, self._names, self._size, self._weight):
+            combo.currentIndexChanged.connect(self._changed)
 
     def showEvent(self, event):  # pylint: disable=invalid-name
         self._inactive.setVisible(not self._plugin.studio_shown())
@@ -2059,7 +2077,10 @@ class SettingsDialog(QDialog):
 
     def _changed(self, _index=None):
         self._fit_names()
-        self._plugin.set_label_style(self._position.currentData(), self._names.currentData())
+        self._plugin.set_label_style(
+            self._position.currentData(), self._names.currentData(), self._size.currentData(),
+            self._weight.currentData(),
+        )
         self._plugin.settings_changed()
 
     def _fit_names(self):
@@ -2067,7 +2088,8 @@ class SettingsDialog(QDialog):
         (they rarely fit a toolbar's height): Auto shows them where they
         do."""
         position = self._position.currentData()
-        self._names.setEnabled(position != "off")
+        for combo in (self._names, self._size, self._weight):
+            combo.setEnabled(position != "off")
         vertical = position == "left_vertical"
         self._names.model().item(self._names.findData("full")).setEnabled(not vertical)
         if vertical and self._names.currentData() == "full":
@@ -2251,14 +2273,9 @@ class QgisStudioThemesPlugin:
             "@control_padding_y_focus": "2px" if compact else "3px",
             "@search_radius": "13px" if compact else "14px",
             "@panel_icon_rules": "" if compact else PANEL_ICON_RULES,
-            # Toolbar name strips above or below the buttons (see
-            # studio_toolbars); separators keep their 6 px margin from the
-            # buttons' side of the strip.
-            "@toolbar_title_height": f"{TITLE_SPACE}px",
-            "@toolbar_title_separator_margin": f"{6 + TITLE_SPACE}px 5px 6px 5px",
-            "@toolbar_line_title_height": f"{LINE_SPACE}px",
-            "@toolbar_line_separator_margin": f"6px 5px {6 + LINE_SPACE}px 5px",
-            "@toolbar_side_rules": side_rules(),
+            # Toolbar name strips and handles, a rule per size (see
+            # studio_toolbars).
+            "@toolbar_name_rules": name_rules(),
         }
         self._shared_stamp = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
@@ -2551,21 +2568,29 @@ class QgisStudioThemesPlugin:
 
     @staticmethod
     def label_style():
-        """(position, name style) of the toolbar names, as set in the
-        settings dialog: names above the buttons, the full name where the
-        buttons are wide enough, by default."""
+        """(position, name style, size, weight) of the toolbar names, as
+        set in the settings dialog: names above the buttons, the full name
+        where the buttons are wide enough, in bold TITLE_SIZE px, by
+        default."""
         settings = QgsSettings()
         position = settings.value(POSITION_SETTING, "", type=str)
         if position not in POSITIONS:
             position = "top" if settings.value(LABELS_SETTING, True, type=bool) else "off"
         names = settings.value(NAMES_SETTING, "auto", type=str)
-        return position, names if names in NAME_STYLES else "auto"
+        size = settings.value(SIZE_SETTING, TITLE_SIZE, type=int)
+        weight = settings.value(WEIGHT_SETTING, "bold", type=str)
+        return (
+            position, names if names in NAME_STYLES else "auto", size if size in TITLE_SIZES else TITLE_SIZE,
+            weight if weight in WEIGHTS else "bold",
+        )
 
     @staticmethod
-    def set_label_style(position, names):
+    def set_label_style(position, names, size, weight):
         settings = QgsSettings()
         settings.setValue(POSITION_SETTING, position)
         settings.setValue(NAMES_SETTING, names)
+        settings.setValue(SIZE_SETTING, size)
+        settings.setValue(WEIGHT_SETTING, weight)
 
     def _labels_enabled(self):
         return self.label_style()[0] != "off"

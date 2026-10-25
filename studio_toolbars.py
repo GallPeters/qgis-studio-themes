@@ -10,15 +10,20 @@ QGIS Studio Themes > Settings, see POSITIONS):
   left_vertical  the name left of the buttons, reading upwards: the
                  narrowest, for short names.
 
+Names left of the buttons end in a narrow, tall arrow pointing at them.
+The names' size and weight are settings too (TITLE_SIZES, WEIGHTS), and
+every room below follows the size.
+
 The top strip is made by a top margin on every item of the toolbar
-(QToolBar[studioLabel="top"] in style.qss, @toolbar_title_height =
-TITLE_SPACE), so the items keep their own layout and the toolbar simply
-grows by the strip; widgets the stylesheet cannot push down (containers
-such as the snapping widget) get the same space as a top contents margin,
-undone on detach. The bottom strip is made the same way, below the items
-(LINE_SPACE). Names left of the buttons get their room in a wider handle
-(QToolBar[studioLead="<px>"], rules made by side_rules): QToolBar counts
-the handle in its size and lays its items out after it, so the toolbar
+(QToolBar[studioLabel="top"][studioStrip="<px>"], rules made by
+name_rules, the strip's height from title_space), so the items keep their
+own layout and the toolbar simply grows by the strip; widgets the
+stylesheet cannot push down (containers such as the snapping widget) get
+the same space as a top contents margin, undone on detach. The bottom
+strip is made the same way, below the items (line_space; the last row
+keeps more room between its names and the map). Names left of the buttons
+get their room in a wider handle (QToolBar[studioLead="<px>"]): QToolBar
+counts the handle in its size and lays its items out after it, so the toolbar
 grows by the name, nothing overflows that would fit, and the name drags
 the toolbar like the handle. QToolBar also makes a toolbar at least as tall
 as its handle is wide, so such a toolbar's height is capped at its items'
@@ -38,7 +43,18 @@ by one after its last toolbar's buttons. Rows of toolbars are underlined
 like the menu bar: the last toolbar of a row reaches the window's edge,
 so the toolbars' lines join into one across the window. A toolbar wider
 than its buttons (QMainWindow gives it the room left of a neighbour
-dragged further right) has them centred, its name with them.
+dragged further right) keeps them at its start, as QToolBar lays them out,
+so dragging a neighbour never moves them.
+
+Dragging a toolbar along its row is QMainWindow's: it moves the edge
+between the toolbar and the one before it, squeezing one of them (buttons
+behind the overflow arrow) while the rest of the row stays. Once the mouse
+is up, the row is settled (see _settle): a squeezed toolbar gets its
+buttons back where the row has room, so a dragged toolbar moves as a
+whole, pushing the ones after it; one dragged left over more than half of
+the toolbar before it swaps places with it. Nothing is inserted again while
+the mouse is down, and no minimum width is set that a row cannot hold (a
+name wider than its buttons is the only one).
 
 The title is horizontal text, drawn onto the toolbar's own background
 colour, so Windows smooths it with ClearType like all other UI text. The
@@ -58,13 +74,19 @@ import functools
 import re
 
 from qgis.PyQt.QtCore import QEvent, QMargins, QObject, QPointF, QRect, Qt, QTimer
-from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap
+from qgis.PyQt.QtGui import (
+    QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap, QPolygonF,
+)
 from qgis.PyQt.QtWidgets import (
     QAbstractSpinBox, QApplication, QComboBox, QLabel, QLineEdit, QMainWindow, QStyle, QStyleOptionToolBar,
     QToolBar, QToolButton, QWidget,
 )
 
 PROPERTY = "studioLabel"
+# The room a strip mode takes (px): above the buttons ("top"), below them
+# ("bottom") or the taller handle ("handle"); the stylesheet has a rule per
+# value (name_rules).
+STRIP_PROPERTY = "studioStrip"
 # The room for a name left of the buttons, added to the handle's width.
 LEAD_PROPERTY = "studioLead"
 # Where a docked horizontal toolbar's name goes ("off": no names at all,
@@ -75,39 +97,37 @@ NAME_STYLES = ("auto", "full", "short")
 # value), and those with the name left of the buttons.
 ROW_MODES = ("top", "bottom", "left", "left_vertical")
 SIDE_MODES = ("left", "left_vertical")
-# Height of the title strip (logical px), and the gap between it and the
-# buttons, so a hovered or checked button's fill keeps clear of the name.
-# Their sum is the room the buttons are pushed down by (TITLE_SPACE,
-# shared with style.qss).
-TITLE_HEIGHT = 13
-TITLE_GAP = 3
-TITLE_SPACE = TITLE_HEIGHT + TITLE_GAP
-# Small capitals: a quiet caption that never competes with the icons.
-# Bold, so the name reads at 10 px and stands apart from the UI text
-# (Segoe UI's Bold; Inter, the fallback, its SemiBold, the heaviest face
-# bundled), spaced by a whole pixel so the letters stay apart (fractional
-# spacing puts letters between pixels).
-TITLE_SIZE = 10
+# Small capitals: a quiet caption that never competes with the icons, in a
+# size (px) and weight set in the settings. Bold by default, so the name
+# reads at small sizes and stands apart from the UI text (Segoe UI's Bold;
+# Inter, the fallback, its SemiBold, the heaviest face bundled), spaced by
+# a whole pixel so the letters stay apart (fractional spacing puts letters
+# between pixels).
+TITLE_SIZES = tuple(range(9, 15))
+TITLE_SIZE = 11
+WEIGHTS = ("bold", "regular", "light")
 TITLE_SPACING = 1.0
+# The gap between the title strip and the buttons, so a hovered or checked
+# button's fill keeps clear of the name (see title_space).
+TITLE_GAP = 3
 # Room either side of a name when a toolbar is widened to fit it.
 RULE_ROOM = 6
-# "bottom": the strip below the buttons (logical px), shared with
-# style.qss (@toolbar_line_title_height). With the toolbar's padding under
-# it, it holds the names in the row's line, LINE_BELOW above the toolbar's
-# bottom: the capitals keep a few pixels from the buttons and, under the
-# last row, from the map. The name breaks the line with LINE_GAP either
-# side, in a label LINE_HEIGHT tall centred on it.
-LINE_SPACE = 10
-LINE_BELOW = 8
-LINE_HEIGHT = 11
+# "bottom": the name breaks the row's line with LINE_GAP either side. The
+# last row of toolbars keeps ROW_END_ROOM more below its line, between the
+# names and the map or panels (see line_space).
 LINE_GAP = 4
-# Names left of the buttons: the room taken beside a name across (its width
-# plus this), and the column for a name reading upwards. The room is
-# rounded up to LEAD_STEP, the steps the stylesheet has rules for, up to
-# LEAD_MAX (longer names show the short one).
-SIDE_ROOM = 8
-UPRIGHT_ROOM = 12
-LEAD_STEP = 4
+ROW_END_ROOM = 4
+# Names left of the buttons: the room left of a name across, and the
+# arrow after a name pointing at its buttons (a narrow chevron, ARROW_WIDTH
+# wide, ARROW_GAP after the name and ARROW_AFTER before the buttons). The
+# room is rounded up to LEAD_STEP, the steps the stylesheet has rules for,
+# up to LEAD_MAX (longer names show the short one).
+SIDE_ROOM = 4
+ARROW_WIDTH = 4
+ARROW_GAP = 3
+ARROW_AFTER = 2
+ARROW_ROOM = ARROW_GAP + ARROW_WIDTH + ARROW_AFTER
+LEAD_STEP = 2
 LEAD_MAX = 240
 # The handle's own width (QToolBar::handle in style.qss).
 HANDLE_WIDTH = 6
@@ -208,13 +228,70 @@ def has_items(toolbar):
     return any(action.isVisible() and not action.isSeparator() for action in toolbar.actions())
 
 
-def side_rules():
-    """Stylesheet rules widening a toolbar's handle by the room for its
-    name (LEAD_PROPERTY), one per LEAD_STEP."""
-    return "\n".join(
+def title_height(size):
+    """Height of the title strip above the buttons for names `size` px."""
+    return size + 3
+
+
+def title_space(size):
+    """The room the buttons are pushed down by for names above them."""
+    return title_height(size) + TITLE_GAP
+
+
+def line_space(size, row_end=False):
+    """"bottom": the strip below the buttons. With the toolbar's padding
+    under it, it holds the names in the row's line, line_below above the
+    toolbar's bottom: the capitals keep a few pixels from the buttons and
+    from whatever is below. The last row (`row_end`) keeps more room."""
+    return size + (ROW_END_ROOM if row_end else 0)
+
+
+def line_below(size, row_end=False):
+    """How far above the toolbar's bottom the row's line runs ("bottom")."""
+    return 7 + (size - 8) // 2 + (ROW_END_ROOM if row_end else 0)
+
+
+def line_height(size):
+    """Height of a name in the row's line, centred on it."""
+    return size + 1
+
+
+def handle_height(size):
+    """The taller handle of a vertical toolbar holding its short name."""
+    return max(16, size + 5)
+
+
+def upright_column(size):
+    """The width a name reading upwards takes, left of its arrow."""
+    return size + 2
+
+
+def name_rules():
+    """Stylesheet rules for the names: the strips above or below the
+    buttons (items pushed away from them, separators kept 6 px from the
+    buttons' side) and the taller handle of vertical toolbars, one per
+    size the strip can have (STRIP_PROPERTY), and the handle widened by
+    the room for a name left of the buttons (LEAD_PROPERTY), one per
+    LEAD_STEP."""
+    items = ("QToolButton", "QComboBox", "QAbstractSpinBox", "QLineEdit", "QLabel")
+    strips = (
+        ("top", "top", {title_space(size) for size in TITLE_SIZES}),
+        ("bottom", "bottom", {line_space(size, end) for size in TITLE_SIZES for end in (False, True)}),
+    )
+    rules = []
+    for mode, edge, values in strips:
+        for value in sorted(values):
+            toolbar = f'QToolBar[{PROPERTY}="{mode}"][{STRIP_PROPERTY}="{value}"]'
+            rules.append(",\n".join(f"{toolbar} > {item}" for item in items) + f" {{ margin-{edge}: {value}px; }}")
+            margin = f"{6 + value}px 5px 6px 5px" if edge == "top" else f"6px 5px {6 + value}px 5px"
+            rules.append(f"{toolbar}::separator {{ margin: {margin}; }}")
+    for value in sorted({handle_height(size) for size in TITLE_SIZES}):
+        rules.append(f'QToolBar[{PROPERTY}="handle"][{STRIP_PROPERTY}="{value}"]::handle {{ height: {value}px; }}')
+    rules += [
         f'QToolBar[{LEAD_PROPERTY}="{lead}"]::handle {{ width: {HANDLE_WIDTH + lead}px; }}'
         for lead in range(LEAD_STEP, LEAD_MAX + 1, LEAD_STEP)
-    )
+    ]
+    return "\n".join(rules)
 
 
 def short_candidates(text):
@@ -264,25 +341,31 @@ def _font(size, weight, spacing=0.0):
     return font
 
 
-def title_font():
-    return _title_font(QApplication.font().key())
+def title_font(size=TITLE_SIZE, weight="bold", spacing=TITLE_SPACING):
+    """The names' font: `size` px, a WEIGHTS `weight`."""
+    return _title_font(size, weight, spacing, QApplication.font().key())
 
 
-@functools.lru_cache(maxsize=4)
-def _title_font(_app_font):
+@functools.lru_cache(maxsize=16)
+def _title_font(size, weight, spacing, _app_font):
     # Keyed by the application font, which the themes change.
-    weight = QFont.Weight.Bold if _face() else QFont.Weight.DemiBold
-    return _font(TITLE_SIZE, weight, TITLE_SPACING)
+    if weight == "light":
+        qt_weight = QFont.Weight.Light
+    elif weight == "regular":
+        qt_weight = QFont.Weight.Normal
+    else:
+        qt_weight = QFont.Weight.Bold if _face() else QFont.Weight.DemiBold
+    return _font(size, qt_weight, spacing)
 
 
-@functools.lru_cache(maxsize=256)
-def _title_width(text, _app_font):
-    return QFontMetrics(_title_font(_app_font)).horizontalAdvance(text)
+@functools.lru_cache(maxsize=512)
+def _title_width(text, size, weight, _app_font):
+    return QFontMetrics(_title_font(size, weight, TITLE_SPACING, _app_font)).horizontalAdvance(text)
 
 
-def title_width(text):
+def title_width(text, size=TITLE_SIZE, weight="bold"):
     """Width of a toolbar name in the title font (cached)."""
-    return _title_width(text, QApplication.font().key())
+    return _title_width(text, size, weight, QApplication.font().key())
 
 
 def _snap(value, ratio):
@@ -331,11 +414,11 @@ class _Overlay(QLabel):
 
 class _Label(_Overlay):
     """One toolbar's name: in a strip above or below the buttons, left of
-    them (across, or reading upwards when `upright`), or a short name
-    across the top of a vertical toolbar. Drawn on the toolbar's background
-    colour (when known): text on an opaque picture keeps ClearType's
-    subpixel smoothing, like text drawn on the window, and a name in the
-    row's line breaks the line."""
+    them (across, or reading upwards when `upright`) with an `arrow`
+    pointing at them, or a short name across the top of a vertical
+    toolbar. Drawn on the toolbar's background colour (when known): text
+    on an opaque picture keeps ClearType's subpixel smoothing, like text
+    drawn on the window, and a name in the row's line breaks the line."""
 
     def __init__(self, toolbar, color, background=None):
         super().__init__(toolbar, "studioToolbarLabel")
@@ -343,6 +426,7 @@ class _Label(_Overlay):
         self.background = background
         self.text = ""
         self.upright = False
+        self.arrow = False
         self.title_font = QFont()
         # What _place last applied, so unchanged layout requests are free.
         self.placed = None
@@ -354,17 +438,24 @@ class _Label(_Overlay):
 
     def _content(self):
         background = self.background.rgba() if self.background is not None else None
-        return self.text, self.upright, self.color.rgba(), background, self.title_font.key()
+        return self.text, self.upright, self.arrow, self.color.rgba(), background, self.title_font.key()
 
     def _paint(self, painter, ratio):
         if not self.text:
             return
+        # The arrow after the name (before it right to left), pointing at
+        # the buttons; the name centred in the rest.
+        mirrored = self.layoutDirection() == Qt.LayoutDirection.RightToLeft
+        offset = ARROW_ROOM if self.arrow and mirrored else 0
+        if self.arrow:
+            self._paint_arrow(painter, ratio, mirrored)
         metrics = QFontMetricsF(self.title_font)
         width = metrics.horizontalAdvance(self.text)
-        across, high = self.width(), self.height()
+        across, high = self.width() - (ARROW_ROOM if self.arrow else 0), self.height()
         if self.upright:
             # Reading upwards: drawn across a turned painter, whose width is
             # the widget's height.
+            painter.save()
             painter.translate(0, high)
             painter.rotate(-90)
             across, high = high, across
@@ -373,9 +464,35 @@ class _Label(_Overlay):
         # where hinting keeps stems sharp.
         x = _snap((across - width) / 2, ratio)
         baseline = _snap((high + metrics.capHeight()) / 2, ratio)
+        if self.upright:
+            baseline += offset
+        else:
+            x += offset
         painter.setFont(self.title_font)
         painter.setPen(self.color)
         painter.drawText(QPointF(x, baseline), self.text)
+        if self.upright:
+            painter.restore()
+
+    def _paint_arrow(self, painter, ratio, mirrored=False):
+        """A narrow, tall solid triangle at the right edge (left, pointing
+        left, when `mirrored`), pointing at the buttons: it ties the name
+        to them in the room of a few pixels. Its base sits on a whole
+        device pixel, so that edge stays sharp."""
+        height = max(10, min(20, round(self.height() * 0.55)))
+        base = _snap(self.width() - ARROW_AFTER - ARROW_WIDTH, ratio)
+        tip = base + ARROW_WIDTH
+        if mirrored:
+            tip = _snap(ARROW_AFTER, ratio)
+            base = tip + ARROW_WIDTH
+        top = _snap((self.height() - height) / 2, ratio)
+        bottom = top + height
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.color)
+        painter.drawPolygon(QPolygonF([QPointF(base, top), QPointF(tip, (top + bottom) / 2), QPointF(base, bottom)]))
+        painter.restore()
 
 
 class _Divider(_Overlay):
@@ -426,7 +543,8 @@ class ToolbarLabels(QObject):
     TOOLBAR_EVENTS = (
         QEvent.Type.LayoutRequest, QEvent.Type.ActionChanged, QEvent.Type.ActionAdded,
         QEvent.Type.ActionRemoved, QEvent.Type.ChildRemoved, QEvent.Type.Move, QEvent.Type.Resize,
-        QEvent.Type.Show, QEvent.Type.ParentChange, QEvent.Type.Hide,
+        QEvent.Type.Show, QEvent.Type.ParentChange, QEvent.Type.Hide, QEvent.Type.MouseButtonPress,
+        QEvent.Type.MouseButtonRelease,
     )
 
     def __init__(self, hub=None):
@@ -456,9 +574,18 @@ class ToolbarLabels(QObject):
         # every layout request.
         self._widgets = {}
         self._frames = {}
-        # Centring applied per toolbar: (offset, the items' x positions it
-        # left), so it can be undone while the layout has not reset them.
-        self._offsets = {}
+        # Toolbars in the last row of their window's top area ("bottom"
+        # keeps more room under that row, see line_space).
+        self._row_end = {}
+        # Dragging: the toolbar pressed on and where it was, then (once
+        # released) per window, for _settle; and each window's rows as last
+        # settled, so settling never repeats itself.
+        self._pressed = None
+        self._dropped = {}
+        self._settled = {}
+        # Toolbars given their own width again since the last drag: still
+        # squeezed, it is the row's length that squeezes them.
+        self._released = set()
         # Minimum widths raised so a name fits, with the toolbar's own.
         self._min_widths = {}
         # Windows whose rows are arranged on the next event-loop pass.
@@ -481,6 +608,9 @@ class ToolbarLabels(QObject):
         # The setting: where names go and which name shows (see POSITIONS).
         self._position = "top"
         self._names = "auto"
+        # The names' font: size (px) and weight (TITLE_SIZES, WEIGHTS).
+        self._size = TITLE_SIZE
+        self._weight = "bold"
         # Short names given to toolbars without one of their own, so two
         # in a window never share one.
         self._shorts = {}
@@ -518,6 +648,8 @@ class ToolbarLabels(QObject):
         if window in self._windows:
             self._windows.remove(window)
         self._rows_pending.discard(window)
+        self._dropped.pop(window, None)
+        self._settled.pop(window, None)
 
     def set_color(self, color, rule, row_rule=None, background=None):
         self._color = QColor(color)
@@ -537,14 +669,17 @@ class ToolbarLabels(QObject):
                     line.rule = color
                     line.refresh()
 
-    def set_style(self, position, names):
-        """Where names go and which name shows (POSITIONS other than "off",
-        NAME_STYLES): every named toolbar is placed again at once."""
+    def set_style(self, position, names, size=TITLE_SIZE, weight="bold"):
+        """Where names go, which name shows and in what font (POSITIONS
+        other than "off", NAME_STYLES, TITLE_SIZES, WEIGHTS): every named
+        toolbar is placed again at once."""
         position = position if position in ROW_MODES else "top"
         names = names if names in NAME_STYLES else "auto"
-        if (position, names) == (self._position, self._names):
+        size = size if size in TITLE_SIZES else TITLE_SIZE
+        weight = weight if weight in WEIGHTS else "bold"
+        if (position, names, size, weight) == (self._position, self._names, self._size, self._weight):
             return
-        self._position, self._names = position, names
+        self._position, self._names, self._size, self._weight = position, names, size, weight
         for toolbar, label in list(self._labels.items()):
             if sip.isdeleted(toolbar) or sip.isdeleted(label):
                 continue
@@ -575,7 +710,7 @@ class ToolbarLabels(QObject):
                 continue
             for signal, slot in self._slots.pop(toolbar, ()):
                 signal.disconnect(slot)
-            self._set_mode(toolbar, None)
+            self._set_mode(toolbar, None, None)
             self._fit_name(toolbar, None, "")
             if toolbar in self._tooltips:
                 toolbar.setToolTip(self._tooltips[toolbar])
@@ -598,7 +733,11 @@ class ToolbarLabels(QObject):
         self._extensions = {}
         self._widgets = {}
         self._frames = {}
-        self._offsets = {}
+        self._row_end = {}
+        self._pressed = None
+        self._dropped = {}
+        self._settled = {}
+        self._released = set()
         self._min_widths = {}
         self._rows_pending = set()
         self._tooltips = {}
@@ -642,12 +781,15 @@ class ToolbarLabels(QObject):
 
     def _forget(self, toolbar):
         for table in (self._labels, self._dividers, self._row_lines, self._ends, self._last,
-                      self._extensions, self._widgets, self._frames, self._offsets, self._min_widths,
+                      self._extensions, self._widgets, self._frames, self._row_end, self._min_widths,
                       self._tooltips, self._slots, self._shifted, self._filled, self._shorts,
                       self._leads, self._max_heights):
             table.pop(toolbar, None)
         self._refresh_pending.discard(toolbar)
         self._collapsed.discard(toolbar)
+        if self._pressed is not None and self._pressed[0] is toolbar:
+            self._pressed = None
+        self._released.discard(toolbar)
 
     def _overlays(self, toolbar):
         return (self._labels.get(toolbar), self._dividers.get(toolbar), self._row_lines.get(toolbar),
@@ -670,12 +812,24 @@ class ToolbarLabels(QObject):
             return self._position
         return "handle" if toolbar.isMovable() else None
 
-    def _set_mode(self, toolbar, mode):
-        """Apply a mode's stylesheet rules (title strip or taller handle)
-        and contents margins, and relayout the toolbar."""
-        if toolbar.property(PROPERTY) == mode:
+    def _strip_size(self, toolbar, mode):
+        """The room a mode's strip takes (STRIP_PROPERTY), or None."""
+        if mode == "top":
+            return title_space(self._size)
+        if mode == "bottom":
+            return line_space(self._size, self._row_end.get(toolbar, False))
+        if mode == "handle":
+            return handle_height(self._size)
+        return None
+
+    def _set_mode(self, toolbar, mode, strip):
+        """Apply a mode's stylesheet rules (title strip of `strip` px or
+        taller handle) and contents margins, and relayout the toolbar."""
+        value = None if strip is None else str(strip)
+        if toolbar.property(PROPERTY) == mode and toolbar.property(STRIP_PROPERTY) == value:
             return
         toolbar.setProperty(PROPERTY, mode)
+        toolbar.setProperty(STRIP_PROPERTY, value)
         self._frames.pop(toolbar, None)
         self._unshift(toolbar)
         if mode not in SIDE_MODES:
@@ -694,18 +848,19 @@ class ToolbarLabels(QObject):
         self._shift(toolbar)
 
     @staticmethod
-    def _strip(mode):
-        """The room a strip mode adds above or below the items."""
-        if mode == "top":
-            return QMargins(0, TITLE_SPACE, 0, 0)
-        if mode == "bottom":
-            return QMargins(0, 0, 0, LINE_SPACE)
+    def _strip(toolbar):
+        """The room a toolbar's strip adds above or below its items."""
+        mode, value = toolbar.property(PROPERTY), toolbar.property(STRIP_PROPERTY)
+        if mode == "top" and value:
+            return QMargins(0, int(value), 0, 0)
+        if mode == "bottom" and value:
+            return QMargins(0, 0, 0, int(value))
         return None
 
     def _shift(self, toolbar):
         """Give items the stylesheet cannot push away from the strip
         (containers) the strip as a contents margin."""
-        strip = self._strip(toolbar.property(PROPERTY))
+        strip = self._strip(toolbar)
         if strip is None:
             return
         shifted = self._shifted.setdefault(toolbar, {})
@@ -725,13 +880,19 @@ class ToolbarLabels(QObject):
     def _fit_name(self, toolbar, mode, text):
         """A toolbar with a strip at least as wide as its name, so no name
         is cut short when toolbars with few buttons sit side by side; the
-        toolbar's own minimum width otherwise."""
+        toolbar's own minimum width otherwise. Only where the name is wider
+        than all the buttons: a minimum on every toolbar would add up to
+        more than a short row holds, and QMainWindow would overlap them
+        and stop toolbars from being dragged closer together."""
         own = self._min_widths.get(toolbar)
         need = None
-        if mode in ("top", "bottom") and text:
+        layout = toolbar.layout()
+        if mode in ("top", "bottom") and text and layout is not None:
             frame, extent = self._metrics(toolbar)
             handle = extent if toolbar.isMovable() else 0
-            need = title_width(text) + 2 * RULE_ROOM + 2 * frame + handle
+            need = self._width(text) + 2 * RULE_ROOM + 2 * frame + handle
+            if need <= layout.sizeHint().width():
+                need = None
         if need is not None and need > (toolbar.minimumWidth() if own is None else own):
             if own is None:
                 self._min_widths[toolbar] = toolbar.minimumWidth()
@@ -792,14 +953,13 @@ class ToolbarLabels(QObject):
         if height > 0 and extension.height() != height:
             extension.setGeometry(extension.x(), frame, extension.width(), height)
 
-    @staticmethod
-    def _lead(mode, text):
-        """The room a name left of the buttons takes, in the stylesheet's
-        steps."""
+    def _lead(self, mode, text):
+        """The room a name left of the buttons and its arrow take, in the
+        stylesheet's steps."""
         if mode == "left" and text:
-            need = title_width(text) + SIDE_ROOM
+            need = SIDE_ROOM + self._width(text) + ARROW_ROOM
         elif mode == "left_vertical" and text:
-            need = UPRIGHT_ROOM
+            need = upright_column(self._size) + ARROW_ROOM
         else:
             return 0
         return min(LEAD_MAX, -(-need // LEAD_STEP) * LEAD_STEP)
@@ -851,7 +1011,13 @@ class ToolbarLabels(QObject):
                 return full
             handle = extent if toolbar.isMovable() else 0
             room = layout.sizeHint().width() - 2 * frame - handle
-        return full if title_width(full) <= room else short
+        return full if self._width(full) <= room else short
+
+    def _font(self, spacing=TITLE_SPACING):
+        return title_font(self._size, self._weight, spacing)
+
+    def _width(self, text):
+        return title_width(text, self._size, self._weight)
 
     # ---- Placing ----------------------------------------------------------
 
@@ -879,8 +1045,8 @@ class ToolbarLabels(QObject):
         self._schedule_rows(toolbar.parentWidget())
 
     def _update(self, toolbar):
-        """Place one toolbar's strip and dividers, and centre its buttons:
-        cheap, run on every layout request."""
+        """Place one toolbar's strip, name and dividers: cheap, run on
+        every layout request."""
         if toolbar not in self._labels or sip.isdeleted(toolbar) or toolbar in self._updating:
             return
         self._updating.add(toolbar)
@@ -891,7 +1057,7 @@ class ToolbarLabels(QObject):
 
     def _place_toolbar(self, toolbar):
         mode = self._mode(toolbar)
-        self._set_mode(toolbar, mode)
+        self._set_mode(toolbar, mode, self._strip_size(toolbar, mode))
         frame, extent = self._metrics(toolbar)
         text = self._text(toolbar, mode)
         self._fit_name(toolbar, mode, text)
@@ -905,7 +1071,7 @@ class ToolbarLabels(QObject):
         # Measured once the room for a side name is made: QToolBar may lay
         # its items out again at once.
         items = self._items_span(toolbar) if mode in ROW_MODES else None
-        items = self._fit_items(toolbar, mode, frame, extent, items, lead)
+        self._close_row(toolbar, mode, frame, extent, items, lead)
         if mode == "handle":
             self._place_edge(toolbar)
         self._place_divider(toolbar, mode, frame, extent)
@@ -919,11 +1085,10 @@ class ToolbarLabels(QObject):
                     label.raise_()
         self._place(toolbar, mode, frame, extent, items, text, lead)
 
-    @staticmethod
-    def _line_y(toolbar):
+    def _line_y(self, toolbar):
         """The row's line with names in it ("bottom"), in the strip under
         the buttons."""
-        return toolbar.height() - LINE_BELOW
+        return toolbar.height() - line_below(self._size, self._row_end.get(toolbar, False))
 
     def _place(self, toolbar, mode, frame, extent, items, text, lead):
         label = self._labels.get(toolbar)
@@ -940,10 +1105,11 @@ class ToolbarLabels(QObject):
             # last toolbar of a row is stretched to the window's edge: the
             # strip spans its items, not the empty rest.
             if mode == "top":
-                rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, TITLE_HEIGHT)
+                rect = QRect(frame + handle, frame, toolbar.width() - 2 * frame - handle, title_height(self._size))
             else:
-                rect = QRect(frame + handle, self._line_y(toolbar) - LINE_HEIGHT // 2,
-                             toolbar.width() - 2 * frame - handle, LINE_HEIGHT)
+                height = line_height(self._size)
+                rect = QRect(frame + handle, self._line_y(toolbar) - height // 2,
+                             toolbar.width() - 2 * frame - handle, height)
             if right_to_left:
                 rect.moveLeft(frame)
             if items is not None:
@@ -952,9 +1118,9 @@ class ToolbarLabels(QObject):
                 # centred on the buttons, shifted where an edge is near. In
                 # the line, the name only covers the line where it is.
                 if mode == "top":
-                    width = max(items[1] - items[0] + 1, title_width(text) + 2)
+                    width = max(items[1] - items[0] + 1, self._width(text) + 2)
                 else:
-                    width = title_width(text) + 2 * LINE_GAP
+                    width = self._width(text) + 2 * LINE_GAP
                 left = (items[0] + items[1] + 1 - width) // 2
                 left = max(rect.left(), min(left, rect.right() + 1 - width))
                 rect.setLeft(max(rect.left(), left))
@@ -978,7 +1144,8 @@ class ToolbarLabels(QObject):
                 if half > 0:
                     rect = QRect(round(centre - half), rect.top(), round(2 * half), rect.height())
         name = toolbar.windowTitle()
-        placed = (mode, rect, text, toolbar.objectName(), title_font())
+        font = self._font()
+        placed = (mode, rect, text, toolbar.objectName(), font, right_to_left)
         # Toolbars send layout requests often; only redo the work when the
         # strip or the name actually changed.
         if placed == label.placed and label.isVisible():
@@ -986,17 +1153,22 @@ class ToolbarLabels(QObject):
         label.placed = placed
         # Vertical toolbars' short names in the same small capitals as the
         # titles of horizontal ones.
-        font = title_font()
         metrics = QFontMetrics(font)
         upright = mode == "left_vertical"
+        arrow = mode in SIDE_MODES
         if mode in ("top", "bottom"):
             text = metrics.elidedText(text, Qt.TextElideMode.ElideRight, rect.width() - 2)
-        elif mode == "left" and metrics.horizontalAdvance(text) > rect.width() - 2:
+        elif mode == "left" and metrics.horizontalAdvance(text) > rect.width() - ARROW_ROOM - 2:
             # Squeezed (a crowded row): the short name, or none.
             short = self._short(toolbar)
-            text = short if metrics.horizontalAdvance(short) <= rect.width() - 2 else ""
+            text = short if metrics.horizontalAdvance(short) <= rect.width() - ARROW_ROOM - 2 else ""
         else:
             room = (rect.height() if upright else rect.width()) - 2
+            if upright and metrics.horizontalAdvance(text) > room:
+                # A name reading upwards longer than the toolbar is tall
+                # (large names on a short row): letters closer first.
+                font = self._font(0.0)
+                metrics = QFontMetrics(font)
             while text and metrics.horizontalAdvance(text) > room:
                 text = text[:-1]
         # The full name on hovering a toolbar showing less of it (unless
@@ -1007,6 +1179,7 @@ class ToolbarLabels(QObject):
             toolbar.setToolTip(name if text != title(toolbar) else "")
         label.title_font = font
         label.upright = upright
+        label.arrow = arrow
         label.text = text
         label.setGeometry(rect)
         label.refresh()
@@ -1066,55 +1239,28 @@ class ToolbarLabels(QObject):
         the line through the names under the buttons."""
         return self._line_y(toolbar) + 1 if mode == "bottom" else toolbar.height()
 
-    def _fit_items(self, toolbar, mode, frame, extent, items, lead=0):
-        """Centre a toolbar's buttons in its width (not the last of a row,
-        whose extra width is the rest of the window), and close a row after
-        the last toolbar's buttons (and a name left of them, `lead` px)
-        with a divider. Returns the buttons' span, as moved."""
+    def _close_row(self, toolbar, mode, frame, extent, items, lead=0):
+        """Close a row after the last toolbar's buttons (and a name left of
+        them, `lead` px) with a divider. A toolbar wider than its buttons
+        keeps them at its start, where QToolBar puts them: the room after
+        them is where a neighbour was dragged to, and moving the buttons
+        into it would make them follow the neighbour being dragged."""
         end = self._ends.get(toolbar)
         if end is None or sip.isdeleted(end):
-            return items
-        if mode not in ROW_MODES or items is None or toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft:
+            return
+        if (mode not in ROW_MODES or items is None or not self._last.get(toolbar)
+                or toolbar.layoutDirection() == Qt.LayoutDirection.RightToLeft):
             if mode != "handle":
                 end.hide()
-            return items
-        middle = self._middle(toolbar, frame, extent)
-        # Where the layout put the buttons: the current positions, less a
-        # centring still in place (a relayout puts them back at the left).
-        widgets = [w for w in self._layout_widgets(toolbar) if w.isVisible()]
-        offset, moved = self._offsets.get(toolbar, (0, None))
-        if moved != tuple(w.x() for w in widgets):
-            offset = 0
-        items = (items[0] - offset, items[1] - offset)
-        extension = self._extensions.get(toolbar)
-        overflowing = extension is not None and not sip.isdeleted(extension) and extension.isVisible()
-        delta = 0
-        if not self._last.get(toolbar) and not overflowing:
-            # The handle includes the room for a name left of the buttons,
-            # which moves with them.
-            room_left = frame + (extent if toolbar.isMovable() else 0)
-            room = toolbar.width() - frame - room_left - (items[1] - items[0] + 1)
-            if room > 1:
-                delta = room_left + room // 2 - items[0]
-        if delta != offset:
-            for widget in widgets:
-                widget.move(widget.x() + delta - offset, widget.y())
-        if delta:
-            self._offsets[toolbar] = (delta, tuple(w.x() for w in widgets))
-        else:
-            self._offsets.pop(toolbar, None)
-        items = (items[0] + delta, items[1] + delta)
-        if not self._last.get(toolbar):
-            end.hide()
-            return items
+            return
         # The space between the start divider and the first button (or the
         # name left of it), mirrored after the last one.
+        middle = self._middle(toolbar, frame, extent)
         x = items[1] + (items[0] - lead - middle)
         if x >= toolbar.width() - 2:
             end.hide()
         else:
             self._show(end, QRect(x - 1, 0, 3, self._rule_height(toolbar, mode)))
-        return items
 
     def _schedule_rows(self, window):
         """Arrange `window`'s rows once the current layout changes have
@@ -1128,7 +1274,7 @@ class ToolbarLabels(QObject):
         """Which titled toolbars of the top area share a row, and which is
         the last of each: each gets a line along its bottom (they join
         across the window, like the menu bar's), the last a divider closing
-        the row, the others their buttons centred."""
+        the row. The last row keeps more room under its names ("bottom")."""
         if window not in self._rows_pending:
             return
         self._rows_pending.discard(window)
@@ -1152,7 +1298,14 @@ class ToolbarLabels(QObject):
             else:
                 line.hide()
                 self._last[toolbar] = False
-        for row in rows.values():
+                if self._row_end.pop(toolbar, False):
+                    changed.add(toolbar)
+        bottom = max(rows, default=None)
+        for y, row in rows.items():
+            for toolbar in row:
+                if self._row_end.get(toolbar, False) is not (y == bottom):
+                    self._row_end[toolbar] = y == bottom
+                    changed.add(toolbar)
             # The row is closed after its last named toolbar (an empty one
             # after it shows nothing to close).
             titled = [toolbar for toolbar in row if toolbar.property(PROPERTY) in ROW_MODES]
@@ -1162,8 +1315,10 @@ class ToolbarLabels(QObject):
                 if self._last.get(toolbar) is not is_last:
                     self._last[toolbar] = is_last
                     changed.add(toolbar)
-            self._collapse_empty(window, row)
-            self._release_wide(window, row)
+        # Toolbars are inserted again only once the mouse is up: never under
+        # a toolbar being dragged.
+        if self._pressed is None and QApplication.mouseButtons() == Qt.MouseButton.NoButton:
+            self._settle(window, rows)
         for toolbar in changed:
             self._update(toolbar)
 
@@ -1190,21 +1345,99 @@ class ToolbarLabels(QObject):
             window.insertToolBar(min(after, key=lambda other: other.x()), toolbar)
             toolbar.show()
 
-    def _release_wide(self, window, row):
-        """A row too short for its toolbars squeezes them from its end,
-        hiding their last buttons behind the overflow arrow, while a toolbar
-        before them may keep a width it was once given (dragged, or saved
-        with the window layout) far beyond its buttons, its room empty.
-        Such a toolbar is inserted again at its place, which drops that
-        width, so the room goes to the squeezed ones."""
-        if not any(self._filled.get(toolbar, True) and toolbar.width() < toolbar.sizeHint().width()
-                   for toolbar in row):
+    def _settle(self, window, rows):
+        """Rows as a drag (or a saved window layout) left them, made whole:
+        QMainWindow keeps the width each toolbar was last dragged to, so a
+        toolbar can stay squeezed (its last buttons behind the overflow
+        arrow) where the row has room, or hold an empty gap while others
+        are squeezed. Inserting a toolbar again at its place drops that
+        width (see _swap, _release_squeezed, _release_wide). Done once per
+        arrangement of the rows: inserting relays them out, and a row that
+        cannot hold all its buttons stays as it then is."""
+        signature = tuple((id(toolbar), toolbar.x(), toolbar.y(), toolbar.width())
+                          for row in rows.values() for toolbar in row)
+        dropped = self._dropped.pop(window, None)
+        if self._settled.get(window) == signature:
             return
-        ordered = sorted(row, key=lambda toolbar: toolbar.x())
+        self._settled[window] = signature
+        for row in rows.values():
+            ordered = sorted(row, key=lambda toolbar: toolbar.x())
+            self._collapse_empty(window, ordered)
+            if not (self._swap(window, ordered, dropped) or self._release_squeezed(window, ordered)):
+                self._release_wide(window, ordered)
+
+    def _squeezed(self, toolbar):
+        return self._filled.get(toolbar, True) and toolbar.width() < toolbar.sizeHint().width() - 1
+
+    @staticmethod
+    def _reinsert(window, toolbar, before):
+        """Insert `toolbar` again before `before`, dropping the width it
+        was dragged to (QMainWindow hides a toolbar it removes)."""
+        window.insertToolBar(before, toolbar)
+        toolbar.show()
+
+    def _swap(self, window, ordered, dropped):
+        """A toolbar dragged left squeezes the one before it: over more
+        than half of that one's buttons, the two swap places; otherwise
+        both go back to their own widths, the dragged one where it was."""
+        if dropped is None:
+            return False
+        toolbar, start = dropped
+        if sip.isdeleted(toolbar) or toolbar not in ordered:
+            return False
+        index = ordered.index(toolbar)
+        if index == 0 or toolbar.x() >= start:
+            return False
+        before = ordered[index - 1]
+        if not self._squeezed(before):
+            return False
+        after = ordered[index + 1] if index + 1 < len(ordered) else None
+        self._released.update((toolbar, before))
+        if before.width() < before.sizeHint().width() / 2:
+            self._reinsert(window, toolbar, before)
+            if after is not None:
+                self._reinsert(window, before, after)
+        else:
+            self._reinsert(window, before, toolbar)
+            if after is not None:
+                self._reinsert(window, toolbar, after)
+        return True
+
+    def _release_squeezed(self, window, ordered):
+        """Toolbars squeezed by a width they were dragged to get their
+        buttons back: the room comes from the row's end (the last toolbar,
+        which reaches the window's edge), so a toolbar dragged right moves
+        as a whole and pushes the ones after it. The last toolbar is only
+        ever squeezed by the row's length, and so is one already released
+        since the last drag (_released)."""
+        released = False
         for toolbar, after in zip(ordered, ordered[1:]):
-            if toolbar.width() > toolbar.sizeHint().width() + 1:
-                window.insertToolBar(after, toolbar)
-                toolbar.show()
+            if self._squeezed(toolbar) and toolbar not in self._released:
+                self._released.add(toolbar)
+                self._reinsert(window, toolbar, after)
+                released = True
+        return released
+
+    def _release_wide(self, window, ordered):
+        """A row too short for its toolbars squeezes them, hiding their
+        last buttons behind the overflow arrow, while a toolbar before them
+        may keep a width it was once given (dragged, or saved with the
+        window layout) beyond its buttons, its room empty. Such toolbars
+        are inserted again at their place, which drops that width, the
+        nearest to the squeezed ones first and only as many as the
+        squeezed ones need: other gaps stay where the user put them."""
+        squeezed = [index for index, toolbar in enumerate(ordered) if self._squeezed(toolbar)]
+        if not squeezed:
+            return
+        need = sum(ordered[index].sizeHint().width() - ordered[index].width() for index in squeezed)
+        for index in range(squeezed[-1] - 1, -1, -1):
+            if need <= 0:
+                break
+            toolbar = ordered[index]
+            spare = toolbar.width() - toolbar.sizeHint().width()
+            if spare > 1:
+                self._reinsert(window, toolbar, ordered[index + 1])
+                need -= spare
 
     @staticmethod
     def _show(line, rect):
@@ -1301,6 +1534,16 @@ class ToolbarLabels(QObject):
             # have moved.
             frame, extent = self._metrics(watched)
             self._place_divider(watched, watched.property(PROPERTY), frame, extent)
+            self._schedule_rows(watched.parentWidget())
+        elif kind == QEvent.Type.MouseButtonPress:
+            # Pressed on the toolbar itself (its handle or name, not a
+            # button): a drag may start. Rows are settled once it ends.
+            self._pressed = (watched, watched.x())
+            self._released = set()
+        elif kind == QEvent.Type.MouseButtonRelease:
+            if self._pressed is not None and self._pressed[0] is watched:
+                self._dropped[watched.parentWidget()] = self._pressed
+            self._pressed = None
             self._schedule_rows(watched.parentWidget())
         elif kind in (QEvent.Type.Resize, QEvent.Type.Show, QEvent.Type.ParentChange, QEvent.Type.Hide):
             # Hide: a whole row may go. Resize: the last toolbar of a row

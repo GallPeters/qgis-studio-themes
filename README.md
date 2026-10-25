@@ -56,7 +56,11 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Toolbar names** – each toolbar is named next to its buttons; empty
   toolbars collapse. In **Plugins → QGIS Studio Themes → Settings**, choose
   where the names go (above or below the buttons, left of them across or
-  vertical, or off) and whether they are full, short or chosen to fit.
+  vertical, or off), whether they are full, short or chosen to fit, and
+  their size and weight.
+- **Smooth toolbar dragging** – a dragged toolbar moves as a whole, pushes
+  the ones after it and swaps places with the one before it when dragged
+  over it, without hiding any buttons the row has room for.
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes

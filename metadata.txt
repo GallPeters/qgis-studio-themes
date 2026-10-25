@@ -17,8 +17,17 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.2 (24.10.2026):
+     ** v1.2 (25.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
+          - Toolbar names are slightly larger.
+          - The settings window chooses the size and weight of toolbar names.
+          - Names left of the buttons end in a small arrow pointing at them.
+          - Names below the buttons leave more room above the map.
+          - The overflow arrow of a toolbar is a double chevron, unlike drop-down arrows.
+          - A dragged toolbar moves as a whole and pushes the toolbars after it.
+          - Dragging a toolbar over the one before it swaps their places.
+          - Toolbars no longer stick, overlap or hide buttons while being dragged.
+          - Dragging a toolbar no longer moves the buttons of its neighbour.
           - Toolbar names can go above or below the buttons, or left of them across or vertical.
           - Toolbar names can be turned off.
           - Toolbar names can be full, short, or full only where they fit.
