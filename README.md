@@ -33,6 +33,8 @@ contrast requirements.
 
 ## Screenshots
 
+The main window with the ribbon interface:
+
 | Studio Premium Dark | Studio Web Dark |
 |---|---|
 | ![Studio Premium Dark](docs/screenshots/premium-dark.png) | ![Studio Web Dark](docs/screenshots/web-dark.png) |
