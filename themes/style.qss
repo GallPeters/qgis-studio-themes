@@ -423,8 +423,9 @@ QToolButton#qt_toolbar_ext_button:hover {
 /* The ribbon (studio_ribbon.py): tabs over a page of groups, each named
  * in small capitals beneath and set apart by a soft line; large buttons
  * (icon over label), small ones (icon beside label, or icon only). The
- * ribbon closes off the window's top with the line under the menu bar's
- * colour. */
+ * page is a soft surface of its own, the current tab opening into it;
+ * the ribbon closes off the window's top with the line under the menu
+ * bar's colour. */
 QToolBar#studioRibbonHost {
     padding: 0px;
     spacing: 0px;
@@ -434,12 +435,55 @@ QWidget#studioRibbon {
     background-color: @bg_window;
     border-bottom: 1px solid @line;
 }
+/* While the ribbon shows, the menu bar and its tabs are one header
+ * (studio_ribbon.set_menu_bar_joined). */
+QMenuBar[studioRibbon="true"] {
+    border-bottom: none;
+}
+QWidget#studioRibbonBar {
+    background: transparent;
+    border-bottom: 1px solid @line;
+}
+QStackedWidget#studioRibbonPages {
+    background-color: @ribbon_page;
+}
+/* Tabs keep one size in every state (margin + border + padding alike,
+ * one text weight), so nothing shifts on hover or click. A tab draws
+ * nothing but its name (no border: cheap to paint); hovered, it fills a
+ * pill inside its margins; the current one is a folder tab on the page's
+ * surface that covers the row's line (its name's accent underline is
+ * painted by studio_ribbon._Tabs). The current tab's top margin is
+ * studio_ribbon.TAB_TOP. */
 QTabBar#studioRibbonTabs::tab:top {
-    padding: 5px 14px 4px 14px;
-    margin: 0 1px;
+    margin: 7px 4px 3px 3px;
+    padding: 3px 12px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: @text_dim;
+}
+QTabBar#studioRibbonTabs::tab:top:hover:!selected {
+    background-color: @ribbon_tab_hover;
+    color: @text;
 }
 QTabBar#studioRibbonTabs::tab:top:selected {
+    margin: 4px 1px 0 0;
+    padding: 5px 14px 6px 14px;
+    border: 1px solid @line;
+    border-bottom: none;
+    border-top-left-radius: @radius;
+    border-top-right-radius: @radius;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background-color: @ribbon_page;
     color: @text_bright;
+}
+QTabBar#studioRibbonTabs[collapsed="true"]::tab:top:selected {
+    margin: 7px 4px 3px 3px;
+    padding: 3px 12px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
 }
 QScrollArea#studioRibbonPage,
 QWidget#studioRibbonContent {

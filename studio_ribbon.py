@@ -3,10 +3,11 @@ Studio Themes > Settings > Interface).
 
 A row under the menu bar holds the tabs (Home, Layer, Edit...), with Help
 and a collapse button at their right, and under them the current tab's
-page: groups of large buttons (a 28 px icon, the label under it) and small
-ones (20 px icons, labelled or not) in rows, each group named in small
-capitals beneath. The sizes are ones the icons are pre-rendered at, so
-every icon is pixel-sharp.
+page, a surface of its own the current tab opens into (a folder tab, its
+name underlined in the accent): groups of large buttons (a 28 px icon, the
+label under it) and small ones (20 px icons, labelled or not) in rows,
+each group named in small capitals beneath. The sizes are ones the icons
+are pre-rendered at, so every icon is pixel-sharp.
 
 Every action of every main window toolbar is on the ribbon, by
 construction: TABS places QGIS's toolbars, a group listing no actions
@@ -33,7 +34,7 @@ import re
 from qgis.core import QgsSettings
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QEvent, QObject, QSize, Qt, QTimer
-from qgis.PyQt.QtGui import QFontMetrics
+from qgis.PyQt.QtGui import QFontMetrics, QPainter, QPalette
 from qgis.PyQt.QtWidgets import (
     QAction, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu, QScrollArea, QSizePolicy, QStackedWidget, QTabBar,
     QToolBar, QToolButton, QVBoxLayout, QWidget, QWidgetAction,
@@ -58,6 +59,8 @@ ROWS = 3
 SPACING = 2
 BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
 LARGE_MIN_WIDTH = 52
+# The current tab's top margin in style.qss (studioRibbonTabs::tab:top:selected).
+TAB_TOP = 4
 GROUP_MARGINS = (6, 4, 6, 2)
 
 # Layouts of a group's small buttons: labelled, or icons only; or (plugins'
@@ -310,6 +313,30 @@ class _BorrowingMenu(QMenu):
         self._borrowed = []
 
 
+class _Tabs(QTabBar):
+    """The ribbon's tabs: the current one's name underlined in the accent
+    (the palette's Link colour), as wide as the name, which a stylesheet
+    cannot size."""
+
+    UNDERLINE = 2
+    GAP = 3  # between the underline and the tab's bottom edge
+
+    def paintEvent(self, event):  # pylint: disable=invalid-name
+        super().paintEvent(event)
+        index = self.currentIndex()
+        if index < 0:
+            return
+        tab = self.tabRect(index)
+        width = self.fontMetrics().horizontalAdvance(self.tabText(index)) + 4
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.palette().color(QPalette.ColorRole.Link))
+        y = tab.bottom() + 1 - self.GAP - self.UNDERLINE
+        painter.drawRoundedRect(tab.center().x() + 1 - width // 2, y, width, self.UNDERLINE, 1, 1)
+        painter.end()
+
+
 class Ribbon(QWidget):
     """The tabs and the current page (see the module docstring). Pages
     are built by `build(index, page)` when first shown and after
@@ -325,12 +352,19 @@ class Ribbon(QWidget):
         # A page's height (see page_height), set by the ribbon's owner.
         self.page_height = page_height(studio_toolbars.title_font())
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # Room under the page for the ribbon's bottom line (none when
+        # collapsed: the tab row's line closes the ribbon off then).
+        layout.setContentsMargins(0, 0, 0, 1)
         layout.setSpacing(0)
-        top = QHBoxLayout()
+        # The tab row draws the line over the page; the current tab, a
+        # child drawn after it, covers the line where it opens into the page.
+        bar = QWidget()
+        bar.setObjectName("studioRibbonBar")
+        bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        top = QHBoxLayout(bar)
         top.setContentsMargins(6, 2, 6, 0)
         top.setSpacing(2)
-        self.tabs = QTabBar()
+        self.tabs = _Tabs()
         self.tabs.setObjectName("studioRibbonTabs")
         self.tabs.setDrawBase(False)
         self.tabs.setExpanding(False)
@@ -338,9 +372,14 @@ class Ribbon(QWidget):
         self.tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         for title in titles:
             self.tabs.addTab(title)
-        top.addWidget(self.tabs)
+        top.addWidget(self.tabs, 0, Qt.AlignmentFlag.AlignBottom)
         top.addStretch(1)
-        top.addWidget(corner)
+        # Help and collapse centred on the tabs' names, which sit below
+        # the row's middle (the tabs' top margin).
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, TAB_TOP, 0, 0)
+        buttons.setSpacing(2)
+        buttons.addWidget(corner)
         self.collapse = QToolButton()
         self.collapse.setObjectName("studioRibbonCollapse")
         self.collapse.setAutoRaise(True)
@@ -348,8 +387,9 @@ class Ribbon(QWidget):
         self.collapse.setCheckable(True)
         self.collapse.setToolTip("Collapse the ribbon to its tabs (double-click a tab)")
         self.collapse.toggled.connect(self.set_collapsed)
-        top.addWidget(self.collapse)
-        layout.addLayout(top)
+        buttons.addWidget(self.collapse)
+        top.addLayout(buttons)
+        layout.addWidget(bar)
         self.pages = QStackedWidget()
         self.pages.setObjectName("studioRibbonPages")
         for _title in titles:
@@ -405,6 +445,12 @@ class Ribbon(QWidget):
         self.collapse.setProperty("collapsed", "true" if collapsed else None)
         self.collapse.style().unpolish(self.collapse)
         self.collapse.style().polish(self.collapse)
+        # Collapsed, the current tab opens into no page: a plain tab, its
+        # name still underlined (style.qss, [collapsed]).
+        self.tabs.setProperty("collapsed", "true" if collapsed else None)
+        self.tabs.style().unpolish(self.tabs)
+        self.tabs.style().polish(self.tabs)
+        self.layout().setContentsMargins(0, 0, 0, 0 if collapsed else 1)
         self.pages.setVisible(not collapsed)
         self._fit_height()
 
@@ -423,6 +469,17 @@ class Ribbon(QWidget):
         """The pages' one height (see page_height)."""
         if self.pages.height() != self.page_height or self.pages.minimumHeight() != self.page_height:
             self.pages.setFixedHeight(self.page_height)
+
+
+def set_menu_bar_joined(window, joined):
+    """The menu bar and the ribbon's tabs as one header: no line between
+    them (style.qss, QMenuBar[studioRibbon])."""
+    menu_bar = window.menuBar()
+    if menu_bar is None or bool(menu_bar.property("studioRibbon")) == joined:
+        return
+    menu_bar.setProperty("studioRibbon", True if joined else None)
+    menu_bar.style().unpolish(menu_bar)
+    menu_bar.style().polish(menu_bar)
 
 
 def page_height(caption_font):
@@ -528,6 +585,7 @@ class StudioRibbon(QObject):
         else:
             window.addToolBar(Qt.ToolBarArea.TopToolBarArea, host)
         host.show()
+        set_menu_bar_joined(window, True)
         settings = QgsSettings()
         self._ribbon.set_collapsed(settings.value(COLLAPSED_SETTING, False, type=bool))
         self._ribbon.show_tab(settings.value(TAB_SETTING, 0, type=int))
@@ -545,6 +603,7 @@ class StudioRibbon(QObject):
         self._give_back()
         if not sip.isdeleted(window):
             self._hub.unwatch(window, self)
+            set_menu_bar_joined(window, False)
         for toolbar in self._watched:
             if not sip.isdeleted(toolbar):
                 self._hub.unwatch(toolbar, self)

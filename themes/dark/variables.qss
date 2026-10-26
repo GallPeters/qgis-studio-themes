@@ -65,6 +65,7 @@
  * shared line at about 1.6:1, and a checked tint strong enough to read as
  * the accent rather than a muddy shade of the window. */
 @line:                   mix(@bg_window, @text, 0.17);
+@ribbon_page:            mix(@bg_window, @text, 0.035);
 @tool_checked:           mix(@bg_window, @accent, 0.36);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.44);
 @icon_disabled:          mix(@bg_window, @icon, 0.26);

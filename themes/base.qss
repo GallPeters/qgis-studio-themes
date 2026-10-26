@@ -46,6 +46,10 @@
 @tool_pressed:           mix(@bg_window, @text, 0.05);
 @tool_checked:           mix(@bg_window, @accent, 0.22);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.30);
+/* The ribbon's page and current tab: a soft step off the window, between
+ * it and the base surface (dark themes lift it towards the text). */
+@ribbon_page:            mix(@bg_window, @bg_base, 0.55);
+@ribbon_tab_hover:       mix(@bg_window, @text, 0.055);
 @on_accent:              @text_dark;
 /* Secondary push buttons are tonal: a fill and no visible edge. */
 @button_border:          transparent;

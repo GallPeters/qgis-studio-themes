@@ -25,6 +25,9 @@ changelog=
           - Ribbon buttons use the modern icons, with large buttons for the main tools.
           - Plugin toolbars get their own groups on the ribbon, also when added later.
           - The ribbon collapses to its tabs with its arrow button or a double-click on a tab.
+          - The ribbon's tabs sit on a line, set apart from the menu bar above them.
+          - The ribbon's page is a soft surface of its own; the current tab opens into it, its name underlined.
+          - Ribbon tabs show a soft highlight on hover and keep their size and place in every state.
           - Turning the ribbon off brings back the toolbars as they were.
           - In ribbon mode the settings window offers only the settings that apply to it.
           - Toolbar names can go above or below the buttons, or left of them across or vertical.
