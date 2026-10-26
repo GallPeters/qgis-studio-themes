@@ -17,9 +17,10 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.2 (25.10.2026):
+     ** v1.2 (27.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
           - New ribbon interface, turned on in the settings window under Interface.
+          - The ribbon is inspired by the Ribbon Toolbar plugin by Eithan Wes and Anita Graser (github.com/eithanwes/ribbon_toolbar).
           - The ribbon shows every toolbar button in tabs: Home, Layer, Edit, Modify, Annotate, View, Raster, Mesh, GPS and Plugins.
           - Ribbon buttons use the modern icons, with large buttons for the main tools.
           - Plugin toolbars get their own groups on the ribbon, also when added later.
