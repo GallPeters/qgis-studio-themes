@@ -82,7 +82,7 @@ ICON_MAP = {
     "mActionNewMeshLayer.svg": "triangle-square-circle+star",
     "mActionNewVirtualLayer.svg": "sql-raised+star",
     # ---- Layers panel -----------------------------------------------------
-    "mActionAddGroup.svg": "folder+plus",
+    "mActionAddGroup.svg": "box-multiple+plus",
     "mActionRemoveLayer.svg": "stack-2+x",
     "mActionDuplicateLayer.svg": "copy",
     "mActionShowAllLayers.svg": "eye",
@@ -124,8 +124,8 @@ ICON_MAP = {
     "mIconVectorTileLayer.svg": "layout-grid",
     "mIconGeometryCollectionLayer.svg": "shape",
     "mIconFolder.svg": "folder",
-    # Layer tree groups.
-    "mActionFolder.svg": "folder",
+    # Layer tree groups: layers held together, like layout Group Items.
+    "mActionFolder.svg": "box-multiple",
     "mIconFolderOpen.svg": "folder-open",
     "mIconFolderHome.svg": "home",
     "mIconFavorites.svg": "star",
@@ -174,6 +174,14 @@ ICON_MAP = {
     # ---- Attributes / analysis --------------------------------------------
     "mActionIdentify.svg": "info-circle",
     "mActionMapIdentification.svg": "info-circle",
+    # Identify Results panel: its pick modes match the selection tools.
+    "mActionIdentifyByRectangle.svg": "marquee-2",
+    "mActionIdentifyByPolygon.svg": "lasso-polygon",
+    "mActionIdentifyByFreehand.svg": "lasso",
+    "mActionIdentifyByRadius.svg": "circle-dashed",
+    "mActionIdentifyByMouseOver.svg": "pointer",
+    "mActionExpandNewTree.svg": "chevrons-down+star",
+    "mIconProperties.svg": "tool",
     "mActionCalculateField.svg": "calculator",
     "mActionSum.svg": "sum",
     "mActionOpenTable.svg": "table",
@@ -504,7 +512,7 @@ ICON_MAP = {
     "georeferencer/mGeorefRun.svg": "map-pins",
     "mActionTerminal.svg": "terminal-2",
     "mIconPythonFile.svg": "brand-python",
-    "console/iconClearConsole.svg": "clear-all",
+    "console/iconClearConsole.svg": "eraser",
     "console/iconTabEditorConsole.svg": "file-code",
     "mActionAdd.svg": "plus",
     "mActionListActions.svg": "list-details",

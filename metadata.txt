@@ -17,7 +17,7 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.2 (27.10.2026):
+     ** v1.2 (28.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
           - New ribbon interface, turned on in the settings window under Interface.
           - The ribbon is inspired by the Ribbon Toolbar plugin by Eithan Wes and Anita Graser (github.com/eithanwes/ribbon_toolbar).
@@ -44,6 +44,9 @@ changelog=
           - Toolbars no longer hide buttons while their row has room for them.
           - Dragging a toolbar no longer moves the buttons of its neighbour.
           - The Temporal Controller panel shows modern icons.
+          - The Identify Results panel shows modern icons, also for its identify modes and settings.
+          - Layer groups show a group icon instead of a folder.
+          - Clear buttons, such as in the Python Console and Processing log, show an eraser.
           - The model designer's Inputs list shows a modern plus icon.
           - Collapsible sections, such as Layer Rendering, keep the modern arrow.
           - Dialog buttons such as Save and Cancel no longer show old-style icons on Linux.
