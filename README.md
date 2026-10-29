@@ -63,11 +63,12 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Smooth toolbar dragging** – a dragged toolbar moves as a whole, pushes
   the ones after it and swaps places with the one before it when dragged
   over it, without hiding any buttons the row has room for.
-- **Ribbon interface** – optionally, every toolbar button in tabs of
-  grouped large and small buttons (Home, Layer, Edit, Modify, Annotate,
-  View, Raster, Mesh, GPS, Plugins), with the modern icons; plugin toolbars
-  get groups of their own. It takes the menu bar's place, with QGIS's menus
-  under a menu button left of the tabs. Turn it on in **Settings → Interface**.
+- **Ribbon interface** – optionally, every toolbar button and menu command
+  in tabs of grouped large and small buttons (Project, Home, Data, Layer, Edit,
+  Modify, Annotate, View, Vector, Raster, Mesh, Processing, GPS, Plugins,
+  Settings, Help), with the modern icons; plugin toolbars and menus get
+  places of their own. It takes the menu bar's place. Turn it on in
+  **Settings → Interface**.
   Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
   plugin by Eithan Wes and Anita Graser.
 - **Clean layout** – controls of one height, flat buttons, rounded panel

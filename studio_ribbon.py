@@ -1,9 +1,8 @@
 """The ribbon: QGIS's toolbars as tabs of grouped buttons (Plugins > QGIS
 Studio Themes > Settings > Interface).
 
-A row in place of the menu bar holds the tabs (Home, Layer, Edit...), with
-a menu button at their left (QGIS's menus, Project to Help, as submenus),
-Help and a collapse button at their right, and under them the current tab's
+A row in place of the menu bar holds the tabs (Project, Home, Layer...),
+with Help and a collapse button at their right, and under them the current tab's
 page, a surface of its own the current tab opens into (a folder tab, its
 name underlined in the accent): groups of large buttons (a 28 px icon, the
 label under it) and small ones (20 px icons, labelled or not) in rows,
@@ -14,7 +13,12 @@ Every action of every main window toolbar is on the ribbon, by
 construction: TABS places QGIS's toolbars, a group listing no actions
 takes those of its toolbar no group names (so actions plugins add to
 QGIS's toolbars land there too), and any other toolbar (a plugin's, added
-at any time) gets a group of its own on the Plugins tab. The buttons are
+at any time) gets a group of its own on the Plugins tab. So is every
+command of QGIS's menus: TABS places the ones on no toolbar, each menu's
+"More" group shows what else it holds (what plugins add, at any time),
+and menus plugins add to the menu bar get groups on the Plugins tab;
+commands QGIS gives no icon get one of the theme's (ICON_FALLBACKS). The
+menu bar itself is folded away. The buttons are
 the toolbars' own actions (QToolButton.setDefaultAction), so their icons
 (the theme's, swapped by the plugin), checked, enabled and visible states
 follow QGIS's at no cost. QGIS's tool buttons that switch between tools
@@ -35,7 +39,7 @@ import re
 from qgis.core import QgsSettings
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QEvent, QObject, QSize, Qt, QTimer
-from qgis.PyQt.QtGui import QFontMetrics, QPainter, QPalette
+from qgis.PyQt.QtGui import QFontMetrics, QIcon, QPainter, QPalette, QPixmap
 from qgis.PyQt.QtWidgets import (
     QAction, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu, QScrollArea, QSizePolicy, QStackedWidget, QTabBar,
     QToolBar, QToolButton, QVBoxLayout, QWidget, QWidgetAction,
@@ -72,11 +76,29 @@ LABELS, ICONS, AUTO = "labels", "icons", "auto"
 AUTO_LARGE = 3
 # A group: (title, sources, large, layout[, rows]). Sources are (toolbar
 # objectName, action objectNames, or None for those of the toolbar no
-# group names), or ("@", objectNames) for actions of the main window not on
-# a toolbar (Raster Calculator...). Large: objectNames shown as large
+# group names); ("@", objectNames) for actions of the main window not on
+# a toolbar (Raster Calculator...) or menus, shown as a button opening the
+# menu; or ("menu", menu objectNames) for what those menus hold that the
+# ribbon has nowhere else (see StudioRibbon._covered: QGIS's commands
+# missed here, and what plugins add). Large: objectNames shown as large
 # buttons. Rows: explicit rows of small buttons (lists of objectNames)
-# instead of columns of ROWS.
+# instead of columns of ROWS. Every command of QGIS's menus is on some tab,
+# so the menu bar is folded away (set_menu_bar_folded).
 TABS = (
+    ("Project", (
+        ("Project", (("@", (
+            "mActionNewProject", "mActionOpenProject", "mActionSaveProject", "mProjectFromTemplateMenu",
+            "mRecentProjectsMenu", "mProjectFromStorageMenu", "mActionSaveProjectAs", "mProjectToStorageMenu",
+            "mActionRevertProject", "mActionCloseProject", "mActionExit")),),
+         ("mActionNewProject", "mActionOpenProject", "mActionSaveProject"), LABELS),
+        ("Settings", (("@", ("mActionProjectProperties", "mActionSnappingOptions", "mActionStyleManager")),),
+         ("mActionProjectProperties",), LABELS),
+        ("Import and Export", (("@", (
+            "mActionSaveMapAsImage", "mActionSaveMapAsPdf", "mActionDxfExport", "mActionDwgImport")),), (), LABELS),
+        ("Layouts", (("@", ("mActionNewPrintLayout", "mActionNewReport", "mActionShowLayoutManager", "mLayoutsMenu")),),
+         ("mActionNewPrintLayout",), LABELS),
+        ("More", (("menu", ("mProjectMenu",)),), (), LABELS),
+    )),
     ("Home", (
         ("Project", (("mFileToolBar", None),),
          ("mActionNewProject", "mActionOpenProject", "mActionSaveProject"), LABELS),
@@ -87,7 +109,7 @@ TABS = (
         ("Select", (("mSelectionToolBar", None),), ("ActionSelect",), ICONS),
         ("Inspect", (("mAttributesToolBar", None),), ("mActionIdentify", "ActionOpenTable"), LABELS),
     )),
-    ("Layer", (
+    ("Data", (
         ("Add Data", (("mDataSourceManagerToolBar", ("mActionDataSourceManager",)),),
          ("mActionDataSourceManager",), LABELS),
         ("Add Layer", (("mLayerToolBar", (
@@ -96,6 +118,19 @@ TABS = (
             "mActionAddWcsLayer", "mActionAddWfsLayer", "mActionAddStacLayer")),), (), LABELS),
         ("Create Layer", (("mDataSourceManagerToolBar", None), ("mLayerToolBar", None)),
          ("mActionNewGeoPackageLayer",), LABELS),
+        ("More Data", (("@", (
+            "mAddLayerMenu", "mNewLayerMenu", "mActionEmbedLayers", "mActionAddLayerDefinition")),), (), LABELS),
+    )),
+    ("Layer", (
+        ("Layer", (("@", (
+            "mActionLayerProperties", "mActionLayerSubsetString", "mActionDuplicateLayer", "mActionSetLayerCRS",
+            "mActionSetProjectCRSFromLayer", "mActionSetLayerScaleVisibility", "mActionLayerSaveAs",
+            "mActionSaveLayerDefinition", "mActionRemoveLayer")),), ("mActionLayerProperties",), LABELS),
+        ("Copy and Paste", (("@", (
+            "mActionCopyStyle", "mActionPasteStyle", "mActionCopyLayer", "mActionPasteLayer")),), (), LABELS),
+        ("Overview", (("@", ("mActionAddToOverview", "mActionAddAllToOverview", "mActionRemoveAllFromOverview")),),
+         (), LABELS),
+        ("More", (("menu", ("mLayerMenu",)),), (), LABELS),
     )),
     ("Edit", (
         ("Editing", (("mDigitizeToolBar", ("mActionToggleEditing", "mActionSaveLayerEdits", "mActionAllEdits")),),
@@ -104,7 +139,7 @@ TABS = (
          ("mActionAddFeature", "ActionVertexTool"), LABELS),
         ("Features", (("mDigitizeToolBar", (
             "mActionMultiEditAttributes", "mActionDeleteSelected", "mActionCutFeatures", "mActionCopyFeatures",
-            "mActionPasteFeatures")),), (), LABELS),
+            "mActionPasteFeatures")), ("@", ("mMenuPasteAs",))), (), LABELS),
         ("History", (("mDigitizeToolBar", None),), (), LABELS),
         ("Snapping", (("mSnappingToolBar", None),), (), ICONS, (
             ("EnableSnappingAction", "mModeAction", "mEditAdvancedConfigAction", "mTypeAction", "mToleranceAction",
@@ -113,6 +148,7 @@ TABS = (
              "EnableTracingAction", "SelfSnappingAction"),
         )),
         ("Shapes", (("mShapeDigitizeToolBar", None),), (), ICONS),
+        ("More", (("menu", ("mEditMenu",)),), (), LABELS),
     )),
     ("Modify", (
         ("Advanced", (("mAdvancedDigitizeToolBar", ("mEnableAction",)),), ("mEnableAction",), LABELS),
@@ -141,14 +177,29 @@ TABS = (
         ("Map Annotations", (("mAnnotationsToolBar", None),), (), LABELS),
     )),
     ("View", (
-        ("Map Views", (("mMapNavToolBar", ("mActionNewMapCanvas", "mActionNew3DMapCanvas")),),
+        ("Map Views", (("mMapNavToolBar", ("mActionNewMapCanvas", "mActionNew3DMapCanvas")),
+                       ("@", ("mActionNew3DMapCanvasGlobe", "mActionManage3DMapViews"))),
          ("mActionNewMapCanvas", "mActionNew3DMapCanvas"), LABELS),
-        ("Bookmarks", (("mMapNavToolBar", ("mActionNewBookmark", "mActionShowBookmarks")),), (), LABELS),
+        ("Bookmarks", (("mMapNavToolBar", ("mActionNewBookmark", "mActionShowBookmarks")),
+                       ("@", ("mActionShowBookmarkManager",))), (), LABELS),
         ("Time", (("mMapNavToolBar", None),), ("mActionTemporalController",), LABELS),
+        ("Elevation", (("@", (
+            "mActionElevationProfile", "mActionManageElevationProfiles", "mActionElevationController")),),
+         ("mActionElevationProfile",), LABELS),
+        ("Map Display", (("@", ("mMenuDecorations", "mMenuPreviewMode", "mMenuLayerVisibility")),), (), LABELS),
+        ("Window", (("@", (
+            "mPanelMenu", "mActionToggleFullScreen", "mActionTogglePanelsVisibility", "mActionToggleMapOnly")),),
+         (), LABELS),
+        ("More", (("menu", ("mViewMenu",)),), (), LABELS),
+    )),
+    ("Vector", (
+        ("Vector Tools", (("menu", ("mVectorMenu",)),), (), LABELS),
+        ("Vector Plugins", (("mVectorToolBar", None),), (), AUTO),
     )),
     ("Raster", (
         ("Tools", (("@", ("mActionShowRasterCalculator", "mActionShowGeoreferencer")),),
          ("mActionShowRasterCalculator", "mActionShowGeoreferencer"), LABELS),
+        ("Raster Tools", (("menu", ("mRasterMenu",)),), (), LABELS),
         ("Stretch", (("mRasterToolBar", (
             "mActionLocalCumulativeCutStretch", "mActionFullCumulativeCutStretch", "mActionLocalHistogramStretch",
             "mActionFullHistogramStretch")),), (), ICONS, (
@@ -164,8 +215,16 @@ TABS = (
         ("Raster Plugins", (("mRasterToolBar", None),), (), ICONS),
     )),
     ("Mesh", (
-        ("Calculator", (("@", ("mActionShowMeshCalculator",)),), ("mActionShowMeshCalculator",), LABELS),
+        ("Calculator", (("@", ("mActionShowMeshCalculator", "mActionReindexMesh")),),
+         ("mActionShowMeshCalculator",), LABELS),
         ("Mesh Editing", (("mMeshToolBar", None),), (), LABELS),
+        ("More", (("menu", ("mMeshMenu",)),), (), LABELS),
+    )),
+    ("Processing", (
+        ("Toolbox", (("@", ("toolboxAction", "modelerAction", "mMenuProjectModels")),),
+         ("toolboxAction", "modelerAction"), LABELS),
+        ("Results", (("@", ("historyAction", "resultsViewer", "editInPlaceFeatures")),), (), LABELS),
+        ("More", (("menu", ("processing",)),), (), LABELS),
     )),
     ("GPS", (
         ("Connection", (("mGpsToolBar", ("mConnectAction", "mRecenterAction")),), ("mConnectAction",), LABELS),
@@ -175,12 +234,71 @@ TABS = (
         ("Display", (("mGpsToolBar", None),), (), LABELS),
     )),
     ("Plugins", (
+        ("Plugins", (("@", ("mActionManagePlugins",)),), ("mActionManagePlugins",), LABELS),
         ("Python", (("mPluginToolBar", None),), (), AUTO),
-        ("Vector", (("mVectorToolBar", None),), (), AUTO),
-        ("Database", (("mDatabaseToolBar", None),), (), AUTO),
-        ("Web", (("mWebToolBar", None),), (), AUTO),
+        ("Plugin Menus", (("menu", ("mPluginMenu",)),), (), LABELS),
+        ("Database", (("mDatabaseToolBar", None), ("menu", ("mDatabaseMenu",))), ("dbManager",), LABELS),
+        ("Web", (("mWebToolBar", None), ("menu", ("mWebMenu",))), ("action_run",), LABELS),
+    )),
+    ("Settings", (
+        ("Options", (("@", ("mActionOptions",)),), ("mActionOptions",), LABELS),
+        ("Customize", (("@", (
+            "mActionConfigureShortcuts", "mActionCustomization", "mActionStyleManager", "mActionCustomProjection")),),
+         (), LABELS),
+        ("Profiles", (("@", ("mUserProfileMenu",)),), (), LABELS),
+        ("More", (("menu", ("mSettingsMenu",)),), (), LABELS),
+    )),
+    ("Help", (
+        ("Help", (("@", ("mActionHelpContents", "mActionHelpAPI", "mActionHelpPyQgisAPI", "mMenuPluginHelp")),),
+         ("mActionHelpContents",), LABELS),
+        ("QGIS", (("@", ("mActionQgisHomePage", "mActionCheckQgisVersion", "mActionAbout")),), ("mActionAbout",),
+         LABELS),
+        ("Community", (("@", (
+            "mActionReportaBug", "mActionGetInvolved", "mActionNeedSupport", "mActionDonate", "mActionSponsors")),),
+         (), LABELS),
+        ("More", (("menu", ("mHelpMenu",)),), (), LABELS),
     )),
 )
+# The tab shown when none was chosen yet.
+DEFAULT_TAB = "Home"
+# Menu items the ribbon leaves out: View > Toolbars (the ribbon stands for
+# the toolbars) and submenus whose commands QGIS's tool buttons on the
+# ribbon already offer (Measure, Select...).
+SKIPPED_MENU_ITEMS = (
+    "mToolbarMenu", "menuData_Filtering", "mMenuMeasure", "mMenuEditAttributes", "m3DMapViewsMenu",
+    "mMenuElevationProfiles", "menuImport_Export",
+    # Web > MetaSearch: its button is on the Web toolbar, its help in Help >
+    # Plugins.
+    "MetaSearch",
+)
+# Icons for commands QGIS gives none (studio_icons ICON_MAP names), by
+# action or menu objectName; GENERIC_MENU_ICON for other icon-less menus.
+ICON_FALLBACKS = {
+    "mActionCloseProject": "ribbon/close.svg", "mActionExit": "ribbon/exit.svg",
+    "mActionRevertProject": "ribbon/revert.svg", "mActionSnappingOptions": "ribbon/snapping.svg",
+    "mActionDxfExport": "ribbon/export.svg", "mActionDwgImport": "ribbon/import.svg",
+    "mProjectFromTemplateMenu": "ribbon/template.svg", "mRecentProjectsMenu": "ribbon/recent.svg",
+    "mProjectFromStorageMenu": "ribbon/open-from.svg", "mProjectToStorageMenu": "ribbon/save-to.svg",
+    "mLayoutsMenu": "ribbon/layouts.svg", "mMenuProjectModels": "ribbon/models.svg",
+    "mMenuPasteAs": "ribbon/paste-as.svg", "mMenuAnnotation": "ribbon/annotation.svg",
+    "mActionManage3DMapViews": "ribbon/manage.svg", "mActionManageElevationProfiles": "ribbon/manage.svg",
+    "mMenuDecorations": "ribbon/decorations.svg", "mMenuPreviewMode": "ribbon/preview.svg",
+    "mMenuLayerVisibility": "ribbon/preview.svg", "mPanelMenu": "ribbon/panels.svg",
+    "mActionToggleFullScreen": "ribbon/full-screen.svg", "mActionTogglePanelsVisibility": "ribbon/panels.svg",
+    "mActionToggleMapOnly": "ribbon/map-only.svg",
+    "mAddLayerMenu": "ribbon/add-layer.svg", "mNewLayerMenu": "ribbon/create-layer.svg",
+    "mActionEmbedLayers": "ribbon/embed.svg", "mActionAddLayerDefinition": "ribbon/layer-definition.svg",
+    "mMenuFilterTable": "ribbon/filter.svg", "mActionLayerSaveAs": "ribbon/export.svg",
+    "mActionSaveLayerDefinition": "ribbon/layer-definition.svg", "mActionSetLayerScaleVisibility": "ribbon/preview.svg",
+    "mActionSetLayerCRS": "ribbon/crs.svg", "mActionSetProjectCRSFromLayer": "ribbon/project-crs.svg",
+    "mActionLayerProperties": "ribbon/properties.svg", "mActionLayerSubsetString": "ribbon/filter.svg",
+    "mUserProfileMenu": "ribbon/profiles.svg", "mActionShowMeshCalculator": "ribbon/calculator.svg",
+    "mActionHelpAPI": "ribbon/docs.svg", "mActionHelpPyQgisAPI": "ribbon/docs.svg", "mMenuPluginHelp": "ribbon/docs.svg",
+    "mActionReportaBug": "ribbon/bug.svg", "mActionDonate": "ribbon/donate.svg",
+    "mActionGetInvolved": "ribbon/community.svg", "mActionNeedSupport": "ribbon/support.svg",
+    "MetaSearch": "ribbon/web.svg",
+}
+GENERIC_MENU_ICON = "ribbon/tools.svg"
 # The tab other toolbars (plugins') get a group on, and the toolbar whose
 # actions are the buttons right of the tabs.
 PLUGIN_TAB = "Plugins"
@@ -236,6 +354,38 @@ LABELS_BY_NAME = {
     "mCreateFeatureAction": "Create Feature", "mResetFeatureAction": "Reset Track",
     "mShowInfoAction": "Information", "mSettingsMenuAction": "Settings",
     "mActionShowPythonDialog": "Python Console",
+    # Menu commands and menus (by the menu's objectName).
+    "mActionSaveProjectAs": "Save As", "mActionRevertProject": "Revert", "mActionCloseProject": "Close",
+    "mActionExit": "Exit QGIS", "mProjectFromTemplateMenu": "From Template", "mRecentProjectsMenu": "Recent",
+    "mProjectFromStorageMenu": "Open From", "mProjectToStorageMenu": "Save To",
+    "mActionProjectProperties": "Properties", "mActionSnappingOptions": "Snapping Options",
+    "mActionSaveMapAsImage": "Export Image", "mActionSaveMapAsPdf": "Export PDF", "mActionDxfExport": "Export DXF",
+    "mActionDwgImport": "Import DWG/DXF", "mActionNewReport": "New Report", "mLayoutsMenu": "Open Layout",
+    "mMenuProjectModels": "Project Models", "mMenuPasteAs": "Paste As",
+    "mActionNew3DMapCanvasGlobe": "New 3D Globe", "mActionManage3DMapViews": "Manage 3D Views",
+    "mActionShowBookmarkManager": "Bookmark Manager", "mActionElevationProfile": "Elevation Profile",
+    "mActionManageElevationProfiles": "Manage Profiles", "mActionElevationController": "Elevation Controller",
+    "mMenuDecorations": "Decorations", "mMenuPreviewMode": "Preview Mode", "mMenuLayerVisibility": "Layer Visibility",
+    "mPanelMenu": "Panels", "mActionToggleFullScreen": "Full Screen", "mActionTogglePanelsVisibility": "Hide Panels",
+    "mActionToggleMapOnly": "Map Only",
+    "mAddLayerMenu": "All Layer Types", "mNewLayerMenu": "All New Layers", "mActionEmbedLayers": "Embed Layers",
+    "mActionAddLayerDefinition": "Layer Definition", "mActionLayerProperties": "Layer Properties",
+    "mActionLayerSubsetString": "Filter", "mActionDuplicateLayer": "Duplicate", "mActionSetLayerCRS": "Set Layer CRS",
+    "mActionSetProjectCRSFromLayer": "Set Project CRS", "mActionSetLayerScaleVisibility": "Scale Visibility",
+    "mActionLayerSaveAs": "Save As", "mActionSaveLayerDefinition": "Save as Definition",
+    "mActionRemoveLayer": "Remove", "mActionCopyStyle": "Copy Style", "mActionPasteStyle": "Paste Style",
+    "mActionCopyLayer": "Copy Layer", "mActionPasteLayer": "Paste Layer",
+    "mActionAddToOverview": "Show in Overview", "mActionAddAllToOverview": "Show All",
+    "mActionRemoveAllFromOverview": "Hide All", "mActionReindexMesh": "Reindex",
+    "toolboxAction": "Toolbox", "modelerAction": "Model Designer", "historyAction": "History",
+    "resultsViewer": "Results Viewer", "editInPlaceFeatures": "Edit In-Place", "optionsAction": "Options",
+    "mActionManagePlugins": "Manage Plugins", "dbManager": "DB Manager", "mActionQueryHistory": "Query History",
+    "mActionOptions": "Options", "mActionConfigureShortcuts": "Shortcuts", "mActionCustomization": "Customization",
+    "mActionCustomProjection": "Custom CRS", "mUserProfileMenu": "User Profiles",
+    "mActionHelpContents": "Help", "mActionHelpAPI": "C++ API", "mActionHelpPyQgisAPI": "PyQGIS API",
+    "mMenuPluginHelp": "Plugin Help", "mActionQgisHomePage": "Home Page", "mActionCheckQgisVersion": "Check Version",
+    "mActionAbout": "About", "mActionReportaBug": "Report Issue", "mActionGetInvolved": "Get Involved",
+    "mActionNeedSupport": "Support", "mActionDonate": "Donate", "mActionSponsors": "Sponsors",
 }
 # Widgets QGIS puts on toolbars that the ribbon leaves out: the snapping
 # widget's own container (its buttons and fields are on the ribbon).
@@ -263,6 +413,15 @@ def _uses_widget_actions(menu):
     return menu is not None and any(isinstance(a, QWidgetAction) for a in menu.actions())
 
 
+def _key(action):
+    """An action's name in TABS and the tables above: its objectName, or for
+    a menu's own action (which has none) the menu's."""
+    if action.objectName():
+        return action.objectName()
+    menu = action.menu()
+    return menu.objectName() if menu is not None else ""
+
+
 class _Button(QToolButton):
     """A ribbon button. With a fixed `label`, it keeps it when its action
     changes (QToolButton takes the action's text again on every change)."""
@@ -270,14 +429,27 @@ class _Button(QToolButton):
     def __init__(self, kind, label="", parent=None):
         super().__init__(parent)
         self._label = label
+        self._placeholder = None
         self.setProperty("studioRibbon", kind)
         self.setAutoRaise(True)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
     def actionEvent(self, event):  # pylint: disable=invalid-name
         super().actionEvent(event)
-        if self._label and event.type() == QEvent.Type.ActionChanged and self.text() != self._label:
+        if event.type() != QEvent.Type.ActionChanged:
+            return
+        if self._label and self.text() != self._label:
             self.setText(self._label)
+        if self._placeholder is not None and self.icon().isNull():
+            self.setIcon(self._placeholder)
+
+    def set_placeholder(self, size):
+        """An empty icon for an action without one, so its label lines up
+        with its neighbours'."""
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        self._placeholder = QIcon(pixmap)
+        self.setIcon(self._placeholder)
 
     def set_label(self, label):
         self._label = label
@@ -345,7 +517,7 @@ class Ribbon(QWidget):
     are built by `build(index, page)` when first shown and after
     invalidate()."""
 
-    def __init__(self, titles, build, lead, corner, parent=None):
+    def __init__(self, titles, build, corner, parent=None):
         super().__init__(parent)
         self.setObjectName("studioRibbon")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -368,11 +540,6 @@ class Ribbon(QWidget):
         # Room above the tabs: the ribbon is the window's top row.
         top.setContentsMargins(6, 5, 6, 0)
         top.setSpacing(2)
-        # The menu button, like Help and collapse centred on the tabs' names.
-        menus = QHBoxLayout()
-        menus.setContentsMargins(0, TAB_TOP, 0, 0)
-        menus.addWidget(lead)
-        top.addLayout(menus)
         self.tabs = _Tabs()
         self.tabs.setObjectName("studioRibbonTabs")
         self.tabs.setDrawBase(False)
@@ -481,8 +648,8 @@ class Ribbon(QWidget):
 
 
 def set_menu_bar_folded(window, folded):
-    """The menu bar folded away while the ribbon shows (its menus are on
-    the ribbon's menu button): no height and no line (style.qss,
+    """The menu bar folded away while the ribbon shows (its commands are on
+    the ribbon's tabs): no height and no line (style.qss,
     QMenuBar[studioRibbon]). Not hidden: Alt with a menu's letter (Alt+P
     for Project...) opens it only from a visible menu bar."""
     menu_bar = window.menuBar()
@@ -506,13 +673,18 @@ class StudioRibbon(QObject):
     up to date (see the module docstring)."""
 
     WINDOW_EVENTS = (QEvent.Type.ChildPolished,)
-    MENU_BAR_EVENTS = (QEvent.Type.StyleChange,)
+    MENU_BAR_EVENTS = (QEvent.Type.StyleChange, QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved)
+    MENU_EVENTS = (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved)
     TOOLBAR_EVENTS = (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved, QEvent.Type.ActionChanged)
 
-    def __init__(self, iface, hub):
+    def __init__(self, iface, hub, adopt=None):
         super().__init__()
         self._iface = iface
         self._hub = hub
+        # adopt(action, icon name): gives an icon-less action one of the
+        # theme's icons (IconSwapper.adopt); the actions given one.
+        self._adopt = adopt
+        self._adopted = []
         self._window = None
         self._host = None
         self._ribbon = None
@@ -522,17 +694,31 @@ class StudioRibbon(QObject):
         self._hidden = []
         self._watched = []
         self._tab_of = {}
+        # The tab indexes of each menu whose items a group shows ("menu"
+        # sources), the menus watched, and every name TABS places itself.
+        self._menu_tabs = {}
+        self._menus = {}
+        self._placed_names = set()
         for index, (_title, groups) in enumerate(TABS):
             for group in groups:
-                for toolbar, _names in group[1]:
-                    self._tab_of.setdefault(toolbar, set()).add(index)
+                for source, names in group[1]:
+                    if source == "menu":
+                        for name in names:
+                            self._menu_tabs.setdefault(name, set()).add(index)
+                        continue
+                    self._placed_names.update(names or ())
+                    if source != "@":
+                        self._tab_of.setdefault(source, set()).add(index)
         # Actions named in TABS, per toolbar: a group listing none takes
         # the others.
         self._named = {}
         for _title, groups in TABS:
             for group in groups:
                 for toolbar, names in group[1]:
-                    self._named.setdefault(toolbar, set()).update(names or ())
+                    if toolbar not in ("@", "menu"):
+                        self._named.setdefault(toolbar, set()).update(names or ())
+        # Names already on the ribbon while a page is built (see _covered).
+        self._covered = set()
         # Widgets borrowed from toolbars: [(widget, toolbar, action)].
         self._borrowed = []
         # Action visibility as last seen, by C++ object (ActionChanged is
@@ -582,16 +768,8 @@ class StudioRibbon(QObject):
         corner_layout = QHBoxLayout(self._corner)
         corner_layout.setContentsMargins(0, 0, 0, 0)
         corner_layout.setSpacing(2)
-        menus = QToolButton()
-        menus.setObjectName("studioRibbonMenu")
-        menus.setAutoRaise(True)
-        menus.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        menus.setToolTip("Menus")
-        # Opened on click rather than as the button's menu, which would
-        # draw a drop-down arrow beside the icon.
-        menu = QMenu(menus)
-        menus.clicked.connect(lambda: self._show_menus(menus, menu))
-        self._ribbon = Ribbon([title for title, _groups in TABS], self._build_page, menus, self._corner)
+        self._watch_menus()
+        self._ribbon = Ribbon([title for title, _groups in TABS], self._build_page, self._corner)
         self._ribbon.page_height = page_height(self._caption_font)
         self._fill_corner()
         host = self._host = QToolBar("Ribbon", window)
@@ -613,8 +791,11 @@ class StudioRibbon(QObject):
             self._hub.watch(window.menuBar(), self, self.MENU_BAR_EVENTS, self._menu_bar_event)
         settings = QgsSettings()
         self._ribbon.set_collapsed(settings.value(COLLAPSED_SETTING, False, type=bool))
-        self._ribbon.show_tab(settings.value(TAB_SETTING, 0, type=int))
-        self._ribbon.tabs.currentChanged.connect(lambda index: QgsSettings().setValue(TAB_SETTING, index))
+        # The tab by its title (before 1.2's last tabs: by its index).
+        titles = [title for title, _groups in TABS]
+        tab = settings.value(TAB_SETTING, DEFAULT_TAB, type=str)
+        self._ribbon.show_tab(titles.index(tab if tab in titles else DEFAULT_TAB))
+        self._ribbon.tabs.currentChanged.connect(lambda index: QgsSettings().setValue(TAB_SETTING, titles[index]))
         self._ribbon.collapse.toggled.connect(lambda collapsed: QgsSettings().setValue(COLLAPSED_SETTING, collapsed))
 
     def deactivate(self, forget=False):
@@ -635,6 +816,15 @@ class StudioRibbon(QObject):
             if not sip.isdeleted(toolbar):
                 self._hub.unwatch(toolbar, self)
         self._watched = []
+        for menu in self._menus.values():
+            if not sip.isdeleted(menu):
+                self._hub.unwatch(menu, self)
+        self._menus = {}
+        # Icons given for the ribbon go: QGIS's menus show none there.
+        for action in self._adopted:
+            if not sip.isdeleted(action):
+                action.setIcon(QIcon())
+        self._adopted = []
         if self._host is not None and not sip.isdeleted(self._host):
             window.removeToolBar(self._host)
             self._host.hide()
@@ -682,11 +872,42 @@ class StudioRibbon(QObject):
             QTimer.singleShot(0, lambda toolbar=child: self._hide_new(toolbar))
             self._changed(child)
 
-    def _menu_bar_event(self, menu_bar, _event):
+    def _menu_bar_event(self, menu_bar, event):
         """A stylesheet change (a theme switch) gives the menu bar its size
-        limits back: folded again once it is polished."""
+        limits back: folded again once it is polished. A menu added or
+        removed (a plugin's): on the Plugins tab, or a menu TABS shows that
+        was missing until now (Processing's)."""
+        if event.type() != QEvent.Type.StyleChange:
+            self._watch_menus()
+            self._mark({self._tab_index(PLUGIN_TAB)})
+            return
         if menu_bar.maximumHeight() != 0:
             QTimer.singleShot(0, lambda: self._fold_again(menu_bar))
+
+    def _watch_menus(self):
+        """Watch the menus whose items groups show, once they exist; a
+        page showing one found only now is built again."""
+        if self._window is None:
+            return
+        for name, indexes in self._menu_tabs.items():
+            menu = self._menus.get(name)
+            if menu is not None and not sip.isdeleted(menu):
+                continue
+            # A plugin's menu may have no parent (Processing's): found
+            # through the menu bar.
+            menu_bar = self._window.menuBar()
+            menu = next((a.menu() for a in (menu_bar.actions() if menu_bar is not None else ())
+                         if a.menu() is not None and a.menu().objectName() == name), None)
+            menu = menu or self._window.findChild(QMenu, name)
+            if menu is None:
+                continue
+            self._menus[name] = menu
+            self._hub.watch(menu, self, self.MENU_EVENTS, self._menu_event)
+            self._mark(indexes)
+
+    def _menu_event(self, menu, _event):
+        """A command added to or removed from a menu groups show."""
+        self._mark(self._menu_tabs.get(menu.objectName(), set()))
 
     def _fold_again(self, menu_bar):
         if self._ribbon is not None and not sip.isdeleted(menu_bar):
@@ -719,6 +940,13 @@ class StudioRibbon(QObject):
             indexes = {-1}
         else:
             indexes = self._tab_of.get(name) or {self._tab_index(PLUGIN_TAB)}
+        self._mark(indexes)
+
+    def _mark(self, indexes):
+        """Tabs (-1: the corner) built again once this event-loop pass's
+        changes are done."""
+        if self._ribbon is None or not indexes:
+            return
         if not self._dirty:
             QTimer.singleShot(0, self._rebuild)
         self._dirty.update(indexes)
@@ -741,8 +969,9 @@ class StudioRibbon(QObject):
 
     def _build_page(self, index, old):
         """The page of tab `index`: its groups, and on PLUGIN_TAB a group
-        per toolbar TABS does not place. `old`, the page it replaces, gives
-        back the widgets it borrowed."""
+        per toolbar TABS does not place and one for the menus plugins add to
+        the menu bar. `old`, the page it replaces, gives back the widgets it
+        borrowed."""
         if old is not None:
             self._give_back(old)
             old.deleteLater()
@@ -754,8 +983,14 @@ class StudioRibbon(QObject):
         title, groups = TABS[index]
         all_toolbars = self._toolbars()
         toolbars = {t.objectName(): t for t in all_toolbars if t.objectName()}
+        # What "menu" sources leave out: what TABS places, every toolbar's
+        # actions (on some tab) and SKIPPED_MENU_ITEMS; and, by C++ object,
+        # what this page shows already.
+        self._covered = self._placed_names | set(SKIPPED_MENU_ITEMS) | {
+            a.objectName() for t in all_toolbars for a in t.actions() if a.objectName()}
+        seen = set()
         for group in groups:
-            widget = self._group(content, group, toolbars)
+            widget = self._group(content, group, toolbars, seen)
             if widget is not None:
                 layout.addWidget(widget)
         if title == PLUGIN_TAB:
@@ -764,20 +999,46 @@ class StudioRibbon(QObject):
                 if name in self._tab_of or name == CORNER_TOOLBAR:
                     continue
                 spec = (toolbar.windowTitle() or name or "Plugin", ((toolbar, None),), (), AUTO)
-                widget = self._group(content, spec, toolbars)
+                widget = self._group(content, spec, toolbars, seen)
                 if widget is not None:
                     layout.addWidget(widget)
+            menu_bar = self._window.menuBar()
+            extra = [] if menu_bar is None else [
+                a for a in menu_bar.actions() if a.menu() is not None and a.menu().objectName() not in self._menu_tabs]
+            widget = self._group(content, ("Menus", (("actions", extra),), (), LABELS), toolbars, seen)
+            if widget is not None:
+                layout.addWidget(widget)
         layout.addStretch(1)
+        # Never squeezed (large buttons' labels would be cut short): a page
+        # wider than the window scrolls with the wheel (Ribbon.wheelEvent).
+        content.setMinimumWidth(content.sizeHint().width())
         return content
 
-    def _actions(self, sources, toolbars):
+    def _actions(self, sources, toolbars, seen):
         """[(action, toolbar or None)] of a group's sources, in order."""
         found = []
         for name, names in sources:
             if name == "@":
                 for action_name in names:
                     action = self._window.findChild(QAction, action_name)
+                    if action is None:
+                        menu = self._window.findChild(QMenu, action_name)
+                        action = menu.menuAction() if menu is not None else None
                     if action is not None:
+                        found.append((action, None))
+                continue
+            if name == "actions":
+                found += [(action, None) for action in names]
+                continue
+            if name == "menu":
+                for menu_name in names:
+                    menu = self._menus.get(menu_name)
+                    if menu is None or sip.isdeleted(menu):
+                        continue
+                    for action in menu.actions():
+                        if (action.isSeparator() or isinstance(action, QWidgetAction)
+                                or _key(action) in self._covered or sip.unwrapinstance(action) in seen):
+                            continue
                         found.append((action, None))
                 continue
             toolbar = name if isinstance(name, QToolBar) else toolbars.get(name)
@@ -794,12 +1055,13 @@ class StudioRibbon(QObject):
                 found += [(by_name[n], toolbar) for n in names if n in by_name]
         return [(a, t) for a, t in found if a.isVisible()]
 
-    def _group(self, parent, spec, toolbars):
+    def _group(self, parent, spec, toolbars, seen):
         title, sources, large_names, layout_kind = spec[:4]
         rows = spec[4] if len(spec) > 4 else None
-        entries = self._actions(sources, toolbars)
+        entries = self._actions(sources, toolbars, seen)
         if not entries:
             return None
+        seen.update(sip.unwrapinstance(action) for action, _toolbar in entries)
         large_all = layout_kind == AUTO and len(entries) <= AUTO_LARGE
         if layout_kind == AUTO:
             layout_kind = ICONS
@@ -813,7 +1075,7 @@ class StudioRibbon(QObject):
         body.setContentsMargins(0, 0, 0, 0)
         small = []
         for action, toolbar in entries:
-            large = large_all or action.objectName() in large_names
+            large = large_all or _key(action) in large_names
             widget = self._widget(group, action, toolbar, "large" if large else (
                 "small" if layout_kind == LABELS else "icon"))
             if widget is None:
@@ -821,7 +1083,7 @@ class StudioRibbon(QObject):
             if large:
                 body.addWidget(widget, 0, Qt.AlignmentFlag.AlignTop)
             else:
-                small.append((action.objectName(), widget))
+                small.append((_key(action), widget))
         if small:
             grid = QGridLayout()
             grid.setContentsMargins(0, 0, 0, 0)
@@ -878,8 +1140,19 @@ class StudioRibbon(QObject):
             button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         if _uses_widget_actions(action.menu()):
             button.setMenu(_BorrowingMenu(action.menu(), button))
-        self._style(button, kind, LABELS_BY_NAME.get(action.objectName()) or clean(action.text()))
+        if action.icon().isNull():
+            self._give_icon(button, action, kind)
+        self._style(button, kind, LABELS_BY_NAME.get(_key(action)) or clean(action.text()))
         return button
+
+    def _give_icon(self, button, action, kind):
+        """A command QGIS gives no icon (most only in its menus): one of the
+        theme's (ICON_FALLBACKS), or an empty one keeping labels in line."""
+        name = ICON_FALLBACKS.get(_key(action)) or (GENERIC_MENU_ICON if action.menu() is not None else None)
+        if name is not None and self._adopt is not None and self._adopt(action, name):
+            self._adopted.append(action)
+        elif kind != "icon":
+            button.set_placeholder(LARGE_ICON if kind == "large" else SMALL_ICON)
 
     def _clone(self, parent, action, source, kind):
         """A button standing for one of QGIS's tool buttons (a tool picked
@@ -965,15 +1238,6 @@ class StudioRibbon(QObject):
             button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
             button.setFixedHeight(ROW_HEIGHT)
             button.setMinimumWidth(ROW_HEIGHT + 4)
-
-    def _show_menus(self, button, menu):
-        """The menu button's menu, under it: the menu bar's menus as they
-        are now (plugins add and remove menus at any time)."""
-        menu.clear()
-        menu_bar = self._window.menuBar() if self._window is not None else None
-        if menu_bar is not None:
-            menu.addActions([action for action in menu_bar.actions() if action.menu() is not None])
-        menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
 
     def _fill_corner(self):
         """The Help toolbar's buttons right of the tabs."""

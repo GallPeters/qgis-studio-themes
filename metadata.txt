@@ -21,12 +21,15 @@ changelog=
           - New settings window in Plugins > QGIS Studio Themes > Settings.
           - New ribbon interface, turned on in the settings window under Interface.
           - The ribbon is inspired by the Ribbon Toolbar plugin by Eithan Wes and Anita Graser (github.com/eithanwes/ribbon_toolbar).
-          - The ribbon shows every toolbar button in tabs: Home, Layer, Edit, Modify, Annotate, View, Raster, Mesh, GPS and Plugins.
-          - Ribbon buttons use the modern icons, with large buttons for the main tools.
-          - Plugin toolbars get their own groups on the ribbon, also when added later.
-          - The ribbon collapses to its tabs with its arrow button or a double-click on a tab.
-          - The ribbon takes the menu bar's place; QGIS's menus open from a menu button left of the tabs.
+          - The ribbon shows every toolbar button and every menu command in tabs.
+          - Its tabs: Project, Home, Data, Layer, Edit, Modify, Annotate, View, Vector, Raster, Mesh, Processing, GPS, Plugins, Settings and Help.
+          - The ribbon takes the menu bar's place.
           - Menu shortcuts keep working, and Alt with a menu's letter still opens it.
+          - Ribbon buttons use the modern icons, with large buttons for the main tools.
+          - Menu commands without an icon get a modern one on the ribbon.
+          - Manage and Install Plugins is a large button at the start of the Plugins tab.
+          - Plugin toolbars, menus and menu commands get their place on the ribbon, also when added later.
+          - The ribbon collapses to its tabs with its arrow button or a double-click on a tab.
           - The ribbon's tabs sit on a line, set apart from the page below them.
           - The ribbon's page is a soft surface of its own; the current tab opens into it, its name underlined.
           - Ribbon buttons keep clear of the ribbon's top and bottom edges.
