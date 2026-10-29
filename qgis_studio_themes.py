@@ -1884,6 +1884,12 @@ class IconSwapper(QObject):
         if self._pending:
             QTimer.singleShot(0, self._drain)
 
+    def swap_action(self, action):
+        """Our icon for an action's QGIS icon now, not once a menu showing
+        it is first opened: the ribbon shows commands of menus that never
+        open (QGIS sets some, New Report's, from its resources)."""
+        self._swap(action, None, None, False)
+
     def adopt(self, action, name):
         """Give an action QGIS gives no icon (a menu-only command on the
         ribbon) our icon `name` (an ICON_MAP name), re-themed like the
@@ -2202,7 +2208,7 @@ class QgisStudioThemesPlugin:
         self._size_timer.timeout.connect(self._refresh_icon_sizes)
         self._size_hooks = []
         self._labels = ToolbarLabels(self._hub)
-        self._ribbon = StudioRibbon(iface, self._hub, self._icons.adopt)
+        self._ribbon = StudioRibbon(iface, self._hub, self._icons)
         # QGIS has finished starting (every toolbar, plugins' too, is in
         # place): the ribbon is only built then.
         self._ready = False

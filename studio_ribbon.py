@@ -677,13 +677,14 @@ class StudioRibbon(QObject):
     MENU_EVENTS = (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved)
     TOOLBAR_EVENTS = (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved, QEvent.Type.ActionChanged)
 
-    def __init__(self, iface, hub, adopt=None):
+    def __init__(self, iface, hub, icons=None):
         super().__init__()
         self._iface = iface
         self._hub = hub
-        # adopt(action, icon name): gives an icon-less action one of the
-        # theme's icons (IconSwapper.adopt); the actions given one.
-        self._adopt = adopt
+        # The plugin's IconSwapper: the theme's icons for the commands
+        # placed (swap_action), also those QGIS gives none (adopt); the
+        # actions given one.
+        self._icons = icons
         self._adopted = []
         self._window = None
         self._host = None
@@ -1142,6 +1143,8 @@ class StudioRibbon(QObject):
             button.setMenu(_BorrowingMenu(action.menu(), button))
         if action.icon().isNull():
             self._give_icon(button, action, kind)
+        elif self._icons is not None:
+            self._icons.swap_action(action)
         self._style(button, kind, LABELS_BY_NAME.get(_key(action)) or clean(action.text()))
         return button
 
@@ -1149,7 +1152,7 @@ class StudioRibbon(QObject):
         """A command QGIS gives no icon (most only in its menus): one of the
         theme's (ICON_FALLBACKS), or an empty one keeping labels in line."""
         name = ICON_FALLBACKS.get(_key(action)) or (GENERIC_MENU_ICON if action.menu() is not None else None)
-        if name is not None and self._adopt is not None and self._adopt(action, name):
+        if name is not None and self._icons is not None and self._icons.adopt(action, name):
             self._adopted.append(action)
         elif kind != "icon":
             button.set_placeholder(LARGE_ICON if kind == "large" else SMALL_ICON)

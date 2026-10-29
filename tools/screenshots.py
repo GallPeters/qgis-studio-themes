@@ -95,6 +95,9 @@ def capture(theme, layer):
     canvas.refreshAllLayers()
     canvas.waitWhileRendering()
     pump(30)
+    # No notices over the map (QGIS's startup messages).
+    iface.messageBar().clearWidgets()
+    pump()
     window.grab().save(os.path.join(OUT, f"{tag}.png"))
 
     menu = window.menuBar().actions()[1].menu()
