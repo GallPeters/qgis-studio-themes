@@ -64,7 +64,7 @@ BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
 LARGE_MIN_WIDTH = 52
 # The current tab's top margin in style.qss (studioRibbonTabs::tab:top:selected).
 TAB_TOP = 4
-GROUP_MARGINS = (6, 4, 6, 2)
+GROUP_MARGINS = (6, 8, 6, 6)
 
 # Layouts of a group's small buttons: labelled, or icons only; or (plugins'
 # groups) large labelled buttons for up to AUTO_LARGE actions, else icons.
@@ -365,7 +365,8 @@ class Ribbon(QWidget):
         bar.setObjectName("studioRibbonBar")
         bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         top = QHBoxLayout(bar)
-        top.setContentsMargins(6, 2, 6, 0)
+        # Room above the tabs: the ribbon is the window's top row.
+        top.setContentsMargins(6, 5, 6, 0)
         top.setSpacing(2)
         # The menu button, like Help and collapse centred on the tabs' names.
         menus = QHBoxLayout()

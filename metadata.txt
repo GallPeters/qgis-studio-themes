@@ -29,6 +29,7 @@ changelog=
           - Menu shortcuts keep working, and Alt with a menu's letter still opens it.
           - The ribbon's tabs sit on a line, set apart from the page below them.
           - The ribbon's page is a soft surface of its own; the current tab opens into it, its name underlined.
+          - Ribbon buttons keep clear of the ribbon's top and bottom edges.
           - Ribbon tabs show a soft highlight on hover and keep their size and place in every state.
           - Turning the ribbon off brings back the toolbars as they were.
           - In ribbon mode the settings window offers only the settings that apply to it.
