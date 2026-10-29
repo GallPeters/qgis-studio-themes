@@ -435,10 +435,11 @@ QWidget#studioRibbon {
     background-color: @bg_window;
     border-bottom: 1px solid @line;
 }
-/* While the ribbon shows, the menu bar and its tabs are one header
- * (studio_ribbon.set_menu_bar_joined). */
+/* While the ribbon shows, the menu bar is folded away and its menus are on
+ * the ribbon's menu button (studio_ribbon.set_menu_bar_folded). */
 QMenuBar[studioRibbon="true"] {
-    border-bottom: none;
+    border: none;
+    padding: 0px;
 }
 QWidget#studioRibbonBar {
     background: transparent;
@@ -530,6 +531,16 @@ QToolButton#studioRibbonCollapse:hover {
 }
 QToolButton#studioRibbonCollapse[collapsed="true"] {
     image: url(@theme_path/icons/studio/chevron-down.svg);
+}
+QToolButton#studioRibbonMenu {
+    qproperty-icon: url();
+    image: url(@theme_path/icons/studio/menu.svg);
+    padding: 4px;
+    margin-right: 4px;
+}
+QToolButton#studioRibbonMenu:hover,
+QToolButton#studioRibbonMenu:pressed {
+    background-color: @tool_hover;
 }
 QToolBar[studioLabel="handle"] > QToolButton#qt_toolbar_ext_button {
     image: url(@theme_path/icons/studio/toolbar-more-down.svg);

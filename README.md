@@ -66,7 +66,8 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Ribbon interface** – optionally, every toolbar button in tabs of
   grouped large and small buttons (Home, Layer, Edit, Modify, Annotate,
   View, Raster, Mesh, GPS, Plugins), with the modern icons; plugin toolbars
-  get groups of their own. Turn it on in **Settings → Interface**.
+  get groups of their own. It takes the menu bar's place, with QGIS's menus
+  under a menu button left of the tabs. Turn it on in **Settings → Interface**.
   Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
   plugin by Eithan Wes and Anita Graser.
 - **Clean layout** – controls of one height, flat buttons, rounded panel

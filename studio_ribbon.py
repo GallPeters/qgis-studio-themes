@@ -1,8 +1,9 @@
 """The ribbon: QGIS's toolbars as tabs of grouped buttons (Plugins > QGIS
 Studio Themes > Settings > Interface).
 
-A row under the menu bar holds the tabs (Home, Layer, Edit...), with Help
-and a collapse button at their right, and under them the current tab's
+A row in place of the menu bar holds the tabs (Home, Layer, Edit...), with
+a menu button at their left (QGIS's menus, Project to Help, as submenus),
+Help and a collapse button at their right, and under them the current tab's
 page, a surface of its own the current tab opens into (a folder tab, its
 name underlined in the accent): groups of large buttons (a 28 px icon, the
 label under it) and small ones (20 px icons, labelled or not) in rows,
@@ -49,6 +50,8 @@ HOST_NAME = "studioRibbonHost"
 TAB_SETTING = "studio_themes/ribbonTab"
 COLLAPSED_SETTING = "studio_themes/ribbonCollapsed"
 HIDDEN_SETTING = "studio_themes/ribbonHiddenToolbars"
+# Qt's "no maximum" widget size.
+QWIDGETSIZE_MAX = (1 << 24) - 1
 
 # Sizes (logical px): icons (pre-rendered sizes, see qgis_studio_themes
 # PNG_SIZES), the rows of small buttons and the groups' room.
@@ -342,7 +345,7 @@ class Ribbon(QWidget):
     are built by `build(index, page)` when first shown and after
     invalidate()."""
 
-    def __init__(self, titles, build, corner, parent=None):
+    def __init__(self, titles, build, lead, corner, parent=None):
         super().__init__(parent)
         self.setObjectName("studioRibbon")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -364,6 +367,11 @@ class Ribbon(QWidget):
         top = QHBoxLayout(bar)
         top.setContentsMargins(6, 2, 6, 0)
         top.setSpacing(2)
+        # The menu button, like Help and collapse centred on the tabs' names.
+        menus = QHBoxLayout()
+        menus.setContentsMargins(0, TAB_TOP, 0, 0)
+        menus.addWidget(lead)
+        top.addLayout(menus)
         self.tabs = _Tabs()
         self.tabs.setObjectName("studioRibbonTabs")
         self.tabs.setDrawBase(False)
@@ -471,15 +479,19 @@ class Ribbon(QWidget):
             self.pages.setFixedHeight(self.page_height)
 
 
-def set_menu_bar_joined(window, joined):
-    """The menu bar and the ribbon's tabs as one header: no line between
-    them (style.qss, QMenuBar[studioRibbon])."""
+def set_menu_bar_folded(window, folded):
+    """The menu bar folded away while the ribbon shows (its menus are on
+    the ribbon's menu button): no height and no line (style.qss,
+    QMenuBar[studioRibbon]). Not hidden: Alt with a menu's letter (Alt+P
+    for Project...) opens it only from a visible menu bar."""
     menu_bar = window.menuBar()
-    if menu_bar is None or bool(menu_bar.property("studioRibbon")) == joined:
+    if menu_bar is None or bool(menu_bar.property("studioRibbon")) == folded:
         return
-    menu_bar.setProperty("studioRibbon", True if joined else None)
+    menu_bar.setProperty("studioRibbon", True if folded else None)
     menu_bar.style().unpolish(menu_bar)
     menu_bar.style().polish(menu_bar)
+    # After polishing, which restores the size limits a stylesheet saw.
+    menu_bar.setMaximumHeight(0 if folded else QWIDGETSIZE_MAX)
 
 
 def page_height(caption_font):
@@ -493,6 +505,7 @@ class StudioRibbon(QObject):
     up to date (see the module docstring)."""
 
     WINDOW_EVENTS = (QEvent.Type.ChildPolished,)
+    MENU_BAR_EVENTS = (QEvent.Type.StyleChange,)
     TOOLBAR_EVENTS = (QEvent.Type.ActionAdded, QEvent.Type.ActionRemoved, QEvent.Type.ActionChanged)
 
     def __init__(self, iface, hub):
@@ -568,7 +581,16 @@ class StudioRibbon(QObject):
         corner_layout = QHBoxLayout(self._corner)
         corner_layout.setContentsMargins(0, 0, 0, 0)
         corner_layout.setSpacing(2)
-        self._ribbon = Ribbon([title for title, _groups in TABS], self._build_page, self._corner)
+        menus = QToolButton()
+        menus.setObjectName("studioRibbonMenu")
+        menus.setAutoRaise(True)
+        menus.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        menus.setToolTip("Menus")
+        # Opened on click rather than as the button's menu, which would
+        # draw a drop-down arrow beside the icon.
+        menu = QMenu(menus)
+        menus.clicked.connect(lambda: self._show_menus(menus, menu))
+        self._ribbon = Ribbon([title for title, _groups in TABS], self._build_page, menus, self._corner)
         self._ribbon.page_height = page_height(self._caption_font)
         self._fill_corner()
         host = self._host = QToolBar("Ribbon", window)
@@ -585,7 +607,9 @@ class StudioRibbon(QObject):
         else:
             window.addToolBar(Qt.ToolBarArea.TopToolBarArea, host)
         host.show()
-        set_menu_bar_joined(window, True)
+        set_menu_bar_folded(window, True)
+        if window.menuBar() is not None:
+            self._hub.watch(window.menuBar(), self, self.MENU_BAR_EVENTS, self._menu_bar_event)
         settings = QgsSettings()
         self._ribbon.set_collapsed(settings.value(COLLAPSED_SETTING, False, type=bool))
         self._ribbon.show_tab(settings.value(TAB_SETTING, 0, type=int))
@@ -603,7 +627,9 @@ class StudioRibbon(QObject):
         self._give_back()
         if not sip.isdeleted(window):
             self._hub.unwatch(window, self)
-            set_menu_bar_joined(window, False)
+            if window.menuBar() is not None:
+                self._hub.unwatch(window.menuBar(), self)
+            set_menu_bar_folded(window, False)
         for toolbar in self._watched:
             if not sip.isdeleted(toolbar):
                 self._hub.unwatch(toolbar, self)
@@ -654,6 +680,16 @@ class StudioRibbon(QObject):
                 QgsSettings().setValue(HIDDEN_SETTING, self._hidden)
             QTimer.singleShot(0, lambda toolbar=child: self._hide_new(toolbar))
             self._changed(child)
+
+    def _menu_bar_event(self, menu_bar, _event):
+        """A stylesheet change (a theme switch) gives the menu bar its size
+        limits back: folded again once it is polished."""
+        if menu_bar.maximumHeight() != 0:
+            QTimer.singleShot(0, lambda: self._fold_again(menu_bar))
+
+    def _fold_again(self, menu_bar):
+        if self._ribbon is not None and not sip.isdeleted(menu_bar):
+            menu_bar.setMaximumHeight(0)
 
     def _hide_new(self, toolbar):
         # After the plugin shows it (addToolBar shows toolbars it adds).
@@ -928,6 +964,15 @@ class StudioRibbon(QObject):
             button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
             button.setFixedHeight(ROW_HEIGHT)
             button.setMinimumWidth(ROW_HEIGHT + 4)
+
+    def _show_menus(self, button, menu):
+        """The menu button's menu, under it: the menu bar's menus as they
+        are now (plugins add and remove menus at any time)."""
+        menu.clear()
+        menu_bar = self._window.menuBar() if self._window is not None else None
+        if menu_bar is not None:
+            menu.addActions([action for action in menu_bar.actions() if action.menu() is not None])
+        menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
 
     def _fill_corner(self):
         """The Help toolbar's buttons right of the tabs."""
