@@ -38,7 +38,7 @@ LAYER = os.environ.get(
 THEMES = [t for t in os.environ.get("STUDIO_THEMES", "").split(",") if t]
 OUT = os.environ.get("STUDIO_OUT", "screenshots")
 # Icon styles to show the main window in as well (STUDIO_ICON_STYLES=
-# "mono,duotone,classic"): <theme>_icons-<style>.png, for the README's
+# "mono,color,classic"): <theme>_icons-<style>.png, for the README's
 # Icons section.
 ICON_STYLES = [s for s in os.environ.get("STUDIO_ICON_STYLES", "").split(",") if s]
 PANELS = ("Layers", "Browser", "LayerStyling", "ProcessingToolbox")

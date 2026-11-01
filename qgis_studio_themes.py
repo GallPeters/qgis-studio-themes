@@ -176,11 +176,8 @@ def icon_colors(tokens):
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
     }
-    # Duotone's group colours (unused by the other styles).
-    colors.update((group, tokens[f"@duo_{group}"]) for group in studio_icons.DUO_GROUPS)
     # Disabled state: glyph and badge both in the theme's disabled icon
-    # colour (dimmer than disabled text: clearly unavailable), Duotone's
-    # groups too.
+    # colour (dimmer than disabled text: clearly unavailable).
     disabled = dict.fromkeys(colors, tokens["@icon_disabled"])
     # Selected rows (dialog page lists, Browser, Processing Toolbox): the
     # glyph in the accent, a shade towards the text so it keeps its
@@ -206,20 +203,25 @@ ATLAS_COLUMNS = 32
 # and the two coloured badge layers. Badges never touch the glyph (it is
 # cut away around them), so tinting each layer is exact. Masks are drawn
 # once per profile in the background (a fraction of a second per size).
-# Duotone adds a fill layer (the inside of each glyph's closed shapes): it
-# and the glyph layer are tinted cell by cell, each icon in its group's
-# colour (see compose_atlas), so the same masks serve every icon style.
-MASK_FORMAT = 2
+# The Colourful style adds two layers: "color", every coloured part in its
+# own colour (the same in every theme, so stored in colour), and "ink",
+# the parts drawn in the theme's icon colour (a mask, tinted when loaded).
+MASK_FORMAT = 3
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
     "danger": {"icon": "none", "accent": "none", "danger": "#000000"},
-    "fill": {"icon": "#000000", "accent": "none", "danger": "none"},
+    "color": None,
+    "ink": None,
 }
 # Icon styles (Settings > Icons): the theme's single-colour icons, the same
-# in Duotone (studio_icons.DUO_GROUPS), or QGIS's own icons.
-ICON_STYLES = ("mono", "duotone", "classic")
+# icons in their objects' colours (studio_icons.COLOR_RECIPES), or QGIS's
+# own icons.
+ICON_STYLES = ("mono", "color", "classic")
 ICON_STYLE_SETTING = "studio_themes/iconStyle"
+# A disabled Colourful icon: its colours faded, its ink in the theme's
+# disabled icon colour.
+DISABLED_COLOR_OPACITY = 0.35
 
 
 def atlas_specs():
@@ -288,41 +290,20 @@ def tinted(mask, color):
     return image
 
 
-@functools.lru_cache(maxsize=1)
-def duo_cells():
-    """(atlas index, Duotone group) of every drawing not in the neutral
-    group, for tinting cell by cell."""
-    return tuple((index, studio_icons.duo_group(spec)) for index, spec in enumerate(atlas_specs())
-                 if studio_icons.duo_group(spec) != "neutral")
-
-
-def tinted_cells(mask, color, colors, size, opacity=1.0):
-    """A mask in `color`, the cells of duo_cells() in their group's colour
-    (QColor values in `colors`), at `opacity`: one fill per cell, a few
-    milliseconds for a whole atlas."""
-    base = QColor(color)
-    base.setAlphaF(base.alphaF() * opacity)
-    image = tinted(mask, base)
-    painter = QPainter(image)
-    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-    for index, group in duo_cells():
-        cell = QColor(colors.get(group, color))
-        cell.setAlphaF(cell.alphaF() * opacity)
-        painter.fillRect(atlas_cell(index, size), cell)
-    painter.end()
-    return image
-
-
-def compose_atlas(masks, colors, size=0, duotone=False):
+def compose_atlas(masks, colors, color=False, faded=False):
     """One state's atlas from the masks of a size: the glyph layer in the
-    icon colour, the badge layers in theirs (QColor values in `colors`);
-    in `duotone` each cell's lines and fill in its group's colour, the fill
-    faint and under the lines. A few image operations in Qt, instead of
-    drawing every icon again."""
-    if duotone:
-        atlas = tinted_cells(masks["fill"], colors["icon"], colors, size, studio_icons.DUO_FILL_OPACITY)
+    icon colour, the badge layers in theirs (QColor values in `colors`).
+    With `color` (the Colourful style), the colour layer as drawn (`faded`
+    for the disabled state) under the ink layer in the icon colour. A few
+    image operations in Qt, instead of drawing every icon again."""
+    if color:
+        atlas = QImage(masks["color"].size(), QImage.Format.Format_ARGB32_Premultiplied)
+        atlas.fill(Qt.GlobalColor.transparent)
         painter = QPainter(atlas)
-        painter.drawImage(0, 0, tinted_cells(masks["glyph"], colors["icon"], colors, size))
+        painter.setOpacity(DISABLED_COLOR_OPACITY if faded else 1.0)
+        painter.drawImage(0, 0, masks["color"])
+        painter.setOpacity(1.0)
+        painter.drawImage(0, 0, tinted(masks["ink"], colors["icon"]))
     else:
         atlas = tinted(masks["glyph"], colors["icon"])
         painter = QPainter(atlas)
@@ -371,19 +352,22 @@ def render_masks(folder, size, width, scale, stop):
                 if layer is not None:
                     svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
                     QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
-            svg = studio_icons.render_icon_px(spec, MASK_LAYERS["fill"], size, scale, width, fill=True)
-            QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters["fill"], cell)
+            for layer in ("color", "ink"):
+                svg = studio_icons.render_icon_color_px(spec, size, scale, width, layer)
+                QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
             time.sleep(0)  # let the GUI thread take Python's lock if it waits
     finally:
         for painter in painters.values():
             painter.end()
     folder.mkdir(parents=True, exist_ok=True)
     # The glyph layer last: it marks the set complete (see find_masks).
-    for layer in ("accent", "danger", "fill", "glyph"):
+    for layer in ("accent", "danger", "color", "ink", "glyph"):
         data = QByteArray()
         buffer = QBuffer(data)
         buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-        if not images[layer].convertToFormat(QImage.Format.Format_Alpha8).save(buffer, "PNG"):
+        # The colour layer keeps its colours; the others are masks.
+        image = images[layer] if layer == "color" else images[layer].convertToFormat(QImage.Format.Format_Alpha8)
+        if not image.save(buffer, "PNG"):
             raise OSError(f"could not encode the {layer} masks")
         buffer.close()
         write_atomic(mask_path(folder, size, width, scale, layer), bytes(data))
@@ -391,13 +375,15 @@ def render_masks(folder, size, width, scale, stop):
 
 
 def load_masks(folder, size, width, scale):
-    """The three mask layers of one size (Alpha8), None if unreadable."""
+    """The mask layers of one size (Alpha8; the colour layer in colour),
+    None if unreadable."""
     masks = {}
     for layer in MASK_LAYERS:
         image = QImage(str(mask_path(folder, size, width, scale, layer)))
         if image.isNull():
             return None
-        masks[layer] = image.convertToFormat(QImage.Format.Format_Alpha8)
+        masks[layer] = image.convertToFormat(
+            QImage.Format.Format_ARGB32_Premultiplied if layer == "color" else QImage.Format.Format_Alpha8)
     return masks
 
 
@@ -482,22 +468,28 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     colors = dict(zip((state for state, _mode in ICON_STATES), icon_colors(tokens)))
     folders = set()
     svgs = {}
-    duotone = icon_style == "duotone"
+    color = icon_style == "color"
+
+    def drawing(spec, state):
+        # Disabled Colourful icons are the theme's disabled single-colour
+        # ones here (only shown until the pre-rendered PNGs are ready).
+        if color and state != "disabled":
+            return studio_icons.render_icon_color(spec, colors[state], icon_scale)
+        return studio_icons.render_icon(spec, colors[state], icon_scale)
+
     for name, spec in studio_icons.ICON_MAP.items() if icon_style != "classic" else ():
         path = icons / icon_file(name)
         if path.parent not in folders:
             path.parent.mkdir(parents=True, exist_ok=True)
             folders.add(path.parent)
         if spec not in svgs:
-            svgs[spec] = studio_icons.render_icon(spec, colors["normal"], icon_scale, duotone)
+            svgs[spec] = drawing(spec, "normal")
             for state in ("disabled", "selected"):
                 state_file = icons / state / f"{spec}.svg"
                 if state_file.parent not in folders:
                     state_file.parent.mkdir(parents=True, exist_ok=True)
                     folders.add(state_file.parent)
-                write_if_changed(
-                    state_file, studio_icons.render_icon(spec, colors[state], icon_scale, duotone), written
-                )
+                write_if_changed(state_file, drawing(spec, state), written)
         write_if_changed(path, svgs[spec], written)
     # Icons of names no longer mapped (or of another style) would still be
     # found by QGIS.
@@ -1437,7 +1429,7 @@ class IconSwapper(QObject):
                 masks = self._load_masks(size, width)
                 colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
                 self._atlases[atlas_key] = None if masks is None else compose_atlas(
-                    masks, colors, size, self._style == "duotone")
+                    masks, colors, self._style == "color", state == "disabled")
             atlas = self._atlases[atlas_key]
             if not self._atlas_index:
                 self._atlas_index = atlas_index()
@@ -2098,7 +2090,7 @@ class SettingsDialog(QDialog):
     )
     ICON_STYLES = (
         ("mono", "Monochrome"),
-        ("duotone", "Duotone (colourful)"),
+        ("color", "Colourful"),
         ("classic", "QGIS classic"),
     )
 
@@ -2135,8 +2127,8 @@ class SettingsDialog(QDialog):
             self._icon_style.addItem(text, value)
         self._icon_style.setCurrentIndex(max(0, self._icon_style.findData(plugin.icon_style())))
         self._icon_style.setToolTip(
-            "Monochrome: the theme's single-colour icons. Duotone: the same icons in a colour by kind "
-            "of tool, softly filled. QGIS classic: QGIS's own icons."
+            "Monochrome: the theme's single-colour icons. Colourful: the same icons in their objects' "
+            "own colours. QGIS classic: QGIS's own icons."
         )
         self._position = QComboBox()
         for value, text in self.POSITIONS:
@@ -2741,6 +2733,8 @@ class QgisStudioThemesPlugin:
     def icon_style():
         """The icon style set in the settings dialog (ICON_STYLES)."""
         value = QgsSettings().value(ICON_STYLE_SETTING, "mono", type=str)
+        if value == "duotone":
+            value = "color"  # its name in early 1.3 builds
         return value if value in ICON_STYLES else "mono"
 
     def set_icon_style(self, style):

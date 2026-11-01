@@ -20,10 +20,11 @@ changelog=
      ** v1.3 (01.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
           - Monochrome: the theme's single-colour icons, as before.
-          - Duotone: the same icons in a colour by kind of tool, their shapes softly filled.
-          - Duotone colours: blue for data, green for raster, amber for editing, violet for analysis, teal for navigation, pink for styling and red for removing.
-          - Duotone colours suit every theme, light or dark; arrows, lists and settings keep the theme's icon colour.
+          - Colourful: the same icons in their objects' own colours, like QGIS's own: yellow folders, a blue floppy disk, blue magnifier glass.
+          - Colourful icons keep frames and signs in the theme's icon colour, so they read on light and dark themes.
           - QGIS classic: QGIS's own icons, with the rest of the theme.
+          - Over 350 more QGIS icons are replaced, in Monochrome and Colourful alike.
+          - Newly covered: the layout designer's items, attribute form widgets, shape tools, layer indicators, tasks, certificates, the console and the georeferencer.
           - The icon style changes at once, without restarting QGIS.
           - Every icon style stays pixel-sharp and as fast as before.
 

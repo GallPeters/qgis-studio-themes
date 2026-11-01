@@ -746,6 +746,159 @@ ICON_MAP = {
     "processing/gdaltools/translate.png": "transform",
     "processing/gdaltools/vrt.png": "stack-2",
     "processing/gdaltools/warp.png": "world",
+    # ---- Everything else QGIS draws (1.3): layout designer, form widgets,
+    # shape tools, indicators, tasks, certificates, console, georeferencer.
+    # Left to QGIS in every style: mouse cursors, the easing-curve previews
+    # (their shape is the information), rating stars, the transparency
+    # checkerboard and an empty spacer (see NOT_REPLACED).
+    "cap_flat.svg": "cap-flat", "cap_round.svg": "cap-round", "cap_square.svg": "cap-square",
+    "join_bevel.svg": "join-bevel", "join_miter.svg": "join-miter", "join_round.svg": "join-round",
+    "downloading_svg.svg": "cloud-download", "extents.svg": "frame",
+    "grass_location.svg": "map-2", "grass_mapset.svg": "folder", "grass_mapset_open.svg": "folder-open",
+    "grass_mapset_search.svg": "folder-open",
+    "labelingCalloutCurved.svg": "vector-spline", "labelingCalloutManhattan.svg": "corner-down-right",
+    "labelingCalloutSimple.svg": "line", "locked_repeating.svg": "repeat",
+    "mAction3DNavigation.svg": "cube", "mActionActive.svg": "circle-check", "mActionAddAmsLayer.svg": "world+plus",
+    "mActionAddExpression.svg": "math-function+plus", "mActionCaptureCurveFromFeature.svg": "vector-spline",
+    "mActionCircle2TangentsPoint.svg": "circle", "mActionCircle3Points.svg": "circle-dashed",
+    "mActionCircle3Tangents.svg": "circles", "mActionCircleCenterPoint.svg": "circle-dot",
+    "mActionCircularStringCurvePoint.svg": "vector-spline", "mActionComposerManager.svg": "layout-board",
+    "mActionCopyProfileSettings.svg": "copy", "mActionDeleteModelComponent.svg": "trash",
+    "mActionDeselectAllTree.svg": "deselect", "mActionDigitizeShape.svg": "shape",
+    "mActionDigitizeWithBezier.svg": "vector-bezier-2", "mActionDigitizeWithCurve.svg": "vector-spline",
+    "mActionDigitizeWithNURBS.svg": "vector-spline", "mActionDuplicateComposer.svg": "copy",
+    "mActionDuplicateFeature.svg": "copy", "mActionDuplicateFeatureDigitized.svg": "copy+plus",
+    "mActionEditBold.svg": "bold", "mActionEditCutDisabled.svg": "cut", "mActionEditHtml.svg": "html",
+    "mActionEditIndentLess.svg": "indent-decrease", "mActionEditIndentMore.svg": "indent-increase",
+    "mActionEditInsertImage.svg": "photo+plus", "mActionEditInsertLink.svg": "link",
+    "mActionEditItalic.svg": "italic", "mActionEditModelComponent.svg": "pencil",
+    "mActionEditUnderline.svg": "underline", "mActionStrikeOut.svg": "strikethrough",
+    "mActionEllipseCenterPoint.svg": "oval", "mActionEllipseExtent.svg": "oval", "mActionEllipseFoci.svg": "oval",
+    "mActionExport.svg": "file-export", "mActionFeatureArrayLine.svg": "grid-dots", "mActionFileExit.svg": "logout",
+    "mActionFilter.svg": "filter", "mActionFilterTableFields.svg": "filter",
+    "mActionFirst.svg": "player-skip-back", "mActionLast.svg": "player-skip-forward",
+    "mActionFromLargestFeature.svg": "focus-2", "mActionFromSelectedFeature.svg": "focus-2",
+    "mActionLabelAnchorCenter.svg": "focus-centered", "mActionLabelAnchorCustom.svg": "target",
+    "mActionLabelAnchorEnd.svg": "arrow-bar-to-right", "mActionLabelAnchorStart.svg": "arrow-bar-to-left",
+    "mActionLink.svg": "link", "mActionUnlink.svg": "link-off", "mActionLockExtent.svg": "lock",
+    "mActionMapSettings.svg": "settings", "mActionMoveFeatureCopyLine.svg": "arrows-move",
+    "mActionMoveFeatureLine.svg": "arrows-move", "mActionMoveVertex.svg": "point",
+    "mActionNewComposer.svg": "layout+star", "mActionNewFileGeodatabase.svg": "database+plus",
+    "mActionNewFolder.svg": "folder+plus", "mActionPanHighlightFeature.svg": "hand-stop",
+    "mActionScaleHighlightFeature.svg": "zoom-scan", "mActionPropertyItem.svg": "list-details",
+    "mActionRectangle3PointsDistance.svg": "rectangle", "mActionRectangle3PointsProjected.svg": "rectangle",
+    "mActionRectangleExtent.svg": "rectangle", "mActionRegularPolygonCenterCorner.svg": "hexagon",
+    "mActionRegularPolygonCenterPoint.svg": "hexagon", "mActionReload.svg": "refresh", "mActionRemove.svg": "minus",
+    "mActionRemoveSelectedFeature.svg": "deselect", "mActionReplace.svg": "replace",
+    "mActionSelectAboveLine.svg": "arrow-bar-up", "mActionSelectBelowLine.svg": "arrow-bar-down",
+    "mActionSelectPan.svg": "hand-stop", "mActionShowAllLayersGray.svg": "eye",
+    "mActionStreamingDigitize.svg": "vector-spline", "mActionSvgAnnotation.svg": "file-type-svg",
+    "mActionTextAnnotation.svg": "message", "mActionTiltDown.svg": "arrow-down", "mActionTiltUp.svg": "arrow-up",
+    "mActionToggleAllLayers.svg": "eye", "mActionTouch.svg": "pointer", "mActionTouch2.png": "pointer",
+    "mActionWhatsThis.svg": "help-circle", "mActionZoomInXAxis.svg": "zoom-in",
+    "mEditorWidgetAction.svg": "bolt", "mEditorWidgetAttachment.svg": "paperclip",
+    "mEditorWidgetBinary.svg": "binary", "mEditorWidgetCheckbox.svg": "square-check",
+    "mEditorWidgetClassification.svg": "category", "mEditorWidgetColor.svg": "palette",
+    "mEditorWidgetDateTime.svg": "calendar-time", "mEditorWidgetGeometry.svg": "shape",
+    "mEditorWidgetHidden.svg": "eye-off", "mEditorWidgetHtml.svg": "html", "mEditorWidgetJsonView.svg": "braces",
+    "mEditorWidgetList.svg": "list", "mEditorWidgetQml.svg": "code", "mEditorWidgetRange.svg": "adjustments-horizontal",
+    "mEditorWidgetRelationEditor.svg": "hierarchy-2", "mEditorWidgetRelationReference.svg": "link",
+    "mEditorWidgetSpacer.svg": "separator-vertical", "mEditorWidgetText.svg": "cursor-text",
+    "mEditorWidgetTextEdit.svg": "align-left", "mEditorWidgetUuid.svg": "binary",
+    "mEditorWidgetValueMap.svg": "list-details", "mEditorWidgetValueRelation.svg": "list-tree",
+    "mIcon3dAxis.svg": "cube", "mIconAlignBottom.svg": "layout-align-bottom", "mIconAlignCenter.svg": "align-center",
+    "mIconAlignJustify.svg": "align-justified", "mIconAlignLeft.svg": "align-left",
+    "mIconAlignRight.svg": "align-right", "mIconAlignTop.svg": "layout-align-top",
+    "mIconAlignVCenter.svg": "layout-align-middle", "mIconAllRings.svg": "circles",
+    "mIconExteriorRing.svg": "circle", "mIconInteriorRings.svg": "circle-dot",
+    "mIconArrangeSymbolsLeft.svg": "arrow-bar-to-left", "mIconArrangeSymbolsRight.svg": "arrow-bar-to-right",
+    "mIconBrowserRelations.svg": "hierarchy-2", "mIconCamera.svg": "photo",
+    "mIconCertificate.svg": "shield-check", "mIconCertificateMissing.svg": "alert-triangle",
+    "mIconCertificateTrusted.svg": "shield-check", "mIconCertificateUntrusted.svg": "shield-check+x",
+    "mIconCesium3dTiles.svg": "cube", "mIconClearItem.svg": "x", "mIconClearTextHover.svg": "backspace",
+    "mIconCloseTab.svg": "x", "mIconCloseTabHover.svg": "x", "mIconCollapseSmall.svg": "chevron-up",
+    "mIconExpandSmall.svg": "chevron-down", "mIconColorBox.svg": "color-swatch", "mIconColorLocked.svg": "lock",
+    "mIconColorPicker.svg": "droplet", "mIconColorSwatches.svg": "color-swatch", "mIconColorUnlocked.svg": "lock-open",
+    "mIconColorWheel.svg": "palette", "mIconConnect.svg": "network", "mIconCritical.svg": "alert-triangle",
+    "mIconDataDefine.svg": "variable", "mIconDataDefineOn.svg": "variable+dot",
+    "mIconDataDefineError.svg": "variable+x", "mIconDataDefineExpression.svg": "math-function",
+    "mIconDataDefineExpressionOn.svg": "math-function+dot", "mIconDataDefineExpressionError.svg": "math-function+x",
+    "mIconDataDefineColor.svg": "palette", "mIconDataDefineColorOn.svg": "palette+dot",
+    "mIconDelete.svg": "trash", "mIconDelimitedText.svg": "file-type-csv", "mIconDeselected.svg": "square",
+    "mIconSelected.svg": "square-check", "mIconDropDownMenu.svg": "chevron-down", "mIconHamburgerMenu.svg": "menu-2",
+    "mIconEditableEdits.svg": "pencil", "mIconFileLink.svg": "file-symlink", "mIconFolderLink.svg": "folder",
+    "mIconFolder24.svg": "folder", "mIconFolderProject.svg": "folder", "mIconFloaterCartesian.svg": "ruler",
+    "mIconFloaterEllipsoid.svg": "world", "mIconGoochMaterial.svg": "sphere",
+    "mIconPhongTexturedMaterial.svg": "sphere", "mIconSimpleLineMaterial.svg": "sphere", "mIconGpx.svg": "route",
+    "mIconHtml.svg": "html", "mIconImageServer.svg": "photo", "mIconInfo.svg": "info-circle",
+    "mIconJoinHasNotUpsertOnEdit.svg": "link-off", "mIconJoinNotEditable.svg": "link-off",
+    "mIconJoinedLayerNotEditable.svg": "link-off", "mIconLabelQuadrantCenter.svg": "focus-centered",
+    "mIconLabelQuadrantOffset.svg": "arrows-up-right", "mIconLayer.png": "stack-2", "mIconListView.svg": "list",
+    "mIconTreeView.svg": "list-tree", "mIconMemory.svg": "cpu", "mIconModelOutput.svg": "arrow-bar-to-right",
+    "mIconModelerCollapse.svg": "chevron-up", "mIconModelerExpand.svg": "chevron-down",
+    "mIconNetworkLogger.svg": "network", "mIconNoPyramid.svg": "pyramid+minus", "mIconPyramid.svg": "pyramid",
+    "mIconOws.svg": "world", "mIconProjectionDisabled.svg": "world+x", "mIconQptFile.svg": "template",
+    "mIconRasterGroup.svg": "photo", "mIconRasterLink.svg": "photo", "mIconRasterVector.svg": "transform",
+    "mIconRememberDisabled.svg": "bookmark+minus", "mIconRememberEnabled.svg": "bookmark",
+    "mIconReport.svg": "report", "mIconSearchCaseSensitive.svg": "letter-case", "mIconSearchRegex.svg": "brackets",
+    "mIconSearchWholeWord.svg": "abc", "mIconSearchWrapAround.svg": "repeat", "mIconSelectLocked.svg": "lock",
+    "mIconSelectUnlocked.svg": "lock-open", "mIconShadow.svg": "shadow", "mIconStoredQueries.svg": "sql",
+    "mIconSurfaceElevationFillAbove.svg": "mountain", "mIconSurfaceElevationFillBelow.svg": "mountain",
+    "mIconSurfaceElevationLine.svg": "mountain", "mIconTemporalRaster.svg": "clock",
+    "mIconTimerContinue.svg": "player-play", "mIconTimerPause.svg": "player-pause",
+    "mIconVertexCoordinates.svg": "point", "mIconZoom.svg": "zoom-in",
+    "mIndicatorBadLayer.svg": "alert-triangle", "mIndicatorEmbedded.svg": "link",
+    "mIndicatorFieldComment.svg": "message", "mIndicatorFilter.svg": "filter",
+    "mIndicatorLayerError.svg": "alert-triangle", "mIndicatorLowAccuracy.svg": "alert-triangle",
+    "mIndicatorMemory.svg": "cpu", "mIndicatorNoCRS.svg": "world+x", "mIndicatorNonRemovable.svg": "lock",
+    "mIndicatorNotes.svg": "notes", "mIndicatorOffline.svg": "cloud+x", "mIndicatorTemporal.svg": "clock",
+    "mIndicatorTimeFromProject.svg": "clock", "mItemBookmark.svg": "bookmark",
+    "mLayoutItem.svg": "frame", "mLayoutItem3DMap.svg": "cube", "mLayoutItemChart.svg": "chart-bar",
+    "mLayoutItemElevationProfile.svg": "mountain", "mLayoutItemHtml.svg": "html",
+    "mLayoutItemLegend.svg": "list-details", "mLayoutItemMarker.svg": "map-pin", "mLayoutItemPicture.svg": "photo",
+    "mLayoutItemPolygon.svg": "polygon", "mLayoutItemPolyline.svg": "line", "mLayoutItemScaleBar.svg": "ruler",
+    "mLayoutItemShapeEllipse.svg": "oval", "mLayoutItemShapeRectangle.svg": "rectangle",
+    "mLayoutItemShapeTriangle.svg": "triangle", "mLayoutItemTable.svg": "table",
+    "mMessageLogRead.svg": "message", "mSensor.svg": "antenna",
+    "mTaskCancel.svg": "x", "mTaskComplete.svg": "circle-check", "mTaskOnHold.svg": "player-pause",
+    "mTaskQueued.svg": "clock", "mTaskRunning.svg": "player-play", "mTaskTerminated.svg": "alert-triangle",
+    "mToggleAliases.svg": "label", "multieditChangedValues.svg": "pencil", "multieditMixedValues.svg": "equal-not",
+    "multieditSameValues.svg": "equal", "pin.svg": "pin", "pluginDeprecated.svg": "alert-triangle",
+    "pluginExperimental.png": "flame", "pluginNew.svg": "sparkles", "pluginUpgrade.svg": "arrow-up",
+    "providerOtb.svg": "photo", "providerSaga.svg": "tool", "rendererGrassSymbol.svg": "plant",
+    "repositoryConnected.svg": "network", "repositoryDisabled.svg": "network+minus",
+    "repositoryUnavailable.svg": "alert-triangle", "sync_views.svg": "arrows-exchange", "transformed.svg": "transform",
+    "unlockedGray.svg": "lock-open", "styleicons/pointcloudextent.svg": "frame",
+    "cadtools/delta.svg": "triangle", "cadtools/lock.svg": "lock",
+    "checks/InvalidGeometry.svg": "alert-triangle", "checks/MissingVertex.svg": "point",
+    "checks/Overlap.svg": "layers-intersect", "checks/SliverOrGap.svg": "layers-difference",
+    "console/classBrowserHelp.png": "help-circle", "console/consoleHelp.png": "help-circle",
+    "console/editorHelp.png": "help-circle", "console/iconClassTreeWidgetConsole.svg": "box",
+    "console/iconFunctionTreeWidgetConsole.svg": "math-function", "console/iconMethodTreeWidgetConsole.svg": "code",
+    "console/iconProcessingConsole.svg": "tool", "console/iconQtCoreConsole.svg": "code",
+    "console/iconQtGuiConsole.svg": "app-window", "console/iconSearchNextEditorConsole.svg": "arrow-down",
+    "console/iconSearchPrevEditorConsole.svg": "arrow-up", "console/iconSyntaxErrorConsoleParams.svg": "alert-triangle",
+    "console/iconUncommentEditorConsole.svg": "code",
+    "field_indicators/mIndicatorConstraint.svg": "lock", "field_indicators/mIndicatorConstraintHard.svg": "lock",
+    "field_indicators/mIndicatorDefaultValue.svg": "variable",
+    "field_indicators/mIndicatorDefaultValueApplyOnUpdate.svg": "refresh",
+    "georeferencer/mActionAddGCPPoint.svg": "map-pin+plus", "georeferencer/mActionDeleteGCPPoint.svg": "map-pin+x",
+    "georeferencer/mActionGDALScript.svg": "terminal-2", "georeferencer/mActionLinkGeorefToQgis.svg": "link",
+    "georeferencer/mActionLinkQGisToGeoref.svg": "link", "georeferencer/mActionLoadGCPpoints.svg": "file-import",
+    "georeferencer/mActionMoveGCPPoint.svg": "arrows-move",
+    "georeferencer/mActionSaveGCPpointsAs.svg": "device-floppy", "georeferencer/mPushButtonPencil.svg": "pencil",
+    "gpsicons/barchart.svg": "chart-bar", "gpsicons/mIconGpsDisconnect.svg": "network+x",
+    "gpsicons/polarchart.svg": "radar",
+    "mesh/Depth.svg": "arrow-bar-to-down", "mesh/Height.svg": "arrow-bar-to-up", "mesh/MultiBottom.svg": "stack-2",
+    "mesh/MultiTop.svg": "stack-2", "mesh/Sigma.svg": "sum", "mesh/SingleBottom.svg": "arrow-bar-down",
+    "mesh/SingleTop.svg": "arrow-bar-up",
+    "propertyicons/meshcontoursoff.svg": "wave-sine", "propertyicons/meshvectorsoff.svg": "arrows-up-right",
+    # DB Manager's and Processing's own images (EXTERNAL).
+    "db_manager/about.png": "info-circle", "db_manager/layer_unknown.png": "stack-2",
+    "db_manager/namespace.png": "folder", "db_manager/plugged.png": "network",
+    "db_manager/unplugged.png": "network+x", "db_manager/view.png": "table",
+    "db_manager/view_materialized.png": "table+check", "db_manager/warning-20px.png": "alert-triangle",
+    "processing/dem.png": "mountain",
     # ---- Ribbon: menu-only commands QGIS gives no icon ----------------------
     # (studio_ribbon.ICON_FALLBACKS; QGIS has no files of these names).
     "ribbon/close.svg": "file-x",
@@ -793,6 +946,16 @@ ICON_MAP = {
     "ribbon/web.svg": "world-www",
 }
 
+# Images QGIS keeps in its theme folder that are no icons of a command and
+# keep their own look in every style: mouse cursors (their hot spot is
+# part of the drawing), the easing-curve previews (their shape is the
+# information), rating stars, the transparency checkerboard and an empty
+# spacer.
+NOT_REPLACED = (
+    "cursors/", "interpolation/", "stars_empty.svg", "stars_full.svg", "transp-background_8x8.png",
+    "propertyicons/spacer.svg",
+)
+
 # Icons QGIS loads from its resources outside the theme folder: name ->
 # resource path (the QGIS logo on the Dev Tools documentation page).
 RESOURCE_PATHS = {
@@ -807,6 +970,15 @@ EXTERNAL = {
     "db_manager/mActionDBExport.svg": "python/plugins/db_manager/icons/mActionDBExport.svg",
     "db_manager/mActionSQLWindow.svg": "python/plugins/db_manager/icons/mActionSQLWindow.svg",
     "db_manager/dbmanager.svg": "python/plugins/db_manager/icons/dbmanager.svg",
+    "db_manager/about.png": "python/plugins/db_manager/icons/about.png",
+    "db_manager/layer_unknown.png": "python/plugins/db_manager/icons/layer_unknown.png",
+    "db_manager/namespace.png": "python/plugins/db_manager/icons/namespace.png",
+    "db_manager/plugged.png": "python/plugins/db_manager/icons/plugged.png",
+    "db_manager/unplugged.png": "python/plugins/db_manager/icons/unplugged.png",
+    "db_manager/view.png": "python/plugins/db_manager/icons/view.png",
+    "db_manager/view_materialized.png": "python/plugins/db_manager/icons/view_materialized.png",
+    "db_manager/warning-20px.png": "python/plugins/db_manager/icons/warning-20px.png",
+    "processing/dem.png": "python/plugins/processing/images/dem.png",
     "processing/interpolation.png": "python/plugins/processing/images/interpolation.png",
     "processing/menu.png": "python/plugins/processing/images/menu.png",
     "processing/gdaltools/24-to-8-bits.png": "python/plugins/processing/images/gdaltools/24-to-8-bits.png",
@@ -860,15 +1032,46 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 # Half the width of a mark, in units.
 MARK_ARM = 3.0
 
-# ---- Duotone icons ---------------------------------------------------------
-# The Duotone icon style (Plugins > QGIS Studio Themes > Settings > Icons):
-# the same glyphs, their lines in a colour by what the icon is about and
-# their closed shapes filled with that colour, faintly, behind the lines.
-# The colours are theme tokens (@duo_<group>, base.qss), so they suit
-# light and dark themes; neutral glyphs (arrows, settings, lists) keep the
-# theme's icon colour, which keeps a toolbar from turning into confetti.
-DUO_FILL_OPACITY = 0.28
-DUO_GROUPS = {
+# ---- Colourful icons --------------------------------------------------------
+# The Colourful icon style (Plugins > QGIS Studio Themes > Settings > Icons):
+# the same glyphs in their objects' own colours, like QGIS's own icons: a
+# yellow folder, a magnifier's light blue glass in a dark frame, a blue
+# floppy with a grey shutter, a palette's coloured paints. Each part of a
+# glyph (one of its paths) gets a material from COLOR_MATERIALS: a light
+# fill and a deeper line of one hue. Parts in "ink" keep the theme's icon
+# colour (dark on light themes, light on dark ones), so frames, handles and
+# signs read on every theme; the colours are the same everywhere.
+#
+# A part's material: "name" fills its closed outlines and draws its line in
+# the material's line colour; "name!" fills its open lines too (closed by a
+# straight line, as SVG does: a cylinder's band, a hill under the sky);
+# "name/" draws the line only; ":line" after a name draws the line in that
+# material's line colour ("ink": the theme's) instead; "ink" draws only the
+# line, in the theme's colour.
+COLOR_MATERIALS = {
+    "paper": ("#fbfcfd", "#7d8794"), "white": ("#ffffff", "#ffffff"),
+    "folder": ("#fbcf5f", "#c98f14"), "glass": ("#cfe7fb", "#5a9bd6"),
+    "blue": ("#d6e7fb", "#2f78d0"), "blueS": ("#4f97e3", "#1f5fae"),
+    "green": ("#d8efcd", "#3c9a3a"), "greenS": ("#6dbb4f", "#2f7d27"),
+    "red": ("#fad6d4", "#d23b33"), "redS": ("#e8524a", "#a82a22"),
+    "orange": ("#fde3c4", "#dd7a12"), "orangeS": ("#f59b38", "#b85f0b"),
+    "yellow": ("#fdeaa3", "#c99a06"), "yellowS": ("#f9cc3c", "#b8890a"),
+    "purple": ("#e6dcfb", "#7b52d9"), "purpleS": ("#9f7ced", "#5f36bd"),
+    "teal": ("#cdeee9", "#1f9c90"), "tealS": ("#3cc0b4", "#167a72"),
+    "pink": ("#fbd8e8", "#d0437f"), "pinkS": ("#f06fae", "#b42b6e"),
+    "gray": ("#e3e7ec", "#7b8591"), "grayS": ("#aeb6c0", "#5b6470"),
+    "brown": ("#eed6bb", "#9a6634"), "brownS": ("#c48a55", "#7a4b22"),
+    "dark": ("#5b6470", "#2c323a"),
+}
+# The colour of the +, - and check marks of badges (add, remove, accept).
+COLOR_MARKS = {"plus": "#2f9e44", "minus": "#d9363e", "check": "#2f9e44"}
+# Glyphs without a recipe: one material by what the icon is about (the
+# groups below); "neutral" glyphs (arrows, lists, settings) stay in ink.
+GROUP_MATERIALS = {
+    "data": "blue", "raster": "green", "edit": "orange", "analysis": "purple", "view": "teal",
+    "style": "pink", "danger": "red", "neutral": "ink",
+}
+COLOR_GROUPS = {
     # Data: files, layers, databases, the web.
     "data": (
         "file", "files", "file-code", "file-database", "file-export", "file-import", "file-pencil",
@@ -936,13 +1139,13 @@ DUO_GROUPS = {
         "barrier-block", "logout", "chart-pie-off", "clock-off", "square-off",
     ),
 }
-_DUO_GROUP_OF = {glyph: group for group, glyphs in DUO_GROUPS.items() for glyph in glyphs}
+_GROUP_OF = {glyph: group for group, glyphs in COLOR_GROUPS.items() for glyph in glyphs}
 
 
-def duo_group(spec):
-    """The Duotone colour group of a drawing ("neutral": the theme's icon
-    colour): by its glyph, so a badge never changes it."""
-    return _DUO_GROUP_OF.get(spec.partition("+")[0], "neutral")
+def color_group(spec):
+    """What a drawing is about, for its default material ("neutral": ink):
+    by its glyph, so a badge never changes it."""
+    return _GROUP_OF.get(spec.partition("+")[0], "neutral")
 
 
 def _mark_path(mark, c, arm):
@@ -994,6 +1197,45 @@ def unique_icons():
 CUSTOM_GLYPHS = {
     # Playing backwards (Temporal Controller): Tabler's play, mirrored.
     "player-play-back": '<path d="M17 4v16l-13 -8l13 -8"/>',
+    # Drawn after Tabler's glyphs of these names (same grid and style), for
+    # the 1.3 icons (text formatting, alignment, line caps and joins...).
+    "arrow-bar-to-left": '<path d="M10 12l10 0"/><path d="M10 12l4 4"/><path d="M10 12l4 -4"/><path d="M4 4l0 16"/>',
+    "bold": '<path d="M7 5h6a3.5 3.5 0 0 1 0 7h-6z"/><path d="M13 12h1a3.5 3.5 0 0 1 0 7h-7v-7"/>',
+    "italic": '<path d="M11 5l6 0"/><path d="M7 19l6 0"/><path d="M14 5l-4 14"/>',
+    "underline": '<path d="M7 5v5a5 5 0 0 0 10 0v-5"/><path d="M5 19h14"/>',
+    "strikethrough": (
+        '<path d="M5 12l14 0"/><path d="M16 6.5a4 2 0 0 0 -4 -1.5h-1a3.5 3.5 0 0 0 0 7h2'
+        'a3.5 3.5 0 0 1 0 7h-1.5a4 2 0 0 1 -4 -1.5"/>'
+    ),
+    "align-left": '<path d="M4 6l16 0"/><path d="M4 12l10 0"/><path d="M4 18l14 0"/>',
+    "align-center": '<path d="M4 6l16 0"/><path d="M8 12l8 0"/><path d="M6 18l12 0"/>',
+    "align-right": '<path d="M4 6l16 0"/><path d="M10 12l10 0"/><path d="M6 18l14 0"/>',
+    "align-justified": '<path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l12 0"/>',
+    "indent-decrease": (
+        '<path d="M20 6l-7 0"/><path d="M20 12l-9 0"/><path d="M20 18l-7 0"/><path d="M8 8l-4 4l4 4"/>'
+    ),
+    "square-check": (
+        '<path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/>'
+        '<path d="M9 12l2 2l4 -4"/>'
+    ),
+    "paperclip": (
+        '<path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5"/>'
+    ),
+    "corner-down-right": '<path d="M6 6v6a3 3 0 0 0 3 3h10"/><path d="M15 11l4 4l-4 4"/>',
+    "link-off": (
+        '<path d="M9 15l3 -3m2 -2l1 -1"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/>'
+        '<path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/>'
+        '<path d="M3 3l18 18"/>'
+    ),
+    "equal-not": '<path d="M5 10h14"/><path d="M5 14h14"/><path d="M19 5l-14 14"/>',
+    # Line caps and joins (symbol stroke options): a wide stroke's outline
+    # ending at, or turning round, the line through its middle.
+    "cap-flat": '<path d="M3 8h12v8h-12"/><path d="M3 12h12"/>',
+    "cap-square": '<path d="M3 8h16v8h-16"/><path d="M3 12h12"/>',
+    "cap-round": '<path d="M3 8h12a4 4 0 0 1 0 8h-12"/><path d="M3 12h12"/>',
+    "join-miter": '<path d="M4 21v-17h17"/><path d="M10 21v-11h11"/>',
+    "join-bevel": '<path d="M4 21v-12l5 -5h12"/><path d="M10 21v-11h11"/>',
+    "join-round": '<path d="M4 21v-11a6 6 0 0 1 6 -6h11"/><path d="M10 21v-11h11"/>',
     # Classification methods (Graduated renderer > Mode): a bell curve over
     # a baseline, the class breaks rising from the baseline to the curve,
     # spaced as each method spaces them.
@@ -1079,20 +1321,11 @@ def _glyph_body(name):
     return _FRAME.sub("", _BODY.search(svg).group(1)).strip()
 
 
-def render_icon(spec, colors, scale=SCALE, duotone=False):
+def render_icon(spec, colors, scale=SCALE):
     """Compose one icon. ``colors`` provides icon, accent and danger (used
-    for remove badges), and for `duotone` the colour of each DUO_GROUPS
-    group; ``scale`` enlarges unbadged glyphs."""
+    for remove badges); ``scale`` enlarges unbadged glyphs."""
     glyph, _, badge = spec.partition("+")
-    if duotone:
-        colors = dict(colors, icon=colors.get(duo_group(spec), colors["icon"]))
     body = _glyph_body(glyph).replace("currentColor", colors["icon"])
-    if duotone and _glyph_shapes(glyph):
-        # The fills first, under the lines, as one even-odd path: a ring
-        # stays a ring and overlapping shapes leave their overlap open.
-        fill = "".join(_plain_path(shape) for shape in _glyph_shapes(glyph))
-        body = (f'<path d="{fill}" fill="{colors["icon"]}" fill-opacity="{DUO_FILL_OPACITY}" '
-                f'fill-rule="evenodd" stroke="none"/>' + body)
     if badge:
         # Shrink the glyph towards the top-left to leave room for the badge.
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
@@ -1229,36 +1462,28 @@ def _num(value):
     return "0" if text in ("", "-0") else text
 
 
-@functools.lru_cache(maxsize=None)
-def _glyph_shapes(name):
-    """The closed outlines of a glyph (Duotone's fills): its subpaths that
-    end where they start, as segment tuples. Open lines (arrows, ticks)
-    have no inside to fill."""
-    shapes = []
-    for segments, attrs in _glyph_paths(name):
-        if "fill=" in attrs:
-            continue  # already solid (info-circle's dot)
-        current = []
-        end = ("M", None, None)
-        for segment in segments + (end,):
-            if segment[0] == "M" and current:
-                start, last = current[0], current[-1]
-                closed = last[0] == "Z" or (
-                    last[0] != "M" and abs(last[-2] - start[1]) < 0.01 and abs(last[-1] - start[2]) < 0.01)
-                if closed and len(current) > 2:
-                    shapes.append(tuple(current))
-                current = []
-            if segment is not end:
-                current.append(segment)
-    return tuple(shapes)
+def _subpaths(segments):
+    """A path's subpaths, each with whether it is closed (ends with Z or
+    where it starts): only closed ones are filled unless a material says
+    "!"."""
+    out = []
+    current = []
+    for segment in segments + (("M", None, None),):
+        if segment[0] == "M" and current:
+            start, last = current[0], current[-1]
+            closed = last[0] == "Z" or (
+                last[0] != "M" and abs(last[-2] - start[1]) < 0.01 and abs(last[-1] - start[2]) < 0.01)
+            if len(current) > 1:
+                out.append((tuple(current), closed))
+            current = []
+        if segment[1:2] != (None,):
+            current.append(segment)
+    return out
 
 
 def _plain_path(segments):
-    """Path data of absolute segments, unchanged (render_icon's fills)."""
-    out = []
-    for segment in segments:
-        out.append(segment[0] + " ".join(_num(v) for v in segment[1:]))
-    return "".join(out)
+    """Path data of absolute segments, unchanged (render_icon_color)."""
+    return "".join(segment[0] + " ".join(_num(v) for v in segment[1:]) for segment in segments)
 
 
 def _arc_kind(rx, ry, dx, dy):
@@ -1389,13 +1614,11 @@ def _snap_circle(center, radius):
     return math.floor(center - offset + 0.5) + offset, diameter / 2
 
 
-def render_icon_px(spec, colors, size, scale=SCALE, width=None, fill=False):
+def render_icon_px(spec, colors, size, scale=SCALE, width=None):
     """Compose one icon for exactly `size` device pixels, with its lines on
     the pixel grid (see the module docstring), `width` device pixels wide
     (by default the width for its size, see stroke_px). Same design as
-    render_icon: same glyph enlargement and badge, in whole pixels. With
-    `fill`, only the inside of its closed shapes, in the icon colour
-    (Duotone's fill layer, on the same pixel grid as the lines)."""
+    render_icon: same glyph enlargement and badge, in whole pixels."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
@@ -1425,15 +1648,11 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None, fill=False):
         return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
     icon = colors["icon"]
-    if fill:
-        shapes = "".join(_snapped_path(shape, place, snap, unit) for shape in _glyph_shapes(glyph))
-        paths = f'<path d="{shapes}" fill="{icon}" fill-rule="evenodd" stroke="none"/>' if shapes else ""
-    else:
-        paths = "".join(
-            f'<path d="{_snapped_path(segments, place, snap, unit)}"'
-            f'{attrs.replace("currentColor", icon)}/>'
-            for segments, attrs in _glyph_paths(glyph)
-        )
+    paths = "".join(
+        f'<path d="{_snapped_path(segments, place, snap, unit)}"'
+        f'{attrs.replace("currentColor", icon)}/>'
+        for segments, attrs in _glyph_paths(glyph)
+    )
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}" fill="none" stroke-linecap="round" '
@@ -1455,10 +1674,6 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None, fill=False):
     # core, for a touch more weight without blurring the line.
     drawn = _num(width + STROKE_EXTRA)
     parts.append(f'<g{mask} stroke="{icon}" stroke-width="{drawn}">{paths}</g>')
-    if fill:
-        # The badges belong to the line and badge layers.
-        parts.append("</svg>")
-        return "".join(parts)
     if badge in BADGE_MARKS:
         # On the same pixel grid as the glyph's lines, with square ends so
         # straight marks end on whole pixels.
@@ -1472,6 +1687,262 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None, fill=False):
         )
     elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
+        parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+# ---- Colourful rendering ----------------------------------------------------
+
+# Materials of each part (path) of a glyph, in path order (see
+# COLOR_MATERIALS); the last one repeats for any further parts. Glyphs not
+# listed take GROUP_MATERIALS' one for every part.
+COLOR_RECIPES = {
+    # Files and folders: white paper, a yellow folder.
+    "folder": ("folder!",), "folder-open": ("folder!",),
+    "file": ("paper/", "paper!"), "files": ("paper/", "paper!", "paper!"),
+    "file-export": ("paper/", "paper!"), "file-import": ("paper/", "paper!"),
+    "file-code": ("paper/", "paper!", "blueS/"), "file-pencil": ("paper/", "paper!", "orangeS/"),
+    "file-settings": ("grayS/",) * 7 + ("paper/", "paper!"), "file-database": ("paper/", "paper!", "blue!"),
+    "file-symlink": ("paper/", "paper!", "blueS/"), "file-zip": ("paper/", "paper!", "brownS/"),
+    "file-x": ("paper/", "paper!", "redS/"), "file-type-pdf": ("paper/", "paper!", "redS/"),
+    "file-type-csv": ("paper/", "paper!", "greenS/"), "file-type-svg": ("paper/", "paper!", "orangeS/"),
+    "template": ("blue:blueS", "green:greenS", "ink"),
+    "report": ("paper!:ink", "ink", "ink", "gray!", "glass:ink", "ink", "ink"),
+    "device-floppy": ("blueS!", "grayS", "gray!"),
+    # Magnifiers: light blue glass in an ink frame.
+    "search": ("glass:ink", "ink"), "zoom-in": ("glass:ink", "green/", "green/", "ink"),
+    "zoom-out": ("glass:ink", "red/", "ink"), "zoom-check": ("glass:ink", "ink", "greenS/"),
+    "zoom-pan": ("glass:ink", "ink", "tealS/"), "zoom-scan": ("glass:ink", "ink", "grayS/"),
+    "zoom-in-area": ("greenS/", "greenS/", "glass:ink", "ink", "grayS/"), "zoom-reset": ("ink", "ink", "tealS/"),
+    "map-pin-search": ("redS/", "redS/", "glass:ink", "ink"),
+    "world-search": ("blue!", "blueS/", "blueS/", "blueS/", "blueS/", "glass:ink", "ink"),
+    # Data: databases, tables, layers, maps, the world.
+    "database": ("blue", "blue!", "blue!"),
+    "database-cog": ("blue/", "blue!", "blue/", "blue!", "grayS", "grayS/"),
+    "database-plus": ("blue/", "blue!", "blue/", "blue!", "greenS/"),
+    "database-export": ("blue/", "blue!", "blue/", "blue!", "greenS/"),
+    "database-import": ("blue/", "blue!", "blue!", "greenS/"),
+    "table": ("paper:blueS", "blueS/"), "table-options": ("paper:blueS", "blueS/"),
+    "stack-2": ("yellowS", "greenS/", "blueS/"), "stack-3": ("yellowS", "greenS/", "blueS/", "tealS/"),
+    "map": ("green!", "greenS/"), "map-2": ("green!", "greenS/", "greenS/", "redS", "white/"),
+    "world": ("blue", "blueS/"), "world-www": ("blue!", "blueS/", "blueS/", "blue!", "blueS/", "blueS/", "ink"),
+    "world-cog": ("blue!", "blueS/"), "world-download": ("blue!", "blueS/"), "world-share": ("blue!", "blueS/"),
+    "world-latitude": ("blue", "blueS/"), "sphere": ("blueS/", "blue"), "cube": ("blue!", "blueS/"),
+    "package": ("brown", "brownS/"), "box": ("brown", "brownS/"), "packages": ("brown", "brownS/"),
+    "cloud": ("glass!:blueS",), "cloud-download": ("glass!:blueS", "greenS/"),
+    "cloud-upload": ("glass!:blueS", "blueS/"),
+    "network": ("blue", "blueS/", "blueS/", "blueS/", "ink", "ink", "greenS", "ink"),
+    "link": ("blueS/",), "link-off": ("blueS/", "blueS/", "blueS/", "red/"),
+    # Raster and nature: photos, terrain, sun, plants, water.
+    "photo": ("yellowS/", "glass:ink", "greenS!", "greenS!"),
+    "photo-down": ("yellowS/", "glass!:ink", "greenS!", "greenS!", "blueS/"),
+    "mountain": ("green!", "greenS/"), "sun": ("yellowS", "orangeS/"), "sun-high": ("yellowS", "orangeS/"),
+    "plant": ("brownS!", "greenS", "greenS", "greenS/"), "droplet": ("blueS",), "droplet-half": ("blueS",),
+    "flame": ("orangeS",), "pyramid": ("yellow!:orangeS", "orangeS/"),
+    # Editing: pencils, erasers, scissors, rulers, magnets, shapes.
+    "pencil": ("yellowS!", "ink"), "pencil-bolt": ("yellowS!", "ink", "orangeS"),
+    "pencil-cog": ("yellowS!", "ink", "grayS"), "pencil-cancel": ("yellowS!", "ink", "redS/"),
+    "eraser": ("pinkS!", "ink"), "highlight": ("yellowS!", "ink", "ink", "yellowS!"),
+    "cut": ("redS", "redS", "grayS/", "grayS/"),
+    "copy": ("paper:blueS", "paper!:blueS"), "clipboard": ("brown!:brownS", "gray!:grayS"),
+    "ruler": ("yellow!:orangeS", "orangeS/"), "ruler-2": ("yellow!:orangeS", "orangeS/"),
+    "ruler-3": ("yellow!:orangeS", "orangeS/"), "ruler-measure": ("yellow!:orangeS", "orangeS/"),
+    "magnet": ("redS!", "white/", "white/"),
+    "polygon": ("greenS", "greenS", "greenS", "greenS", "greenS/"), "point": ("redS",),
+    "line": ("orangeS", "orangeS", "orangeS/"),
+    # Analysis: tools, charts, maths, code, Python.
+    "tool": ("grayS!",), "bolt": ("yellowS",), "puzzle": ("greenS",),
+    "calculator": ("gray!:ink", "paper!:ink", "ink"),
+    "chart-bar": ("tealS", "orangeS", "blueS", "ink"), "chart-pie": ("blueS", "orangeS"),
+    "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
+    "brand-python": ("blueS!", "yellowS!", "blueS/", "white/", "white/"),
+    "terminal-2": ("greenS/", "greenS/", "grayS:ink"), "code": ("blueS/", "blueS/", "grayS/"),
+    "filter": ("yellowS",), "filter-code": ("yellowS", "blueS/"),
+    # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
+    "eye": ("blueS", "paper!:ink"), "eye-off": ("blueS/", "ink", "redS/"),
+    "eye-check": ("blueS", "paper!:ink", "greenS/"), "eye-minus": ("blueS", "paper!:ink", "redS/"),
+    "map-pin": ("paper", "redS!"), "map-pins": ("redS!", "white/", "blueS!", "white/"),
+    "bookmark": ("redS",), "bookmarks": ("redS", "redS/"),
+    "clock": ("paper:ink", "ink"), "clock-play": ("paper:ink", "ink", "greenS"),
+    "calendar": ("paper!:ink", "ink", "ink", "redS/", "ink"),
+    "calendar-time": ("paper!:ink", "glass:ink", "ink", "ink", "redS/", "ink"),
+    "pointer": ("paper:ink",), "hand-stop": ("orangeS/",), "compass": ("redS!", "paper:ink", "ink"),
+    "gps": ("paper:ink", "blueS!"), "route": ("greenS", "redS", "blueS/"),
+    "player-play": ("greenS",), "player-pause": ("blueS",), "player-stop": ("redS",),
+    "player-record": ("redS",), "movie": ("gray!:ink", "ink"),
+    # Style, labels and layouts.
+    "palette": ("yellow!:ink", "redS", "blueS", "greenS"),
+    "color-swatch": ("blueS!", "yellowS!", "redS!", "white/"), "paint": ("orangeS", "grayS/", "grayS"),
+    "brush": ("purpleS!", "brownS/"), "label": ("yellow:orangeS",), "notes": ("yellow!:orangeS", "orangeS/"),
+    "message": ("ink", "ink", "blue!:blueS"), "message-dots": ("ink", "ink", "ink", "blue!:blueS"),
+    "printer": ("gray!:ink", "paper!:ink", "paper!:ink"),
+    "layout": ("blue:blueS", "green:greenS", "yellow:orangeS"), "layout-board": ("paper:ink", "ink"),
+    "star": ("yellowS",), "heart": ("redS",), "sparkles": ("yellowS",),
+    "book": ("blue!:blueS", "blue!:blueS", "blueS/"),
+    # Signs: information, help, warnings, ok, delete.
+    "info-circle": ("blueS", "white", "white/"), "info-square-rounded": ("blueS", "white/"),
+    "help-circle": ("blueS", "white/", "white/"), "alert-triangle": ("dark/", "yellowS", "dark/"),
+    "circle-check": ("greenS", "white/"), "shield-check": ("blue:blueS", "greenS/"),
+    "square-check": ("paper:ink", "greenS/"),
+    "x": ("red/",), "plus": ("green/",), "minus": ("red/",),
+    "trash": ("grayS/", "grayS/", "grayS/", "gray!", "grayS/"),
+    "bug": ("greenS", "greenS", "ink"), "logout": ("brown!:brownS", "redS/", "redS/"),
+    # Places, people and things.
+    "home": ("redS/", "yellow!", "brownS!"), "user": ("yellow", "blueS!"),
+    "users": ("yellow", "blueS!", "yellow/", "blue!"), "settings": ("grayS", "paper"),
+    "lock": ("yellowS", "dark/", "grayS/"), "lock-open": ("yellowS", "dark/", "grayS/"),
+    "keyboard": ("gray:ink", "ink"), "app-window": ("paper:blueS", "redS/", "yellowS/"),
+    "list-details": ("ink", "ink", "ink", "ink", "blue:blueS", "green:greenS"),
+}
+
+
+def _material(name):
+    """(fill colour or None, fill open lines too, line colour or "ink") of
+    a part's material (see COLOR_MATERIALS)."""
+    if name == "ink":
+        return None, False, "ink"
+    fill_name, _, line_name = name.partition(":")
+    line_only = fill_name.endswith("/")
+    whole = fill_name.endswith("!")
+    fill, line = COLOR_MATERIALS[fill_name.rstrip("/!")]
+    if line_name:
+        line = "ink" if line_name == "ink" else COLOR_MATERIALS[line_name][1]
+    return (None if line_only else fill), whole, line
+
+
+@functools.lru_cache(maxsize=None)
+def color_parts(glyph):
+    """(fill, whole, line) of each part of a glyph, in path order."""
+    count = len(_glyph_paths(glyph))
+    recipe = COLOR_RECIPES.get(glyph) or (GROUP_MATERIALS[color_group(glyph)],)
+    return tuple(_material(recipe[min(i, len(recipe) - 1)]) for i in range(count))
+
+
+def _part_fill(segments, whole, attrs):
+    """The subpaths of a part to fill (None: none): its closed ones, or all
+    with `whole`; a part the glyph fills itself (a dot) entirely."""
+    if "fill=" in attrs:
+        return [segments]
+    shapes = [sub for sub, closed in _subpaths(segments) if closed or whole]
+    return shapes or None
+
+
+def _color_body(glyph, ink, draw):
+    """The fills and lines of a glyph in colour: (fills, coloured lines, ink
+    parts), each drawn by draw(segments) -> path data."""
+    fills, colored, inked = [], [], []
+    for (segments, attrs), (fill, whole, line) in zip(_glyph_paths(glyph), color_parts(glyph)):
+        is_ink = line == "ink"
+        line_color = ink if is_ink else line
+        solid = "fill=" in attrs
+        shapes = _part_fill(segments, whole, attrs) if (fill or solid) else None
+        if shapes:
+            d = "".join(draw(shape) for shape in shapes)
+            path = f'<path d="{d}" fill="{line_color if solid else fill}" fill-rule="evenodd" stroke="none"/>'
+            (inked if solid and is_ink else fills).append(path)
+        if not solid:
+            path = f'<path d="{draw(segments)}" stroke="{line_color}"/>'
+            (inked if is_ink else colored).append(path)
+    return fills, colored, inked
+
+
+def render_icon_color(spec, colors, scale=SCALE):
+    """The Colourful version of render_icon (same glyph placement and
+    badges): each part in its material, ink parts in colors["icon"]."""
+    glyph, _, badge = spec.partition("+")
+    if badge:
+        scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
+    else:
+        reach = _glyph_reach(glyph)
+        if reach > 0:
+            scale = min(scale, (12 - STROKE / 2) / reach)
+        offset = round(12 * (1 - scale), 3)
+        transform = f"translate({offset} {offset}) scale({scale})"
+    stroke = round(STROKE / scale, 3)
+    fills, colored, inked = _color_body(glyph, colors["icon"], _plain_path)
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
+             'fill="none" stroke-linecap="round" stroke-linejoin="round">']
+    mask = ""
+    if badge:
+        parts.append(
+            '<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">'
+            '<rect width="24" height="24" fill="#fff"/>'
+            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS + BADGE_GAP}" fill="#000"/>'
+            '</mask></defs>'
+        )
+        mask = ' mask="url(#b)"'
+    body = "".join(fills + colored + inked)
+    parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
+    if badge in BADGE_MARKS:
+        mark = BADGE_MARKS[badge]
+        parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
+                     f'stroke="{COLOR_MARKS[mark]}" stroke-width="{STROKE}"/>')
+    elif badge:
+        fill = colors["danger"] if badge == "x" else colors["accent"]
+        parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
+                         accent="#000000", danger="#000000"):
+    """The Colourful version of render_icon_px, on the same pixel grid.
+    `layer`: "color" draws the coloured parts and the badge marks (fixed
+    colours), "ink" only the ink parts, in `ink` (a mask the theme tints),
+    "all" everything (badge dots in `accent` and `danger`)."""
+    glyph, _, badge = spec.partition("+")
+    px = size / 24
+    width = stroke_px(size) if width is None else width
+    if badge:
+        badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
+        unit = badged * px
+
+        def place(x, y):
+            return (0.2 + badged * x) * px, (0.2 + badged * y) * px
+    else:
+        reach = _glyph_reach(glyph)
+        unit = scale * px
+        if reach > 0:
+            unit = min(unit, (size / 2 - width / 2) / reach)
+        middle = size / 2
+
+        def place(x, y):
+            return middle + (x - 12) * unit, middle + (y - 12) * unit
+    offset = 0.5 if width % 2 else 0.0
+    low, high = width / 2, size - width / 2
+
+    def snap(value):
+        return min(max(math.floor(value - offset + 0.5) + offset, low), high)
+
+    fills, colored, inked = _color_body(glyph, ink, lambda segments: _snapped_path(segments, place, snap, unit))
+    body = {"color": fills + colored, "ink": inked}.get(layer, fills + colored + inked)
+    drawn = _num(width + STROKE_EXTRA)
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 {size} {size}" fill="none" stroke-linecap="round" stroke-linejoin="round">',
+    ]
+    mask = ""
+    if badge:
+        center, radius = _snap_circle(BADGE_CENTER * px, BADGE_RADIUS * px)
+        gap = max(1, round(BADGE_GAP * px))
+        parts.append(
+            f'<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="{size}" height="{size}">'
+            f'<rect width="{size}" height="{size}" fill="#fff"/>'
+            f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius + gap)}" fill="#000"/>'
+            '</mask></defs>'
+        )
+        mask = ' mask="url(#b)"'
+    parts.append(f'<g{mask} stroke-width="{drawn}">{"".join(body)}</g>')
+    if badge in BADGE_MARKS and layer != "ink":
+        mark = BADGE_MARKS[badge]
+        middle = snap(BADGE_CENTER * px)
+        arm = max(2, round(MARK_ARM * px))
+        cap = "round" if mark == "check" else "square"
+        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mark]}" '
+                     f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
+    elif badge and badge not in BADGE_MARKS and layer == "all":
+        fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
     parts.append("</svg>")
     return "".join(parts)

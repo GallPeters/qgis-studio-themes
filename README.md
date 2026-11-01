@@ -57,23 +57,26 @@ without restarting QGIS.
 
 - **Monochrome** – the default: clean line icons in the theme's own icon
   colour, calm and consistent across toolbars, menus and panels.
-- **Duotone** – the same icons in a colour by kind of tool, their shapes
-  softly filled: blue for data, green for raster, amber for editing, violet
-  for analysis, teal for navigation, pink for styling and red for removing.
-  Arrows, lists and settings keep the theme's icon colour, and every colour
-  is tuned for light and dark themes alike.
+- **Colourful** – the same modern icons in their objects' own colours, like
+  QGIS's own icons: yellow folders, white documents, a blue floppy disk,
+  magnifiers with light blue glass, a palette of paints, green add and red
+  remove marks. Frames, handles and signs keep the theme's icon colour, so
+  every icon reads on light and dark themes alike.
 - **QGIS classic** – QGIS's own icons, with the rest of the theme.
 
-Monochrome and Duotone are pixel-sharp at every screen scaling. The images
-below show Studio Pro Light in each style.
+All three cover the whole interface – toolbars and menus, the ribbon,
+panels and the Processing Toolbox, the layout designer, dialogs and the
+attribute form – with the same icons in Monochrome and Colourful. Both are
+pixel-sharp at every screen scaling. The images below show Studio Pro
+Light in each style.
 
 **Monochrome**
 
 ![Monochrome icons, Studio Pro Light](docs/screenshots/pro-light_icons-mono.png)
 
-**Duotone**
+**Colourful**
 
-![Duotone icons, Studio Pro Light](docs/screenshots/pro-light_icons-duotone.png)
+![Colourful icons, Studio Pro Light](docs/screenshots/pro-light_icons-color.png)
 
 **QGIS classic**
 
@@ -81,7 +84,7 @@ below show Studio Pro Light in each style.
 
 ## Features
 
-- **Modern icons** – over 600 QGIS icons replaced with a consistent line-icon
+- **Modern icons** – over 1,000 QGIS icons replaced with a consistent icon
   set based on [Tabler Icons](https://tabler.io/icons), coloured per theme.
 - **Sharp at any scaling** – icons are pre-rendered for each screen's exact
   pixel size and stay crisp when monitors or scaling change.
@@ -102,9 +105,8 @@ below show Studio Pro Light in each style.
   Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
   plugin by Eithan Wes and Anita Graser.
 - **Three icon styles** – Monochrome (the theme's single-colour icons),
-  Duotone (the same icons in a colour by kind of tool – data, raster,
-  editing, analysis, navigation, styling – their shapes softly filled) or
-  QGIS classic (QGIS's own icons); see [Icons](#icons).
+  Colourful (the same icons in their objects' own colours) or QGIS classic
+  (QGIS's own icons); see [Icons](#icons).
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes

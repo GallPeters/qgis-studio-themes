@@ -95,16 +95,6 @@
  * Browser, Processing Toolbox): the selected text's colour, like checked
  * tool buttons, on the accent-tinted selection. */
 @icon_selected:          @text_bright;
-/* Duotone icons (studio_icons.DUO_GROUPS): one hue per kind of tool, a
- * step towards the icon colour, so they read on both light and dark
- * windows (lighter on dark themes, deeper on light ones). */
-@duo_data:               mix(@icon, @info, 0.72);
-@duo_raster:             mix(@icon, @success, 0.72);
-@duo_edit:               mix(@icon, @warning, 0.72);
-@duo_analysis:           mix(@icon, #8b5cf6, 0.72);
-@duo_view:               mix(@icon, #0ea5b7, 0.72);
-@duo_style:              mix(@icon, #e0559a, 0.72);
-@duo_danger:             @danger;
 
 /* ---- Message bar -------------------------------------------------------- */
 @info_bg:                mix(@bg_window, @info, 0.14);
