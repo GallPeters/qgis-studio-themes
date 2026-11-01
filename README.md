@@ -71,6 +71,11 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
   **Settings → Interface**.
   Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
   plugin by Eithan Wes and Anita Graser.
+- **Three icon styles** – Monochrome (the theme's single-colour icons),
+  Duotone (the same icons in a colour by kind of tool – data, raster,
+  editing, analysis, navigation, styling – their shapes softly filled) or
+  QGIS classic (QGIS's own icons). Choose in **Settings → Icons**; it
+  changes at once.
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes

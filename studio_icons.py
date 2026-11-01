@@ -860,6 +860,90 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 # Half the width of a mark, in units.
 MARK_ARM = 3.0
 
+# ---- Duotone icons ---------------------------------------------------------
+# The Duotone icon style (Plugins > QGIS Studio Themes > Settings > Icons):
+# the same glyphs, their lines in a colour by what the icon is about and
+# their closed shapes filled with that colour, faintly, behind the lines.
+# The colours are theme tokens (@duo_<group>, base.qss), so they suit
+# light and dark themes; neutral glyphs (arrows, settings, lists) keep the
+# theme's icon colour, which keeps a toolbar from turning into confetti.
+DUO_FILL_OPACITY = 0.28
+DUO_GROUPS = {
+    # Data: files, layers, databases, the web.
+    "data": (
+        "file", "files", "file-code", "file-database", "file-export", "file-import", "file-pencil",
+        "file-settings", "file-symlink", "file-zip", "folder", "folder-open", "database", "database-cog",
+        "database-export", "database-import", "database-plus", "table", "table-options", "stack-2", "stack-3",
+        "layers-difference", "layers-intersect", "layers-subtract", "layers-union", "package", "packages", "box",
+        "box-multiple", "sql", "sql-raised", "shp-raised", "feather", "cloud", "cloud-download", "cloud-upload",
+        "world", "world-cog", "world-download", "world-latitude", "world-search", "world-share", "world-www",
+        "map", "map-2", "network", "api", "link", "column-insert-right", "column-remove", "row-insert-bottom",
+        "template", "device-floppy", "binary", "html", "antenna",
+    ),
+    # Raster and terrain: imagery, elevation, light.
+    "raster": (
+        "photo", "photo-down", "mountain", "plant", "grain", "grid-4x4", "pyramid", "sun", "sun-high",
+        "brightness-down", "brightness-up", "contrast", "droplet", "droplet-half", "flame", "wave-sine",
+        "circle-half", "grid-dots", "chart-histogram", "triangle-square-circle", "triangles",
+    ),
+    # Editing and digitizing: pens, geometry, measuring.
+    "edit": (
+        "pencil", "pencil-bolt", "pencil-cog", "eraser", "cut", "copy", "clipboard", "brush", "highlight",
+        "vector", "vector-bezier-2", "vector-spline", "vector-triangle", "transform", "rotate",
+        "rotate-clockwise", "rotate-dot", "crop", "slice", "shape", "shape-2", "magnet", "line", "line-dashed",
+        "point", "polygon", "rectangle", "oval", "backspace", "replace", "arrow-merge", "arrows-join",
+        "arrows-split", "arrows-move", "arrows-move-horizontal", "ruler", "ruler-2", "ruler-3",
+        "ruler-measure", "angle", "border-corner-rounded", "border-corner-square", "border-outer",
+        "ease-in-out-control-points", "hexagon", "hexagons", "square", "square-rounded", "squares", "circle",
+        "circles", "triangle", "circle-dot", "pin", "pinned",
+    ),
+    # Analysis and processing: tools, maths, code, charts.
+    "analysis": (
+        "tool", "math", "math-function", "calculator", "sum", "chart-arcs", "chart-area-line", "chart-bar",
+        "chart-bar-popular", "chart-dots", "chart-pie", "chart-scatter", "class-equal-count",
+        "class-equal-interval", "class-fixed-interval", "class-logarithmic", "class-natural-breaks",
+        "class-pretty-breaks", "class-std-dev", "sitemap", "hierarchy-2", "hierarchy-3", "code", "braces",
+        "brackets", "variable", "terminal-2", "brand-python", "filter", "filter-code", "cpu", "decimal",
+        "number-123", "percentage", "dice", "circles-relation", "affiliate", "list-numbers", "sort-ascending",
+        "sort-descending", "equal", "bolt", "puzzle", "hexagon-letter-q", "category",
+    ),
+    # Viewing and navigating: zoom, pan, selection, time.
+    "view": (
+        "zoom-check", "zoom-in", "zoom-in-area", "zoom-out", "zoom-pan", "zoom-reset", "zoom-scan",
+        "hand-stop", "focus-2", "focus-centered", "current-location", "navigation-north", "eye", "eye-check",
+        "eye-minus", "eye-off", "search", "map-pin", "map-pin-search", "map-pins", "gps", "radar", "bookmark",
+        "bookmarks", "clock", "clock-play", "player-pause", "player-play", "player-play-back",
+        "player-record", "player-skip-back", "player-skip-forward", "player-stop", "player-track-next",
+        "player-track-prev", "movie", "calendar", "calendar-time", "stopwatch", "cube", "sphere", "marquee-2",
+        "lasso", "lasso-polygon", "pointer", "pointer-minus", "pointer-plus", "select-all", "deselect",
+        "circle-dashed", "maximize", "arrows-maximize", "layout-sidebar", "layout-sidebar-right",
+        "app-window", "route", "compass", "target", "refresh", "history", "repeat",
+    ),
+    # Styling, labels and layouts: text, colour, print.
+    "style": (
+        "label", "abc", "text-decrease", "text-direction-ltr", "text-increase", "text-size", "typography",
+        "letter-case", "heading", "cursor-text", "message", "message-dots", "message-question",
+        "message-report", "note", "notes", "palette", "color-swatch", "color-filter", "paint", "mask", "shadow",
+        "background", "frame", "layout", "layout-board", "layout-dashboard", "layout-grid",
+        "layout-align-bottom", "layout-align-center", "layout-align-left", "layout-align-middle",
+        "layout-align-right", "layout-align-top", "layout-distribute-horizontal",
+        "layout-distribute-vertical", "printer", "report", "star", "heart", "copyright", "language",
+        "sparkles", "file-type-pdf", "file-type-svg", "file-type-csv",
+    ),
+    # Removing and warnings.
+    "danger": (
+        "trash", "x", "file-x", "bug", "alert-triangle", "circle-off", "eye-x", "pencil-cancel",
+        "barrier-block", "logout", "chart-pie-off", "clock-off", "square-off",
+    ),
+}
+_DUO_GROUP_OF = {glyph: group for group, glyphs in DUO_GROUPS.items() for glyph in glyphs}
+
+
+def duo_group(spec):
+    """The Duotone colour group of a drawing ("neutral": the theme's icon
+    colour): by its glyph, so a badge never changes it."""
+    return _DUO_GROUP_OF.get(spec.partition("+")[0], "neutral")
+
 
 def _mark_path(mark, c, arm):
     """Path data of a badge mark centred on (c, c), `arm` from centre to
@@ -995,11 +1079,20 @@ def _glyph_body(name):
     return _FRAME.sub("", _BODY.search(svg).group(1)).strip()
 
 
-def render_icon(spec, colors, scale=SCALE):
+def render_icon(spec, colors, scale=SCALE, duotone=False):
     """Compose one icon. ``colors`` provides icon, accent and danger (used
-    for remove badges); ``scale`` enlarges unbadged glyphs."""
+    for remove badges), and for `duotone` the colour of each DUO_GROUPS
+    group; ``scale`` enlarges unbadged glyphs."""
     glyph, _, badge = spec.partition("+")
+    if duotone:
+        colors = dict(colors, icon=colors.get(duo_group(spec), colors["icon"]))
     body = _glyph_body(glyph).replace("currentColor", colors["icon"])
+    if duotone and _glyph_shapes(glyph):
+        # The fills first, under the lines, as one even-odd path: a ring
+        # stays a ring and overlapping shapes leave their overlap open.
+        fill = "".join(_plain_path(shape) for shape in _glyph_shapes(glyph))
+        body = (f'<path d="{fill}" fill="{colors["icon"]}" fill-opacity="{DUO_FILL_OPACITY}" '
+                f'fill-rule="evenodd" stroke="none"/>' + body)
     if badge:
         # Shrink the glyph towards the top-left to leave room for the badge.
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
@@ -1136,6 +1229,38 @@ def _num(value):
     return "0" if text in ("", "-0") else text
 
 
+@functools.lru_cache(maxsize=None)
+def _glyph_shapes(name):
+    """The closed outlines of a glyph (Duotone's fills): its subpaths that
+    end where they start, as segment tuples. Open lines (arrows, ticks)
+    have no inside to fill."""
+    shapes = []
+    for segments, attrs in _glyph_paths(name):
+        if "fill=" in attrs:
+            continue  # already solid (info-circle's dot)
+        current = []
+        end = ("M", None, None)
+        for segment in segments + (end,):
+            if segment[0] == "M" and current:
+                start, last = current[0], current[-1]
+                closed = last[0] == "Z" or (
+                    last[0] != "M" and abs(last[-2] - start[1]) < 0.01 and abs(last[-1] - start[2]) < 0.01)
+                if closed and len(current) > 2:
+                    shapes.append(tuple(current))
+                current = []
+            if segment is not end:
+                current.append(segment)
+    return tuple(shapes)
+
+
+def _plain_path(segments):
+    """Path data of absolute segments, unchanged (render_icon's fills)."""
+    out = []
+    for segment in segments:
+        out.append(segment[0] + " ".join(_num(v) for v in segment[1:]))
+    return "".join(out)
+
+
 def _arc_kind(rx, ry, dx, dy):
     """How an arc may follow its snapped ends: "quarter" (a rounded corner,
     its ends one radius apart on each axis), "half" (half a circle, its
@@ -1264,11 +1389,13 @@ def _snap_circle(center, radius):
     return math.floor(center - offset + 0.5) + offset, diameter / 2
 
 
-def render_icon_px(spec, colors, size, scale=SCALE, width=None):
+def render_icon_px(spec, colors, size, scale=SCALE, width=None, fill=False):
     """Compose one icon for exactly `size` device pixels, with its lines on
     the pixel grid (see the module docstring), `width` device pixels wide
     (by default the width for its size, see stroke_px). Same design as
-    render_icon: same glyph enlargement and badge, in whole pixels."""
+    render_icon: same glyph enlargement and badge, in whole pixels. With
+    `fill`, only the inside of its closed shapes, in the icon colour
+    (Duotone's fill layer, on the same pixel grid as the lines)."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
@@ -1298,11 +1425,15 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
         return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
     icon = colors["icon"]
-    paths = "".join(
-        f'<path d="{_snapped_path(segments, place, snap, unit)}"'
-        f'{attrs.replace("currentColor", icon)}/>'
-        for segments, attrs in _glyph_paths(glyph)
-    )
+    if fill:
+        shapes = "".join(_snapped_path(shape, place, snap, unit) for shape in _glyph_shapes(glyph))
+        paths = f'<path d="{shapes}" fill="{icon}" fill-rule="evenodd" stroke="none"/>' if shapes else ""
+    else:
+        paths = "".join(
+            f'<path d="{_snapped_path(segments, place, snap, unit)}"'
+            f'{attrs.replace("currentColor", icon)}/>'
+            for segments, attrs in _glyph_paths(glyph)
+        )
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}" fill="none" stroke-linecap="round" '
@@ -1324,6 +1455,10 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
     # core, for a touch more weight without blurring the line.
     drawn = _num(width + STROKE_EXTRA)
     parts.append(f'<g{mask} stroke="{icon}" stroke-width="{drawn}">{paths}</g>')
+    if fill:
+        # The badges belong to the line and badge layers.
+        parts.append("</svg>")
+        return "".join(parts)
     if badge in BADGE_MARKS:
         # On the same pixel grid as the glyph's lines, with square ends so
         # straight marks end on whole pixels.

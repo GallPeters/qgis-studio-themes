@@ -736,6 +736,17 @@ class StudioRibbon(QObject):
     def active(self):
         return self._ribbon is not None
 
+    def refresh_icons(self):
+        """The icon style changed: the icons given for the ribbon go, and
+        every page is built again (giving them in the new style)."""
+        for action in self._adopted:
+            if not sip.isdeleted(action):
+                action.setIcon(QIcon())
+        self._adopted = []
+        if self._ribbon is not None:
+            for index in range(self._ribbon.tabs.count()):
+                self._ribbon.invalidate(index)
+
     def set_caption_font(self, size, weight):
         """The groups' captions: the toolbar names' font (the settings')."""
         font = studio_toolbars.title_font(size, weight)

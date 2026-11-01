@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.2
+version=1.3
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,16 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.3 (01.11.2026):
+          - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
+          - Monochrome: the theme's single-colour icons, as before.
+          - Duotone: the same icons in a colour by kind of tool, their shapes softly filled.
+          - Duotone colours: blue for data, green for raster, amber for editing, violet for analysis, teal for navigation, pink for styling and red for removing.
+          - Duotone colours suit every theme, light or dark; arrows, lists and settings keep the theme's icon colour.
+          - QGIS classic: QGIS's own icons, with the rest of the theme.
+          - The icon style changes at once, without restarting QGIS.
+          - Every icon style stays pixel-sharp and as fast as before.
 
      ** v1.2 (29.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.

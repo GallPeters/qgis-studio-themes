@@ -176,8 +176,11 @@ def icon_colors(tokens):
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
     }
+    # Duotone's group colours (unused by the other styles).
+    colors.update((group, tokens[f"@duo_{group}"]) for group in studio_icons.DUO_GROUPS)
     # Disabled state: glyph and badge both in the theme's disabled icon
-    # colour (dimmer than disabled text: clearly unavailable).
+    # colour (dimmer than disabled text: clearly unavailable), Duotone's
+    # groups too.
     disabled = dict.fromkeys(colors, tokens["@icon_disabled"])
     # Selected rows (dialog page lists, Browser, Processing Toolbox): the
     # glyph in the accent, a shade towards the text so it keeps its
@@ -203,12 +206,20 @@ ATLAS_COLUMNS = 32
 # and the two coloured badge layers. Badges never touch the glyph (it is
 # cut away around them), so tinting each layer is exact. Masks are drawn
 # once per profile in the background (a fraction of a second per size).
-MASK_FORMAT = 1
+# Duotone adds a fill layer (the inside of each glyph's closed shapes): it
+# and the glyph layer are tinted cell by cell, each icon in its group's
+# colour (see compose_atlas), so the same masks serve every icon style.
+MASK_FORMAT = 2
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
     "danger": {"icon": "none", "accent": "none", "danger": "#000000"},
+    "fill": {"icon": "#000000", "accent": "none", "danger": "none"},
 }
+# Icon styles (Settings > Icons): the theme's single-colour icons, the same
+# in Duotone (studio_icons.DUO_GROUPS), or QGIS's own icons.
+ICON_STYLES = ("mono", "duotone", "classic")
+ICON_STYLE_SETTING = "studio_themes/iconStyle"
 
 
 def atlas_specs():
@@ -277,12 +288,44 @@ def tinted(mask, color):
     return image
 
 
-def compose_atlas(masks, colors):
+@functools.lru_cache(maxsize=1)
+def duo_cells():
+    """(atlas index, Duotone group) of every drawing not in the neutral
+    group, for tinting cell by cell."""
+    return tuple((index, studio_icons.duo_group(spec)) for index, spec in enumerate(atlas_specs())
+                 if studio_icons.duo_group(spec) != "neutral")
+
+
+def tinted_cells(mask, color, colors, size, opacity=1.0):
+    """A mask in `color`, the cells of duo_cells() in their group's colour
+    (QColor values in `colors`), at `opacity`: one fill per cell, a few
+    milliseconds for a whole atlas."""
+    base = QColor(color)
+    base.setAlphaF(base.alphaF() * opacity)
+    image = tinted(mask, base)
+    painter = QPainter(image)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    for index, group in duo_cells():
+        cell = QColor(colors.get(group, color))
+        cell.setAlphaF(cell.alphaF() * opacity)
+        painter.fillRect(atlas_cell(index, size), cell)
+    painter.end()
+    return image
+
+
+def compose_atlas(masks, colors, size=0, duotone=False):
     """One state's atlas from the masks of a size: the glyph layer in the
-    icon colour, the badge layers in theirs (QColor values in `colors`).
-    A few image operations in Qt, instead of drawing every icon again."""
-    atlas = tinted(masks["glyph"], colors["icon"])
-    painter = QPainter(atlas)
+    icon colour, the badge layers in theirs (QColor values in `colors`);
+    in `duotone` each cell's lines and fill in its group's colour, the fill
+    faint and under the lines. A few image operations in Qt, instead of
+    drawing every icon again."""
+    if duotone:
+        atlas = tinted_cells(masks["fill"], colors["icon"], colors, size, studio_icons.DUO_FILL_OPACITY)
+        painter = QPainter(atlas)
+        painter.drawImage(0, 0, tinted_cells(masks["glyph"], colors["icon"], colors, size))
+    else:
+        atlas = tinted(masks["glyph"], colors["icon"])
+        painter = QPainter(atlas)
     for layer in ("accent", "danger"):
         painter.drawImage(0, 0, tinted(masks[layer], colors[layer]))
     painter.end()
@@ -328,13 +371,15 @@ def render_masks(folder, size, width, scale, stop):
                 if layer is not None:
                     svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
                     QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
+            svg = studio_icons.render_icon_px(spec, MASK_LAYERS["fill"], size, scale, width, fill=True)
+            QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters["fill"], cell)
             time.sleep(0)  # let the GUI thread take Python's lock if it waits
     finally:
         for painter in painters.values():
             painter.end()
     folder.mkdir(parents=True, exist_ok=True)
     # The glyph layer last: it marks the set complete (see find_masks).
-    for layer in ("accent", "danger", "glyph"):
+    for layer in ("accent", "danger", "fill", "glyph"):
         data = QByteArray()
         buffer = QBuffer(data)
         buffer.open(QIODevice.OpenModeFlag.WriteOnly)
@@ -400,13 +445,14 @@ def prerender_masks(folders, sizes, scale, stop):
 
 
 def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
-                icon_scale=studio_icons.SCALE):
+                icon_scale=studio_icons.SCALE, icon_style="mono"):
     """Write the resolved stylesheet and all icons for one theme into
-    `target`; style.qss gets the real stylesheet only when `active` (see
+    `target`, in `icon_style` (ICON_STYLES; "classic" writes none, so QGIS
+    finds its own); style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
     startup costs only a few stat() calls; a rebuild rewrites only the
     files whose content changed. Thread-safe (no Qt calls). Returns True
-    when it (re)built the theme."""
+    when it (re)built the theme. `shared_stamp` must name the icon style."""
     stamp = build_stamp([THEMES_DIR / folder / "variables.qss"]) + shared_stamp
     stamp_file = target / STAMP
     if stamp_file.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
@@ -436,23 +482,25 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     colors = dict(zip((state for state, _mode in ICON_STATES), icon_colors(tokens)))
     folders = set()
     svgs = {}
-    for name, spec in studio_icons.ICON_MAP.items():
+    duotone = icon_style == "duotone"
+    for name, spec in studio_icons.ICON_MAP.items() if icon_style != "classic" else ():
         path = icons / icon_file(name)
         if path.parent not in folders:
             path.parent.mkdir(parents=True, exist_ok=True)
             folders.add(path.parent)
         if spec not in svgs:
-            svgs[spec] = studio_icons.render_icon(spec, colors["normal"], icon_scale)
+            svgs[spec] = studio_icons.render_icon(spec, colors["normal"], icon_scale, duotone)
             for state in ("disabled", "selected"):
                 state_file = icons / state / f"{spec}.svg"
                 if state_file.parent not in folders:
                     state_file.parent.mkdir(parents=True, exist_ok=True)
                     folders.add(state_file.parent)
                 write_if_changed(
-                    state_file, studio_icons.render_icon(spec, colors[state], icon_scale), written
+                    state_file, studio_icons.render_icon(spec, colors[state], icon_scale, duotone), written
                 )
         write_if_changed(path, svgs[spec], written)
-    # Icons of names no longer mapped would still be found by QGIS.
+    # Icons of names no longer mapped (or of another style) would still be
+    # found by QGIS.
     for root, dirs, files in os.walk(icons):
         if Path(root) == icons:
             dirs[:] = [d for d in dirs if d != "png"]
@@ -717,6 +765,9 @@ class IconSwapper(QObject):
         self._mask_folders = mask_folders(profile_masks) if profile_masks is not None else ()
         self._scale = studio_icons.SCALE
         self._colors = None
+        # The icon style (ICON_STYLES): "classic" swaps no icon, the swapper
+        # still doing its other work (checkboxes, page lists, dialogs).
+        self._style = "mono"
         self._swapped = []
         self._watched = {}
         self._models = {}
@@ -1225,7 +1276,7 @@ class IconSwapper(QObject):
         needs the (slower) data comparison and `deferred` is set. `slot`
         (see _slot) remembers what the icon in that place turned out to be:
         only for icons without pixmaps, which the comparison fingerprints."""
-        if icon.isNull():
+        if icon.isNull() or self._style == "classic":
             return None
         key = icon.cacheKey()
         name = self._names.get(key, self._UNKNOWN)
@@ -1385,7 +1436,8 @@ class IconSwapper(QObject):
             if atlas_key not in self._atlases:
                 masks = self._load_masks(size, width)
                 colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
-                self._atlases[atlas_key] = None if masks is None else compose_atlas(masks, colors)
+                self._atlases[atlas_key] = None if masks is None else compose_atlas(
+                    masks, colors, size, self._style == "duotone")
             atlas = self._atlases[atlas_key]
             if not self._atlas_index:
                 self._atlas_index = atlas_index()
@@ -1884,6 +1936,16 @@ class IconSwapper(QObject):
         if self._pending:
             QTimer.singleShot(0, self._drain)
 
+    @property
+    def style(self):
+        return self._style
+
+    def set_style(self, style):
+        """The icon style (ICON_STYLES) of the next apply()."""
+        self._style = style
+        self._atlases = {}
+        self._pixmaps = {}
+
     def swap_action(self, action):
         """Our icon for an action's QGIS icon now, not once a menu showing
         it is first opened: the ribbon shows commands of menus that never
@@ -1894,7 +1956,8 @@ class IconSwapper(QObject):
         """Give an action QGIS gives no icon (a menu-only command on the
         ribbon) our icon `name` (an ICON_MAP name), re-themed like the
         others; True when it got it."""
-        if self._theme is None or name not in studio_icons.ICON_MAP or not action.icon().isNull():
+        if (self._theme is None or self._style == "classic" or name not in studio_icons.ICON_MAP
+                or not action.icon().isNull()):
             return False
         action.setIcon(self._icon(name))
         self._watch(action)
@@ -2024,7 +2087,7 @@ class _Relay(QObject):
 
 class SettingsDialog(QDialog):
     """Plugins > QGIS Studio Themes > Settings: the interface (toolbars or
-    the ribbon), where the toolbar names go, which name they show and in
+    the ribbon), the icon style, where the toolbar names go, which name they show and in
     what size and weight (the ribbon's group names too). Only what applies
     to the interface chosen can be changed. Every change shows at once, so
     the dialog only has Close."""
@@ -2032,6 +2095,11 @@ class SettingsDialog(QDialog):
     INTERFACES = (
         ("toolbars", "Toolbars"),
         ("ribbon", "Ribbon"),
+    )
+    ICON_STYLES = (
+        ("mono", "Monochrome"),
+        ("duotone", "Duotone (colourful)"),
+        ("classic", "QGIS classic"),
     )
 
     POSITIONS = (
@@ -2062,6 +2130,14 @@ class SettingsDialog(QDialog):
         for value, text in self.INTERFACES:
             self._interface.addItem(text, value)
         self._interface.setCurrentIndex(max(0, self._interface.findData(plugin.interface())))
+        self._icon_style = QComboBox()
+        for value, text in self.ICON_STYLES:
+            self._icon_style.addItem(text, value)
+        self._icon_style.setCurrentIndex(max(0, self._icon_style.findData(plugin.icon_style())))
+        self._icon_style.setToolTip(
+            "Monochrome: the theme's single-colour icons. Duotone: the same icons in a colour by kind "
+            "of tool, softly filled. QGIS classic: QGIS's own icons."
+        )
         self._position = QComboBox()
         for value, text in self.POSITIONS:
             self._position.addItem(text, value)
@@ -2080,6 +2156,7 @@ class SettingsDialog(QDialog):
         self._weight.setCurrentIndex(max(0, self._weight.findData(weight)))
         form = QFormLayout()
         form.addRow("Interface", self._interface)
+        form.addRow("Icons", self._icon_style)
         form.addRow("Toolbar name position", self._position)
         form.addRow("Toolbar name", self._names)
         form.addRow("Font size", self._size)
@@ -2100,10 +2177,14 @@ class SettingsDialog(QDialog):
         for combo in (self._position, self._names, self._size, self._weight):
             combo.currentIndexChanged.connect(self._changed)
         self._interface.currentIndexChanged.connect(self._interface_changed)
+        self._icon_style.currentIndexChanged.connect(self._icon_style_changed)
 
     def showEvent(self, event):  # pylint: disable=invalid-name
         self._inactive.setVisible(not self._plugin.studio_shown())
         super().showEvent(event)
+
+    def _icon_style_changed(self, _index=None):
+        self._plugin.set_icon_style(self._icon_style.currentData())
 
     def _interface_changed(self, _index=None):
         self._plugin.set_interface(self._interface.currentData())
@@ -2188,6 +2269,7 @@ class QgisStudioThemesPlugin:
         self._prepared = None
         self._fonts_loaded = False
         self._shared_stamp = None
+        self._stamp_base = None
         # One lock per theme serialises its build (background builder vs.
         # a runtime switch) and its style.qss.
         self._locks = {name: threading.Lock() for name in self.THEMES}
@@ -2333,10 +2415,11 @@ class QgisStudioThemesPlugin:
             # studio_toolbars).
             "@toolbar_name_rules": name_rules(),
         }
-        self._shared_stamp = (
+        self._stamp_base = (
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
             + ("|compact" if compact else "")
         )
+        self._shared_stamp = self._stamp_base + f"|icons-{self.icon_style()}"
         # Only the configured theme is built now; the others only need a
         # placeholder style.qss to be registered and are built in the
         # background (or on demand, if selected first).
@@ -2387,7 +2470,7 @@ class QgisStudioThemesPlugin:
             try:
                 if build_theme(
                     self.THEMES[name], self.theme_target(name), self._shared_stamp, active,
-                    self._extra_tokens, scale,
+                    self._extra_tokens, scale, self.icon_style(),
                 ):
                     self._rebuilt.add(name)
             except Exception as error:  # pylint: disable=broad-except
@@ -2580,6 +2663,8 @@ class QgisStudioThemesPlugin:
         colors = tuple(
             {role: qcolor(value) for role, value in state.items()} for state in icon_colors(self._tokens)
         )
+        if self._icons.style != self.icon_style():
+            self._icons.set_style(self.icon_style())
         self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale)
         self._style_message_bar()
         QTimer.singleShot(0, self._recolor_status_message)
@@ -2651,6 +2736,38 @@ class QgisStudioThemesPlugin:
 
     def _labels_enabled(self):
         return self.label_style()[0] != "off"
+
+    @staticmethod
+    def icon_style():
+        """The icon style set in the settings dialog (ICON_STYLES)."""
+        value = QgsSettings().value(ICON_STYLE_SETTING, "mono", type=str)
+        return value if value in ICON_STYLES else "mono"
+
+    def set_icon_style(self, style):
+        """Show `style`'s icons at once: the active theme is rebuilt in it
+        (the others when next shown), its icons swapped again from QGIS's
+        own and the ribbon's pages rebuilt."""
+        if style not in ICON_STYLES or style == self.icon_style():
+            return
+        QgsSettings().setValue(ICON_STYLE_SETTING, style)
+        if self._stamp_base is None:
+            return
+        self._shared_stamp = self._stamp_base + f"|icons-{style}"
+        theme = self._active
+        if theme is None:
+            return
+        name = self._studio_themes()[theme][0]
+        if not self._build(name):
+            return
+        # QGIS caches the icons it loaded from the theme folder: cleared by
+        # applying the theme again, the plugin following in _sync.
+        self._icons.restore()
+        self._active = None
+        QgsApplication.setUITheme(theme)
+        if self._active is None:
+            self._sync()
+        # After the icons are in place: the page shown is built at once.
+        self._ribbon.refresh_icons()
 
     @staticmethod
     def interface():
@@ -2746,6 +2863,8 @@ class QgisStudioThemesPlugin:
         worker thread, off startup's critical path; icons
         shown meanwhile move to them once they are ready. Every theme
         shares them, so switching themes draws nothing."""
+        if self.icon_style() == "classic":
+            return  # QGIS's own icons: no masks needed
         folders, scale = self._icons.mask_folders, self._icons.scale
         sizes = missing_masks(folders, self._icons.needed_png_sizes(), scale)
         if not folders or not sizes or scale in self._rendering:
