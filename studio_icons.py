@@ -18,6 +18,7 @@ draws every glyph in device pixels with its points moved onto the pixel
 grid and a stroke of whole pixels, like a hand-hinted icon: straight lines
 come out solid and sharp. Those are pre-rendered as PNGs (see the plugin).
 """
+import colorsys
 import functools
 import math
 import re
@@ -1065,6 +1066,30 @@ COLOR_MATERIALS = {
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
 COLOR_MARKS = {"plus": "#2f9e44", "minus": "#d9363e", "check": "#2f9e44"}
+
+# The hues above are toned down for a calm, professional look: less
+# saturation, and fills brought from bright pastels to soft mid tones that
+# do not glow on dark windows, lines a little deeper. Greys and white
+# (paper, glass highlights) keep their lightness.
+COLOR_SATURATION = 0.5
+FILL_LIGHTNESS = (0.40, 0.45)  # lightness = a + b * the hue's own
+LINE_LIGHTNESS = (0.16, 0.62)
+
+
+def _muted(color, lightness):
+    red, green, blue = (int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    hue, light, saturation = colorsys.rgb_to_hls(red, green, blue)
+    # By chroma, not HLS saturation (which is high for any near-white).
+    if max(red, green, blue) - min(red, green, blue) > 0.12:
+        light = lightness[0] + lightness[1] * light
+        saturation *= COLOR_SATURATION
+    return "#" + "".join(f"{round(v * 255):02x}" for v in colorsys.hls_to_rgb(hue, light, saturation))
+
+
+COLOR_MATERIALS = {
+    name: (_muted(fill, FILL_LIGHTNESS), _muted(line, LINE_LIGHTNESS)) for name, (fill, line) in COLOR_MATERIALS.items()
+}
+COLOR_MARKS = {mark: _muted(color, LINE_LIGHTNESS) for mark, color in COLOR_MARKS.items()}
 # Glyphs without a recipe: one material by what the icon is about (the
 # groups below); "neutral" glyphs (arrows, lists, settings) stay in ink.
 GROUP_MATERIALS = {
