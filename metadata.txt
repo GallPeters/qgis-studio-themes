@@ -20,8 +20,8 @@ changelog=
      ** v1.3 (01.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
           - Monochrome: the theme's single-colour icons, as before.
-          - Colourful: the same icons in their objects' own colours, like QGIS's own: yellow folders, a blue floppy disk, blue magnifier glass.
-          - Colourful icons keep frames and signs in the theme's icon colour, so they read on light and dark themes.
+          - Colourful: the same icons in the manner of professional desktop icon sets, with flat fills from a small, calm palette: gold folders, blue databases and floppy disks, white documents.
+          - Colourful icons draw every outline in the theme's icon colour and their paper in the theme's own sheet colour, so they read on light and dark themes.
           - QGIS classic: QGIS's own icons, with the rest of the theme.
           - Over 350 more QGIS icons are replaced, in Monochrome and Colourful alike.
           - Newly covered: the layout designer's items, attribute form widgets, shape tools, layer indicators, tasks, certificates, the console and the georeferencer.

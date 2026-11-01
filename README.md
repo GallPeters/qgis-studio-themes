@@ -57,10 +57,11 @@ without restarting QGIS.
 
 - **Monochrome** – the default: clean line icons in the theme's own icon
   colour, calm and consistent across toolbars, menus and panels.
-- **Colourful** – the same modern icons in their objects' own colours, like
-  QGIS's own icons: yellow folders, white documents, a blue floppy disk,
-  magnifiers with light blue glass, a palette of paints, green add and red
-  remove marks. Frames, handles and signs keep the theme's icon colour, so
+- **Colourful** – the same modern icons in the manner of professional
+  desktop icon sets: neutral outlines with flat fills from a small, calm
+  palette, where colour means something – gold folders, blue databases and
+  floppy disks, white documents, green add and red remove marks. Outlines
+  keep the theme's icon colour and paper takes the theme's sheet colour, so
   every icon reads on light and dark themes alike.
 - **QGIS classic** – QGIS's own icons, with the rest of the theme.
 
@@ -105,7 +106,7 @@ Light in each style.
   Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
   plugin by Eithan Wes and Anita Graser.
 - **Three icon styles** – Monochrome (the theme's single-colour icons),
-  Colourful (the same icons in their objects' own colours) or QGIS classic
+  Colourful (the same icons with flat fills from a calm palette) or QGIS classic
   (QGIS's own icons); see [Icons](#icons).
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.

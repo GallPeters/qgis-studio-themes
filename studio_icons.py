@@ -18,7 +18,6 @@ draws every glyph in device pixels with its points moved onto the pixel
 grid and a stroke of whole pixels, like a hand-hinted icon: straight lines
 come out solid and sharp. Those are pre-rendered as PNGs (see the plugin).
 """
-import colorsys
 import functools
 import math
 import re
@@ -1034,67 +1033,50 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 MARK_ARM = 3.0
 
 # ---- Colourful icons --------------------------------------------------------
-# The Colourful icon style (Plugins > QGIS Studio Themes > Settings > Icons):
-# the same glyphs in their objects' own colours, like QGIS's own icons: a
-# yellow folder, a magnifier's light blue glass in a dark frame, a blue
-# floppy with a grey shutter, a palette's coloured paints. Each part of a
-# glyph (one of its paths) gets a material from COLOR_MATERIALS: a light
-# fill and a deeper line of one hue. Parts in "ink" keep the theme's icon
-# colour (dark on light themes, light on dark ones), so frames, handles and
-# signs read on every theme; the colours are the same everywhere.
+# The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
+# the manner of professional desktop icon sets (ArcGIS Pro, Office): every
+# outline in the theme's icon colour ("ink": dark grey on light themes,
+# light grey on dark ones), and flat fills from one small palette, so an
+# icon is a neutral drawing with one or two colours where they mean
+# something: a gold folder, a blue database or floppy, a green add and a
+# red delete. Paper (documents, sheets, dials) is the theme's own sheet
+# colour (@icon_paper: white on light themes, a lifted grey on dark ones),
+# so it never glares.
 #
-# A part's material: "name" fills its closed outlines and draws its line in
-# the material's line colour; "name!" fills its open lines too (closed by a
-# straight line, as SVG does: a cylinder's band, a hill under the sky);
-# "name/" draws the line only; ":line" after a name draws the line in that
-# material's line colour ("ink": the theme's) instead; "ink" draws only the
-# line, in the theme's colour.
+# A part's material (COLOR_RECIPES): "name" fills its closed outlines with
+# the material's fill, outlined in ink; "name!" fills its open lines too
+# (closed by a straight line, as SVG does: a cylinder's band, a hill under
+# the sky); "name/" draws the line only, in the material's line colour (an
+# arrow, a cross or a plus as a coloured sign); "ink" draws only the line,
+# in ink. A part the glyph fills itself (a dot) takes the line colour.
+PAPER = "paper"
 COLOR_MATERIALS = {
-    "paper": ("#fbfcfd", "#7d8794"), "white": ("#ffffff", "#ffffff"),
-    "folder": ("#fbcf5f", "#c98f14"), "glass": ("#cfe7fb", "#5a9bd6"),
-    "blue": ("#d6e7fb", "#2f78d0"), "blueS": ("#4f97e3", "#1f5fae"),
-    "green": ("#d8efcd", "#3c9a3a"), "greenS": ("#6dbb4f", "#2f7d27"),
-    "red": ("#fad6d4", "#d23b33"), "redS": ("#e8524a", "#a82a22"),
-    "orange": ("#fde3c4", "#dd7a12"), "orangeS": ("#f59b38", "#b85f0b"),
-    "yellow": ("#fdeaa3", "#c99a06"), "yellowS": ("#f9cc3c", "#b8890a"),
-    "purple": ("#e6dcfb", "#7b52d9"), "purpleS": ("#9f7ced", "#5f36bd"),
-    "teal": ("#cdeee9", "#1f9c90"), "tealS": ("#3cc0b4", "#167a72"),
-    "pink": ("#fbd8e8", "#d0437f"), "pinkS": ("#f06fae", "#b42b6e"),
-    "gray": ("#e3e7ec", "#7b8591"), "grayS": ("#aeb6c0", "#5b6470"),
-    "brown": ("#eed6bb", "#9a6634"), "brownS": ("#c48a55", "#7a4b22"),
-    "dark": ("#5b6470", "#2c323a"),
+    "paper": (PAPER, "#8a939d"), "white": ("#ffffff", "#ffffff"),
+    "folder": ("#e3bd62", "#a67c1c"), "glass": ("#abc7e3", "#4f87bf"),
+    "blue": ("#90b5dc", "#4a86c4"), "blueS": ("#4f8cc9", "#4a86c4"),
+    "green": ("#a9d09c", "#3f8a3e"), "greenS": ("#62a65a", "#3f8a3e"),
+    "red": ("#eab0aa", "#c4473e"), "redS": ("#d0584f", "#b23f37"),
+    "orange": ("#f0c48f", "#c26d1f"), "orangeS": ("#e2954a", "#b8661c"),
+    "yellow": ("#f1d88c", "#a67c1c"), "yellowS": ("#e6be4a", "#a67c1c"),
+    "gray": ("#b9c0c8", "#77818c"), "grayS": ("#9aa3ad", "#5f6872"),
+    "brown": ("#d8bf98", "#8a6a43"), "brownS": ("#b08d63", "#7a5a35"),
+    "dark": ("#4a515a", "#3a4048"),
 }
+# Hues outside the palette, kept to a few: purple and teal as blue, pink
+# as red.
+COLOR_MATERIALS.update({
+    "purple": COLOR_MATERIALS["blue"], "purpleS": COLOR_MATERIALS["blueS"],
+    "teal": COLOR_MATERIALS["glass"], "tealS": COLOR_MATERIALS["blueS"],
+    "pink": COLOR_MATERIALS["red"], "pinkS": COLOR_MATERIALS["redS"],
+})
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = {"plus": "#2f9e44", "minus": "#d9363e", "check": "#2f9e44"}
-
-# The hues above are toned down for a calm, professional look: less
-# saturation, and fills brought from bright pastels to soft mid tones that
-# do not glow on dark windows, lines a little deeper. Greys and white
-# (paper, glass highlights) keep their lightness.
-COLOR_SATURATION = 0.5
-FILL_LIGHTNESS = (0.40, 0.45)  # lightness = a + b * the hue's own
-LINE_LIGHTNESS = (0.16, 0.62)
-
-
-def _muted(color, lightness):
-    red, green, blue = (int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    hue, light, saturation = colorsys.rgb_to_hls(red, green, blue)
-    # By chroma, not HLS saturation (which is high for any near-white).
-    if max(red, green, blue) - min(red, green, blue) > 0.12:
-        light = lightness[0] + lightness[1] * light
-        saturation *= COLOR_SATURATION
-    return "#" + "".join(f"{round(v * 255):02x}" for v in colorsys.hls_to_rgb(hue, light, saturation))
-
-
-COLOR_MATERIALS = {
-    name: (_muted(fill, FILL_LIGHTNESS), _muted(line, LINE_LIGHTNESS)) for name, (fill, line) in COLOR_MATERIALS.items()
-}
-COLOR_MARKS = {mark: _muted(color, LINE_LIGHTNESS) for mark, color in COLOR_MARKS.items()}
-# Glyphs without a recipe: one material by what the icon is about (the
-# groups below); "neutral" glyphs (arrows, lists, settings) stay in ink.
+COLOR_MARKS = {"plus": "#3f8a3e", "minus": "#c4473e", "check": "#3f8a3e"}
+# Glyphs without a recipe: one fill by what the icon is about (the groups
+# below), outlined in ink; "neutral" glyphs (arrows, lists, settings) and
+# open line drawings stay in ink alone.
 GROUP_MATERIALS = {
-    "data": "blue", "raster": "green", "edit": "orange", "analysis": "purple", "view": "teal",
-    "style": "pink", "danger": "red", "neutral": "ink",
+    "data": "blue", "raster": "green", "edit": "glass", "analysis": "blue", "view": "glass",
+    "style": "yellow", "danger": "red", "neutral": "ink",
 }
 COLOR_GROUPS = {
     # Data: files, layers, databases, the web.
@@ -1732,113 +1714,112 @@ COLOR_RECIPES = {
     "file-symlink": ("paper/", "paper!", "blueS/"), "file-zip": ("paper/", "paper!", "brownS/"),
     "file-x": ("paper/", "paper!", "redS/"), "file-type-pdf": ("paper/", "paper!", "redS/"),
     "file-type-csv": ("paper/", "paper!", "greenS/"), "file-type-svg": ("paper/", "paper!", "orangeS/"),
-    "template": ("blue:blueS", "green:greenS", "ink"),
-    "report": ("paper!:ink", "ink", "ink", "gray!", "glass:ink", "ink", "ink"),
+    "template": ("blue", "green", "ink"),
+    "report": ("paper!", "ink", "ink", "gray!", "glass", "ink", "ink"),
     "device-floppy": ("blueS!", "grayS", "gray!"),
     # Magnifiers: light blue glass in an ink frame.
-    "search": ("glass:ink", "ink"), "zoom-in": ("glass:ink", "green/", "green/", "ink"),
-    "zoom-out": ("glass:ink", "red/", "ink"), "zoom-check": ("glass:ink", "ink", "greenS/"),
-    "zoom-pan": ("glass:ink", "ink", "tealS/"), "zoom-scan": ("glass:ink", "ink", "grayS/"),
-    "zoom-in-area": ("greenS/", "greenS/", "glass:ink", "ink", "grayS/"), "zoom-reset": ("ink", "ink", "tealS/"),
-    "map-pin-search": ("redS/", "redS/", "glass:ink", "ink"),
-    "world-search": ("blue!", "blueS/", "blueS/", "blueS/", "blueS/", "glass:ink", "ink"),
+    "search": ("glass", "ink"), "zoom-in": ("glass", "green/", "green/", "ink"),
+    "zoom-out": ("glass", "red/", "ink"), "zoom-check": ("glass", "ink", "greenS/"),
+    "zoom-pan": ("glass", "ink", "tealS/"), "zoom-scan": ("glass", "ink", "grayS/"),
+    "zoom-in-area": ("greenS/", "greenS/", "glass", "ink", "grayS/"), "zoom-reset": ("ink", "ink", "tealS/"),
+    "map-pin-search": ("redS/", "redS/", "glass", "ink"),
+    "world-search": ("blue!", "blueS/", "blueS/", "blueS/", "blueS/", "glass", "ink"),
     # Data: databases, tables, layers, maps, the world.
     "database": ("blue", "blue!", "blue!"),
     "database-cog": ("blue/", "blue!", "blue/", "blue!", "grayS", "grayS/"),
     "database-plus": ("blue/", "blue!", "blue/", "blue!", "greenS/"),
     "database-export": ("blue/", "blue!", "blue/", "blue!", "greenS/"),
     "database-import": ("blue/", "blue!", "blue!", "greenS/"),
-    "table": ("paper:blueS", "blueS/"), "table-options": ("paper:blueS", "blueS/"),
+    "table": ("paper", "blueS/"), "table-options": ("paper", "blueS/"),
     "stack-2": ("yellowS", "greenS/", "blueS/"), "stack-3": ("yellowS", "greenS/", "blueS/", "tealS/"),
     "map": ("green!", "greenS/"), "map-2": ("green!", "greenS/", "greenS/", "redS", "white/"),
     "world": ("blue", "blueS/"), "world-www": ("blue!", "blueS/", "blueS/", "blue!", "blueS/", "blueS/", "ink"),
     "world-cog": ("blue!", "blueS/"), "world-download": ("blue!", "blueS/"), "world-share": ("blue!", "blueS/"),
     "world-latitude": ("blue", "blueS/"), "sphere": ("blueS/", "blue"), "cube": ("blue!", "blueS/"),
     "package": ("brown", "brownS/"), "box": ("brown", "brownS/"), "packages": ("brown", "brownS/"),
-    "cloud": ("glass!:blueS",), "cloud-download": ("glass!:blueS", "greenS/"),
-    "cloud-upload": ("glass!:blueS", "blueS/"),
+    "cloud": ("glass!",), "cloud-download": ("glass!", "greenS/"),
+    "cloud-upload": ("glass!", "blueS/"),
     "network": ("blue", "blueS/", "blueS/", "blueS/", "ink", "ink", "greenS", "ink"),
     "link": ("blueS/",), "link-off": ("blueS/", "blueS/", "blueS/", "red/"),
     # Raster and nature: photos, terrain, sun, plants, water.
-    "photo": ("yellowS/", "glass:ink", "greenS!", "greenS!"),
-    "photo-down": ("yellowS/", "glass!:ink", "greenS!", "greenS!", "blueS/"),
+    "photo": ("yellowS/", "glass", "greenS!", "greenS!"),
+    "photo-down": ("yellowS/", "glass!", "greenS!", "greenS!", "blueS/"),
     "mountain": ("green!", "greenS/"), "sun": ("yellowS", "orangeS/"), "sun-high": ("yellowS", "orangeS/"),
     "plant": ("brownS!", "greenS", "greenS", "greenS/"), "droplet": ("blueS",), "droplet-half": ("blueS",),
-    "flame": ("orangeS",), "pyramid": ("yellow!:orangeS", "orangeS/"),
+    "flame": ("orangeS",), "pyramid": ("yellow!", "orangeS/"),
     # Editing: pencils, erasers, scissors, rulers, magnets, shapes.
     "pencil": ("yellowS!", "ink"), "pencil-bolt": ("yellowS!", "ink", "orangeS"),
     "pencil-cog": ("yellowS!", "ink", "grayS"), "pencil-cancel": ("yellowS!", "ink", "redS/"),
     "eraser": ("pinkS!", "ink"), "highlight": ("yellowS!", "ink", "ink", "yellowS!"),
     "cut": ("redS", "redS", "grayS/", "grayS/"),
-    "copy": ("paper:blueS", "paper!:blueS"), "clipboard": ("brown!:brownS", "gray!:grayS"),
-    "ruler": ("yellow!:orangeS", "orangeS/"), "ruler-2": ("yellow!:orangeS", "orangeS/"),
-    "ruler-3": ("yellow!:orangeS", "orangeS/"), "ruler-measure": ("yellow!:orangeS", "orangeS/"),
+    "copy": ("paper", "paper!"), "clipboard": ("brown!", "gray!"),
+    "ruler": ("yellow!", "orangeS/"), "ruler-2": ("yellow!", "orangeS/"),
+    "ruler-3": ("yellow!", "orangeS/"), "ruler-measure": ("yellow!", "orangeS/"),
     "magnet": ("redS!", "white/", "white/"),
     "polygon": ("greenS", "greenS", "greenS", "greenS", "greenS/"), "point": ("redS",),
-    "line": ("orangeS", "orangeS", "orangeS/"),
+    "line": ("blueS", "blueS", "ink"),
     # Analysis: tools, charts, maths, code, Python.
     "tool": ("grayS!",), "bolt": ("yellowS",), "puzzle": ("greenS",),
-    "calculator": ("gray!:ink", "paper!:ink", "ink"),
+    "calculator": ("gray!", "paper!", "ink"),
     "chart-bar": ("tealS", "orangeS", "blueS", "ink"), "chart-pie": ("blueS", "orangeS"),
     "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
     "brand-python": ("blueS!", "yellowS!", "blueS/", "white/", "white/"),
-    "terminal-2": ("greenS/", "greenS/", "grayS:ink"), "code": ("blueS/", "blueS/", "grayS/"),
+    "terminal-2": ("greenS/", "greenS/", "grayS"), "code": ("blueS/", "blueS/", "grayS/"),
     "filter": ("yellowS",), "filter-code": ("yellowS", "blueS/"),
     # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
-    "eye": ("blueS", "paper!:ink"), "eye-off": ("blueS/", "ink", "redS/"),
-    "eye-check": ("blueS", "paper!:ink", "greenS/"), "eye-minus": ("blueS", "paper!:ink", "redS/"),
+    "eye": ("blueS", "paper!"), "eye-off": ("blueS/", "ink", "redS/"),
+    "eye-check": ("blueS", "paper!", "greenS/"), "eye-minus": ("blueS", "paper!", "redS/"),
     "map-pin": ("paper", "redS!"), "map-pins": ("redS!", "white/", "blueS!", "white/"),
     "bookmark": ("redS",), "bookmarks": ("redS", "redS/"),
-    "clock": ("paper:ink", "ink"), "clock-play": ("paper:ink", "ink", "greenS"),
-    "calendar": ("paper!:ink", "ink", "ink", "redS/", "ink"),
-    "calendar-time": ("paper!:ink", "glass:ink", "ink", "ink", "redS/", "ink"),
-    "pointer": ("paper:ink",), "hand-stop": ("orangeS/",), "compass": ("redS!", "paper:ink", "ink"),
-    "gps": ("paper:ink", "blueS!"), "route": ("greenS", "redS", "blueS/"),
+    "clock": ("paper", "ink"), "clock-play": ("paper", "ink", "greenS"),
+    "calendar": ("paper!", "ink", "ink", "redS/", "ink"),
+    "calendar-time": ("paper!", "glass", "ink", "ink", "redS/", "ink"),
+    "pointer": ("paper",), "hand-stop": ("ink",), "compass": ("redS!", "paper", "ink"),
+    "gps": ("paper", "blueS!"), "route": ("greenS", "redS", "blueS/"),
     "player-play": ("greenS",), "player-pause": ("blueS",), "player-stop": ("redS",),
-    "player-record": ("redS",), "movie": ("gray!:ink", "ink"),
+    "player-record": ("redS",), "movie": ("gray!", "ink"),
     # Style, labels and layouts.
-    "palette": ("yellow!:ink", "redS", "blueS", "greenS"),
+    "palette": ("yellow!", "redS", "blueS", "greenS"),
     "color-swatch": ("blueS!", "yellowS!", "redS!", "white/"), "paint": ("orangeS", "grayS/", "grayS"),
-    "brush": ("purpleS!", "brownS/"), "label": ("yellow:orangeS",), "notes": ("yellow!:orangeS", "orangeS/"),
-    "message": ("ink", "ink", "blue!:blueS"), "message-dots": ("ink", "ink", "ink", "blue!:blueS"),
-    "printer": ("gray!:ink", "paper!:ink", "paper!:ink"),
-    "layout": ("blue:blueS", "green:greenS", "yellow:orangeS"), "layout-board": ("paper:ink", "ink"),
+    "brush": ("purpleS!", "brownS/"), "label": ("yellow",), "notes": ("yellow!", "orangeS/"),
+    "message": ("ink", "ink", "blue!"), "message-dots": ("ink", "ink", "ink", "blue!"),
+    "printer": ("gray!", "paper!", "paper!"),
+    "layout": ("blue", "green", "yellow"), "layout-board": ("paper", "ink"),
     "star": ("yellowS",), "heart": ("redS",), "sparkles": ("yellowS",),
-    "book": ("blue!:blueS", "blue!:blueS", "blueS/"),
+    "book": ("blue!", "blue!", "blueS/"),
     # Signs: information, help, warnings, ok, delete.
     "info-circle": ("blueS", "white", "white/"), "info-square-rounded": ("blueS", "white/"),
     "help-circle": ("blueS", "white/", "white/"), "alert-triangle": ("dark/", "yellowS", "dark/"),
-    "circle-check": ("greenS", "white/"), "shield-check": ("blue:blueS", "greenS/"),
-    "square-check": ("paper:ink", "greenS/"),
+    "circle-check": ("greenS", "white/"), "shield-check": ("blue", "greenS/"),
+    "square-check": ("paper", "greenS/"),
     "x": ("red/",), "plus": ("green/",), "minus": ("red/",),
     "trash": ("grayS/", "grayS/", "grayS/", "gray!", "grayS/"),
-    "bug": ("greenS", "greenS", "ink"), "logout": ("brown!:brownS", "redS/", "redS/"),
+    "bug": ("greenS", "greenS", "ink"), "logout": ("brown!", "redS/", "redS/"),
     # Places, people and things.
     "home": ("redS/", "yellow!", "brownS!"), "user": ("yellow", "blueS!"),
     "users": ("yellow", "blueS!", "yellow/", "blue!"), "settings": ("grayS", "paper"),
     "lock": ("yellowS", "dark/", "grayS/"), "lock-open": ("yellowS", "dark/", "grayS/"),
-    "keyboard": ("gray:ink", "ink"), "app-window": ("paper:blueS", "redS/", "yellowS/"),
-    "list-details": ("ink", "ink", "ink", "ink", "blue:blueS", "green:greenS"),
+    "keyboard": ("gray", "ink"), "app-window": ("paper", "redS/", "yellowS/"),
+    "list-details": ("ink", "ink", "ink", "ink", "blue", "green"),
 }
 
 
 def _material(name):
-    """(fill colour or None, fill open lines too, line colour or "ink") of
-    a part's material (see COLOR_MATERIALS)."""
+    """(fill colour, PAPER or None, fill open lines too, line colour or
+    "ink", colour of solid parts) of a part's material (see
+    COLOR_MATERIALS)."""
     if name == "ink":
-        return None, False, "ink"
-    fill_name, _, line_name = name.partition(":")
-    line_only = fill_name.endswith("/")
-    whole = fill_name.endswith("!")
-    fill, line = COLOR_MATERIALS[fill_name.rstrip("/!")]
-    if line_name:
-        line = "ink" if line_name == "ink" else COLOR_MATERIALS[line_name][1]
-    return (None if line_only else fill), whole, line
+        return None, False, "ink", "ink"
+    whole = name.endswith("!")
+    fill, line = COLOR_MATERIALS[name.rstrip("/!")]
+    if name.endswith("/"):
+        return None, whole, line, line
+    return fill, whole, "ink", line
 
 
 @functools.lru_cache(maxsize=None)
 def color_parts(glyph):
-    """(fill, whole, line) of each part of a glyph, in path order."""
+    """_material() of each part of a glyph, in path order."""
     count = len(_glyph_paths(glyph))
     recipe = COLOR_RECIPES.get(glyph) or (GROUP_MATERIALS[color_group(glyph)],)
     return tuple(_material(recipe[min(i, len(recipe) - 1)]) for i in range(count))
@@ -1853,23 +1834,40 @@ def _part_fill(segments, whole, attrs):
     return shapes or None
 
 
-def _color_body(glyph, ink, draw):
-    """The fills and lines of a glyph in colour: (fills, coloured lines, ink
-    parts), each drawn by draw(segments) -> path data."""
-    fills, colored, inked = [], [], []
-    for (segments, attrs), (fill, whole, line) in zip(_glyph_paths(glyph), color_parts(glyph)):
-        is_ink = line == "ink"
-        line_color = ink if is_ink else line
+def _color_body(glyph, ink, paper, draw):
+    """The fills and lines of a glyph in colour: (paper fills, fills,
+    coloured lines, ink parts), each drawn by draw(segments) -> path data;
+    paper in `paper`, ink in `ink`. Paper drawn over coloured fills (a
+    calculator's display, a printer's sheet) is cut out of them, since the
+    paper lies under the colours."""
+    papers, fills, colored, inked, cutouts = [], [], [], [], []
+    for (segments, attrs), (fill, whole, line, solid_color) in zip(_glyph_paths(glyph), color_parts(glyph)):
         solid = "fill=" in attrs
         shapes = _part_fill(segments, whole, attrs) if (fill or solid) else None
         if shapes:
             d = "".join(draw(shape) for shape in shapes)
-            path = f'<path d="{d}" fill="{line_color if solid else fill}" fill-rule="evenodd" stroke="none"/>'
-            (inked if solid and is_ink else fills).append(path)
+            if solid:
+                color = ink if solid_color == "ink" else solid_color
+            else:
+                color = paper if fill == PAPER else fill
+            path = f'<path d="{d}" fill="{color}" fill-rule="evenodd" stroke="none"/>'
+            if solid and solid_color == "ink":
+                inked.append(path)
+            elif fill == PAPER:
+                papers.append(path)
+                if fills:
+                    cutouts.append(d)
+            else:
+                fills.append(path)
         if not solid:
-            path = f'<path d="{draw(segments)}" stroke="{line_color}"/>'
-            (inked if is_ink else colored).append(path)
-    return fills, colored, inked
+            path = f'<path d="{draw(segments)}" stroke="{ink if line == "ink" else line}"/>'
+            (inked if line == "ink" else colored).append(path)
+    if cutouts:
+        fills = ['<mask id="p" maskUnits="userSpaceOnUse" x="-99" y="-99" width="999" height="999">'
+                 '<rect x="-99" y="-99" width="999" height="999" fill="#fff"/>'
+                 f'<path d="{"".join(cutouts)}" fill="#000" fill-rule="evenodd"/></mask>'
+                 f'<g mask="url(#p)">{"".join(fills)}</g>']
+    return papers, fills, colored, inked
 
 
 def render_icon_color(spec, colors, scale=SCALE):
@@ -1885,7 +1883,7 @@ def render_icon_color(spec, colors, scale=SCALE):
         offset = round(12 * (1 - scale), 3)
         transform = f"translate({offset} {offset}) scale({scale})"
     stroke = round(STROKE / scale, 3)
-    fills, colored, inked = _color_body(glyph, colors["icon"], _plain_path)
+    papers, fills, colored, inked = _color_body(glyph, colors["icon"], colors.get("paper", "#ffffff"), _plain_path)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
              'fill="none" stroke-linecap="round" stroke-linejoin="round">']
     mask = ""
@@ -1897,7 +1895,7 @@ def render_icon_color(spec, colors, scale=SCALE):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    body = "".join(fills + colored + inked)
+    body = "".join(papers + fills + colored + inked)
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
@@ -1911,11 +1909,12 @@ def render_icon_color(spec, colors, scale=SCALE):
 
 
 def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
-                         accent="#000000", danger="#000000"):
+                         accent="#000000", danger="#000000", paper="#000000"):
     """The Colourful version of render_icon_px, on the same pixel grid.
     `layer`: "color" draws the coloured parts and the badge marks (fixed
-    colours), "ink" only the ink parts, in `ink` (a mask the theme tints),
-    "all" everything (badge dots in `accent` and `danger`)."""
+    colours), "paper" the paper fills and "ink" the ink parts, in `paper`
+    and `ink` (masks the theme tints), "all" everything (badge dots in
+    `accent` and `danger`)."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
@@ -1940,8 +1939,9 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     def snap(value):
         return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
-    fills, colored, inked = _color_body(glyph, ink, lambda segments: _snapped_path(segments, place, snap, unit))
-    body = {"color": fills + colored, "ink": inked}.get(layer, fills + colored + inked)
+    papers, fills, colored, inked = _color_body(
+        glyph, ink, paper, lambda segments: _snapped_path(segments, place, snap, unit))
+    body = {"color": fills + colored, "paper": papers, "ink": inked}.get(layer, papers + fills + colored + inked)
     drawn = _num(width + STROKE_EXTRA)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
@@ -1959,7 +1959,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         )
         mask = ' mask="url(#b)"'
     parts.append(f'<g{mask} stroke-width="{drawn}">{"".join(body)}</g>')
-    if badge in BADGE_MARKS and layer != "ink":
+    if badge in BADGE_MARKS and layer in ("color", "all"):
         mark = BADGE_MARKS[badge]
         middle = snap(BADGE_CENTER * px)
         arm = max(2, round(MARK_ARM * px))

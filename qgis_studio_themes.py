@@ -175,10 +175,12 @@ def icon_colors(tokens):
         "icon": tokens["@icon"],
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
+        "paper": tokens["@icon_paper"],
     }
     # Disabled state: glyph and badge both in the theme's disabled icon
     # colour (dimmer than disabled text: clearly unavailable).
-    disabled = dict.fromkeys(colors, tokens["@icon_disabled"])
+    # Colourful icons keep their paper, faded with their colours.
+    disabled = dict(dict.fromkeys(colors, tokens["@icon_disabled"]), paper=colors["paper"])
     # Selected rows (dialog page lists, Browser, Processing Toolbox): the
     # glyph in the accent, a shade towards the text so it keeps its
     # contrast on the accent-tinted selection.
@@ -203,15 +205,17 @@ ATLAS_COLUMNS = 32
 # and the two coloured badge layers. Badges never touch the glyph (it is
 # cut away around them), so tinting each layer is exact. Masks are drawn
 # once per profile in the background (a fraction of a second per size).
-# The Colourful style adds two layers: "color", every coloured part in its
-# own colour (the same in every theme, so stored in colour), and "ink",
-# the parts drawn in the theme's icon colour (a mask, tinted when loaded).
-MASK_FORMAT = 3
+# The Colourful style adds three layers: "color", every coloured part in
+# its own colour (the same in every theme, so stored in colour), "paper",
+# the fills in the theme's paper colour, and "ink", the parts drawn in the
+# theme's icon colour (masks, tinted when loaded).
+MASK_FORMAT = 4
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
     "danger": {"icon": "none", "accent": "none", "danger": "#000000"},
     "color": None,
+    "paper": None,
     "ink": None,
 }
 # Icon styles (Settings > Icons): the theme's single-colour icons, the same
@@ -293,14 +297,16 @@ def tinted(mask, color):
 def compose_atlas(masks, colors, color=False, faded=False):
     """One state's atlas from the masks of a size: the glyph layer in the
     icon colour, the badge layers in theirs (QColor values in `colors`).
-    With `color` (the Colourful style), the colour layer as drawn (`faded`
-    for the disabled state) under the ink layer in the icon colour. A few
+    With `color` (the Colourful style), the paper layer in the paper colour
+    and the colour layer as drawn (both `faded` for the disabled state)
+    under the ink layer in the icon colour. A few
     image operations in Qt, instead of drawing every icon again."""
     if color:
         atlas = QImage(masks["color"].size(), QImage.Format.Format_ARGB32_Premultiplied)
         atlas.fill(Qt.GlobalColor.transparent)
         painter = QPainter(atlas)
         painter.setOpacity(DISABLED_COLOR_OPACITY if faded else 1.0)
+        painter.drawImage(0, 0, tinted(masks["paper"], colors["paper"]))
         painter.drawImage(0, 0, masks["color"])
         painter.setOpacity(1.0)
         painter.drawImage(0, 0, tinted(masks["ink"], colors["icon"]))
@@ -352,7 +358,7 @@ def render_masks(folder, size, width, scale, stop):
                 if layer is not None:
                     svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
                     QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
-            for layer in ("color", "ink"):
+            for layer in ("color", "paper", "ink"):
                 svg = studio_icons.render_icon_color_px(spec, size, scale, width, layer)
                 QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
             time.sleep(0)  # let the GUI thread take Python's lock if it waits
@@ -361,7 +367,7 @@ def render_masks(folder, size, width, scale, stop):
             painter.end()
     folder.mkdir(parents=True, exist_ok=True)
     # The glyph layer last: it marks the set complete (see find_masks).
-    for layer in ("accent", "danger", "color", "ink", "glyph"):
+    for layer in ("accent", "danger", "color", "paper", "ink", "glyph"):
         data = QByteArray()
         buffer = QBuffer(data)
         buffer.open(QIODevice.OpenModeFlag.WriteOnly)
