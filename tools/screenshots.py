@@ -26,7 +26,7 @@ from qgis.gui import QgsVectorLayerProperties
 from qgis.PyQt.QtCore import QPoint, Qt, QTimer
 from qgis.PyQt.QtGui import QColor, QFont
 from qgis.PyQt.QtWidgets import QApplication, QDockWidget, QToolBar
-from qgis.utils import iface
+from qgis.utils import iface, plugins
 
 from qgis_studio_themes.qgis_studio_themes import QgisStudioThemesPlugin, load_tokens
 from qgis_studio_themes.studio_tokens import is_dark, parse_color
@@ -37,6 +37,10 @@ LAYER = os.environ.get(
 )
 THEMES = [t for t in os.environ.get("STUDIO_THEMES", "").split(",") if t]
 OUT = os.environ.get("STUDIO_OUT", "screenshots")
+# Icon styles to show the main window in as well (STUDIO_ICON_STYLES=
+# "mono,duotone,classic"): <theme>_icons-<style>.png, for the README's
+# Icons section.
+ICON_STYLES = [s for s in os.environ.get("STUDIO_ICON_STYLES", "").split(",") if s]
 PANELS = ("Layers", "Browser", "LayerStyling", "ProcessingToolbox")
 
 
@@ -99,6 +103,19 @@ def capture(theme, layer):
     iface.messageBar().clearWidgets()
     pump()
     window.grab().save(os.path.join(OUT, f"{tag}.png"))
+    if ICON_STYLES:
+        plugin = plugins["qgis_studio_themes"]
+        chosen = plugin.icon_style()
+        for icon_style in ICON_STYLES:
+            plugin.set_icon_style(icon_style)
+            style(layer, theme)
+            canvas.refreshAllLayers()
+            canvas.waitWhileRendering()
+            pump(30)
+            iface.messageBar().clearWidgets()
+            pump()
+            window.grab().save(os.path.join(OUT, f"{tag}_icons-{icon_style}.png"))
+        plugin.set_icon_style(chosen)
 
     menu = window.menuBar().actions()[1].menu()
     menu.popup(window.mapToGlobal(QPoint(120, 40)))

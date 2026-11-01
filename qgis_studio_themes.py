@@ -1334,7 +1334,7 @@ class IconSwapper(QObject):
         panels show, so they are turned down at once, not fingerprinted;
         other unknown icons wait for the idle-time fingerprints (the panel
         redraws once they are ready) instead of computing them mid-paint."""
-        if self._theme is None or icon.isNull():
+        if self._theme is None or icon.isNull() or self._style == "classic":
             return None
         key = icon.cacheKey()
         name = self._names.get(key, self._UNKNOWN)
@@ -1358,7 +1358,7 @@ class IconSwapper(QObject):
         never by computing fingerprints mid-paint (see keyed_icon). Group
         rows that only repeat the provider's or the generic tool icon get a
         folder, so groups and tools are told apart at a glance."""
-        if self._theme is None:
+        if self._theme is None or self._style == "classic":
             return None
         row = (row, group)
         name = self._view_names.get(row, self._UNKNOWN)

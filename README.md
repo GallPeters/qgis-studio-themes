@@ -49,6 +49,36 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 |---|---|
 | ![Layer properties, Studio Premium Dark](docs/screenshots/premium-dark_properties.png) | ![Layer properties, Studio Pro Light](docs/screenshots/pro-light_properties.png) |
 
+## Icons
+
+Every theme comes with three icon styles. Choose one in
+**Plugins → QGIS Studio Themes → Settings → Icons**; it changes at once,
+without restarting QGIS.
+
+- **Monochrome** – the default: clean line icons in the theme's own icon
+  colour, calm and consistent across toolbars, menus and panels.
+- **Duotone** – the same icons in a colour by kind of tool, their shapes
+  softly filled: blue for data, green for raster, amber for editing, violet
+  for analysis, teal for navigation, pink for styling and red for removing.
+  Arrows, lists and settings keep the theme's icon colour, and every colour
+  is tuned for light and dark themes alike.
+- **QGIS classic** – QGIS's own icons, with the rest of the theme.
+
+Monochrome and Duotone are pixel-sharp at every screen scaling. The images
+below show Studio Pro Light in each style.
+
+**Monochrome**
+
+![Monochrome icons, Studio Pro Light](docs/screenshots/pro-light_icons-mono.png)
+
+**Duotone**
+
+![Duotone icons, Studio Pro Light](docs/screenshots/pro-light_icons-duotone.png)
+
+**QGIS classic**
+
+![QGIS classic icons, Studio Pro Light](docs/screenshots/pro-light_icons-classic.png)
+
 ## Features
 
 - **Modern icons** – over 600 QGIS icons replaced with a consistent line-icon
@@ -74,8 +104,7 @@ Layer properties dialog in Studio Premium Dark and Studio Pro Light:
 - **Three icon styles** – Monochrome (the theme's single-colour icons),
   Duotone (the same icons in a colour by kind of tool – data, raster,
   editing, analysis, navigation, styling – their shapes softly filled) or
-  QGIS classic (QGIS's own icons). Choose in **Settings → Icons**; it
-  changes at once.
+  QGIS classic (QGIS's own icons); see [Icons](#icons).
 - **Clean layout** – controls of one height, flat buttons, rounded panel
   rows, slim scrollbars, a clear focus ring and themed code editors.
 - **Typography and sizing** – the bundled Inter typeface, with compact sizes
