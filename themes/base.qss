@@ -92,8 +92,12 @@
 @icon_disabled:          mix(@bg_window, @icon, 0.40);
 @icon_accent:            @accent;
 /* Paper in Colourful icons (documents, sheets, dials): the base surface,
- * white on light themes (dark themes lift it to a soft grey sheet). */
+ * white on light themes (dark themes use a soft light grey, not glaring
+ * white, inside their dark outlines). */
 @icon_paper:             @bg_base;
+/* Outlines of Colourful icons with fills: the icon colour on light themes
+ * (dark themes draw them near black, like professional icon sets). */
+@icon_outline:           @icon;
 /* Icons in selected rows (dialog page lists, Layer Styling, Plugins,
  * Browser, Processing Toolbox): the selected text's colour, like checked
  * tool buttons, on the accent-tinted selection. */

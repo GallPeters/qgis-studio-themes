@@ -60,9 +60,10 @@ without restarting QGIS.
 - **Colourful** – the same modern icons in the manner of professional
   desktop icon sets: neutral outlines with flat fills from a small, calm
   palette, where colour means something – gold folders, blue databases and
-  floppy disks, white documents, green add and red remove marks. Outlines
-  keep the theme's icon colour and paper takes the theme's sheet colour, so
-  every icon reads on light and dark themes alike.
+  floppy disks, white documents, green add and red remove marks. Icons
+  with colours have dark outlines on every theme; line icons such as arrows
+  keep the theme's icon colour, so every icon reads on light and dark
+  themes alike.
 - **QGIS classic** – QGIS's own icons, with the rest of the theme.
 
 All three cover the whole interface – toolbars and menus, the ribbon,

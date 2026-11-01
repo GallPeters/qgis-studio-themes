@@ -1034,9 +1034,10 @@ MARK_ARM = 3.0
 
 # ---- Colourful icons --------------------------------------------------------
 # The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
-# the manner of professional desktop icon sets (ArcGIS Pro, Office): every
-# outline in the theme's icon colour ("ink": dark grey on light themes,
-# light grey on dark ones), and flat fills from one small palette, so an
+# the manner of professional desktop icon sets (ArcGIS Pro, Office): flat
+# fills from one small palette in dark outlines (@icon_outline: the icon
+# colour on light themes, near black on dark ones), and line drawings
+# without fills (arrows, lists) in the theme's icon colour ("ink"), so an
 # icon is a neutral drawing with one or two colours where they mean
 # something: a gold folder, a blue database or floppy, a green add and a
 # red delete. Paper (documents, sheets, dials) is the theme's own sheet
@@ -1825,6 +1826,10 @@ def color_parts(glyph):
     return tuple(_material(recipe[min(i, len(recipe) - 1)]) for i in range(count))
 
 
+# Stands for the ink colour in _color_body until it knows which one.
+INK_MARK = "#ink"
+
+
 def _part_fill(segments, whole, attrs):
     """The subpaths of a part to fill (None: none): its closed ones, or all
     with `whole`; a part the glyph fills itself (a dot) entirely."""
@@ -1834,10 +1839,12 @@ def _part_fill(segments, whole, attrs):
     return shapes or None
 
 
-def _color_body(glyph, ink, paper, draw):
+def _color_body(glyph, ink, paper, outline, draw):
     """The fills and lines of a glyph in colour: (paper fills, fills,
-    coloured lines, ink parts), each drawn by draw(segments) -> path data;
-    paper in `paper`, ink in `ink`. Paper drawn over coloured fills (a
+    coloured lines, ink parts, outlines), each drawn by draw(segments) ->
+    path data; paper in `paper`. The ink parts of a glyph with fills are
+    its outlines, in `outline`; a line drawing's are in `ink` (only one of
+    the two lists has parts). Paper drawn over coloured fills (a
     calculator's display, a printer's sheet) is cut out of them, since the
     paper lies under the colours."""
     papers, fills, colored, inked, cutouts = [], [], [], [], []
@@ -1847,7 +1854,7 @@ def _color_body(glyph, ink, paper, draw):
         if shapes:
             d = "".join(draw(shape) for shape in shapes)
             if solid:
-                color = ink if solid_color == "ink" else solid_color
+                color = INK_MARK if solid_color == "ink" else solid_color
             else:
                 color = paper if fill == PAPER else fill
             path = f'<path d="{d}" fill="{color}" fill-rule="evenodd" stroke="none"/>'
@@ -1860,14 +1867,18 @@ def _color_body(glyph, ink, paper, draw):
             else:
                 fills.append(path)
         if not solid:
-            path = f'<path d="{draw(segments)}" stroke="{ink if line == "ink" else line}"/>'
+            path = f'<path d="{draw(segments)}" stroke="{INK_MARK if line == "ink" else line}"/>'
             (inked if line == "ink" else colored).append(path)
+    if papers or fills:
+        outlined, inked = [part.replace(INK_MARK, outline) for part in inked], []
+    else:
+        outlined, inked = [], [part.replace(INK_MARK, ink) for part in inked]
     if cutouts:
         fills = ['<mask id="p" maskUnits="userSpaceOnUse" x="-99" y="-99" width="999" height="999">'
                  '<rect x="-99" y="-99" width="999" height="999" fill="#fff"/>'
                  f'<path d="{"".join(cutouts)}" fill="#000" fill-rule="evenodd"/></mask>'
                  f'<g mask="url(#p)">{"".join(fills)}</g>']
-    return papers, fills, colored, inked
+    return papers, fills, colored, inked, outlined
 
 
 def render_icon_color(spec, colors, scale=SCALE):
@@ -1883,7 +1894,8 @@ def render_icon_color(spec, colors, scale=SCALE):
         offset = round(12 * (1 - scale), 3)
         transform = f"translate({offset} {offset}) scale({scale})"
     stroke = round(STROKE / scale, 3)
-    papers, fills, colored, inked = _color_body(glyph, colors["icon"], colors.get("paper", "#ffffff"), _plain_path)
+    papers, fills, colored, inked, outlined = _color_body(
+        glyph, colors["icon"], colors.get("paper", "#ffffff"), colors.get("outline", colors["icon"]), _plain_path)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
              'fill="none" stroke-linecap="round" stroke-linejoin="round">']
     mask = ""
@@ -1895,7 +1907,7 @@ def render_icon_color(spec, colors, scale=SCALE):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    body = "".join(papers + fills + colored + inked)
+    body = "".join(papers + fills + colored + inked + outlined)
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
@@ -1909,12 +1921,13 @@ def render_icon_color(spec, colors, scale=SCALE):
 
 
 def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
-                         accent="#000000", danger="#000000", paper="#000000"):
+                         accent="#000000", danger="#000000", paper="#000000", outline="#000000"):
     """The Colourful version of render_icon_px, on the same pixel grid.
     `layer`: "color" draws the coloured parts and the badge marks (fixed
-    colours), "paper" the paper fills and "ink" the ink parts, in `paper`
-    and `ink` (masks the theme tints), "all" everything (badge dots in
-    `accent` and `danger`)."""
+    colours), "paper" the paper fills, "ink" the ink parts and "outline"
+    the outlines of glyphs with fills, in `paper`, `ink` and `outline`
+    (masks the theme tints), "all" everything (badge dots in `accent` and
+    `danger`)."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
@@ -1939,9 +1952,10 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     def snap(value):
         return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
-    papers, fills, colored, inked = _color_body(
-        glyph, ink, paper, lambda segments: _snapped_path(segments, place, snap, unit))
-    body = {"color": fills + colored, "paper": papers, "ink": inked}.get(layer, papers + fills + colored + inked)
+    papers, fills, colored, inked, outlined = _color_body(
+        glyph, ink, paper, outline, lambda segments: _snapped_path(segments, place, snap, unit))
+    body = {"color": fills + colored, "paper": papers, "ink": inked, "outline": outlined}.get(
+        layer, papers + fills + colored + inked + outlined)
     drawn = _num(width + STROKE_EXTRA)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
