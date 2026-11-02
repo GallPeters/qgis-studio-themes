@@ -1592,6 +1592,29 @@ def _arc_points(x1, y1, rx, ry, large, sweep, x2, y2, steps=24):
 
 
 @functools.lru_cache(maxsize=None)
+def _bounds(segments):
+    """(left, top, right, bottom) of a path's segments, in units."""
+    xs, ys = [], []
+    here = start = (12.0, 12.0)
+    for segment in segments:
+        if segment[0] == "Z":
+            here = start
+            continue
+        if segment[0] == "A":
+            points = _arc_points(*here, segment[1], segment[2], *segment[4:8])
+        elif segment[0] == "C":
+            points = [segment[1:3], segment[3:5], segment[5:7]]
+        else:
+            points = [segment[1:3]]
+        for x, y in points:
+            xs.append(x)
+            ys.append(y)
+        here = (segment[-2], segment[-1])
+        if segment[0] == "M":
+            start = here
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def _glyph_reach(name):
     """How far a glyph's lines reach from the centre (12, 12), in units."""
     reach = 0.0
@@ -1842,15 +1865,21 @@ def _part_fill(segments, whole, attrs):
 def _color_body(glyph, ink, paper, outline, draw):
     """The fills and lines of a glyph in colour: (paper fills, fills,
     coloured lines, ink parts, outlines), each drawn by draw(segments) ->
-    path data; paper in `paper`. The ink parts of a glyph with fills are
-    its outlines, in `outline`; a line drawing's are in `ink` (only one of
-    the two lists has parts). Paper drawn over coloured fills (a
+    path data; paper in `paper`. In a glyph with fills, the outlines of
+    the fills and the ink lines on them (a clock's hands) are in `outline`,
+    other ink lines (a magnifier's handle) in `ink`, like a line drawing's.
+    Paper drawn over coloured fills (a
     calculator's display, a printer's sheet) is cut out of them, since the
     paper lies under the colours."""
     papers, fills, colored, inked, cutouts = [], [], [], [], []
+    filled = []  # bounds of the fills
     for (segments, attrs), (fill, whole, line, solid_color) in zip(_glyph_paths(glyph), color_parts(glyph)):
         solid = "fill=" in attrs
         shapes = _part_fill(segments, whole, attrs) if (fill or solid) else None
+        # An ink part: whether it outlines a fill, and its bounds.
+        ink_part = (bool(shapes) and not solid, _bounds(segments))
+        if shapes and not (solid and solid_color == "ink"):
+            filled.extend(_bounds(shape) for shape in shapes)
         if shapes:
             d = "".join(draw(shape) for shape in shapes)
             if solid:
@@ -1859,7 +1888,7 @@ def _color_body(glyph, ink, paper, outline, draw):
                 color = paper if fill == PAPER else fill
             path = f'<path d="{d}" fill="{color}" fill-rule="evenodd" stroke="none"/>'
             if solid and solid_color == "ink":
-                inked.append(path)
+                inked.append((path, ink_part))
             elif fill == PAPER:
                 papers.append(path)
                 if fills:
@@ -1868,11 +1897,18 @@ def _color_body(glyph, ink, paper, outline, draw):
                 fills.append(path)
         if not solid:
             path = f'<path d="{draw(segments)}" stroke="{INK_MARK if line == "ink" else line}"/>'
-            (inked if line == "ink" else colored).append(path)
-    if papers or fills:
-        outlined, inked = [part.replace(INK_MARK, outline) for part in inked], []
-    else:
-        outlined, inked = [], [part.replace(INK_MARK, ink) for part in inked]
+            if line == "ink":
+                inked.append((path, ink_part))
+            else:
+                colored.append(path)
+
+    def on_fill(part):
+        outlines, (left, top, right, bottom) = part
+        return outlines or any(
+            left >= a - 0.5 and top >= b - 0.5 and right <= c + 0.5 and bottom <= d + 0.5 for a, b, c, d in filled)
+
+    outlined = [path.replace(INK_MARK, outline) for path, part in inked if on_fill(part)]
+    inked = [path.replace(INK_MARK, ink) for path, part in inked if not on_fill(part)]
     if cutouts:
         fills = ['<mask id="p" maskUnits="userSpaceOnUse" x="-99" y="-99" width="999" height="999">'
                  '<rect x="-99" y="-99" width="999" height="999" fill="#fff"/>'
