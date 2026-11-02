@@ -175,15 +175,12 @@ def icon_colors(tokens):
         "icon": tokens["@icon"],
         "accent": tokens["@icon_accent"],
         "danger": tokens["@danger"],
-        "paper": tokens["@icon_paper"],
-        "outline": tokens["@icon_outline"],
+        # The window colour, for Colourful icons' light or dark hues.
+        "window": tokens["@bg_window"],
     }
     # Disabled state: glyph and badge both in the theme's disabled icon
     # colour (dimmer than disabled text: clearly unavailable).
-    # Colourful icons keep their paper and outlines, faded with their
-    # colours.
-    disabled = dict(dict.fromkeys(colors, tokens["@icon_disabled"]), paper=colors["paper"],
-                    outline=colors["outline"])
+    disabled = dict(dict.fromkeys(colors, tokens["@icon_disabled"]), window=colors["window"])
     # Selected rows (dialog page lists, Browser, Processing Toolbox): the
     # glyph in the accent, a shade towards the text so it keeps its
     # contrast on the accent-tinted selection.
@@ -208,19 +205,17 @@ ATLAS_COLUMNS = 32
 # and the two coloured badge layers. Badges never touch the glyph (it is
 # cut away around them), so tinting each layer is exact. Masks are drawn
 # once per profile in the background (a fraction of a second per size).
-# The Colourful style adds four layers: "color", every coloured part in
-# its own colour (the same in every theme, so stored in colour), "paper",
-# the fills in the theme's paper colour, "outline", the outlines of icons
-# with fills, and "ink", the line drawings in the theme's icon colour
-# (masks, tinted when loaded).
-MASK_FORMAT = 5
+# The Colourful style adds a colour layer per kind of theme, light and
+# dark ("color-light", "color-dark": every coloured part in its own colour,
+# stored in colour), and "ink", the parts drawn in the theme's icon colour
+# (a mask, tinted when loaded).
+MASK_FORMAT = 6
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
     "danger": {"icon": "none", "accent": "none", "danger": "#000000"},
-    "color": None,
-    "paper": None,
-    "outline": None,
+    "color-light": None,
+    "color-dark": None,
     "ink": None,
 }
 # Icon styles (Settings > Icons): the theme's single-colour icons, the same
@@ -302,19 +297,17 @@ def tinted(mask, color):
 def compose_atlas(masks, colors, color=False, faded=False):
     """One state's atlas from the masks of a size: the glyph layer in the
     icon colour, the badge layers in theirs (QColor values in `colors`).
-    With `color` (the Colourful style), the paper layer in the paper colour,
-    the colour layer as drawn and the outline layer in the outline colour
-    (all `faded` for the disabled state) under the ink layer in the icon
-    colour. A few
+    With `color` (the Colourful style), the colour layer of the theme's kind
+    (light or dark, by its window colour) as drawn, `faded` for the
+    disabled state, under the ink layer in the icon colour. A few
     image operations in Qt, instead of drawing every icon again."""
     if color:
-        atlas = QImage(masks["color"].size(), QImage.Format.Format_ARGB32_Premultiplied)
+        layer = masks["color-dark" if colors["window"].lightness() < 128 else "color-light"]
+        atlas = QImage(layer.size(), QImage.Format.Format_ARGB32_Premultiplied)
         atlas.fill(Qt.GlobalColor.transparent)
         painter = QPainter(atlas)
         painter.setOpacity(DISABLED_COLOR_OPACITY if faded else 1.0)
-        painter.drawImage(0, 0, tinted(masks["paper"], colors["paper"]))
-        painter.drawImage(0, 0, masks["color"])
-        painter.drawImage(0, 0, tinted(masks["outline"], colors["outline"]))
+        painter.drawImage(0, 0, layer)
         painter.setOpacity(1.0)
         painter.drawImage(0, 0, tinted(masks["ink"], colors["icon"]))
     else:
@@ -365,21 +358,23 @@ def render_masks(folder, size, width, scale, stop):
                 if layer is not None:
                     svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
                     QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
-            for layer in ("color", "paper", "outline", "ink"):
-                svg = studio_icons.render_icon_color_px(spec, size, scale, width, layer)
-                QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
+            for mode in studio_icons.COLOR_MODES:
+                svg = studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode)
+                QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[f"color-{mode}"], cell)
+            svg = studio_icons.render_icon_color_px(spec, size, scale, width, "ink")
+            QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters["ink"], cell)
             time.sleep(0)  # let the GUI thread take Python's lock if it waits
     finally:
         for painter in painters.values():
             painter.end()
     folder.mkdir(parents=True, exist_ok=True)
     # The glyph layer last: it marks the set complete (see find_masks).
-    for layer in ("accent", "danger", "color", "paper", "outline", "ink", "glyph"):
+    for layer in ("accent", "danger", "color-light", "color-dark", "ink", "glyph"):
         data = QByteArray()
         buffer = QBuffer(data)
         buffer.open(QIODevice.OpenModeFlag.WriteOnly)
         # The colour layer keeps its colours; the others are masks.
-        image = images[layer] if layer == "color" else images[layer].convertToFormat(QImage.Format.Format_Alpha8)
+        image = images[layer] if layer.startswith("color") else images[layer].convertToFormat(QImage.Format.Format_Alpha8)
         if not image.save(buffer, "PNG"):
             raise OSError(f"could not encode the {layer} masks")
         buffer.close()
@@ -396,7 +391,7 @@ def load_masks(folder, size, width, scale):
         if image.isNull():
             return None
         masks[layer] = image.convertToFormat(
-            QImage.Format.Format_ARGB32_Premultiplied if layer == "color" else QImage.Format.Format_Alpha8)
+            QImage.Format.Format_ARGB32_Premultiplied if layer.startswith("color") else QImage.Format.Format_Alpha8)
     return masks
 
 
@@ -482,12 +477,13 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     folders = set()
     svgs = {}
     color = icon_style == "color"
+    mode = "dark" if is_dark(tokens["@bg_window"]) else "light"
 
     def drawing(spec, state):
         # Disabled Colourful icons are the theme's disabled single-colour
         # ones here (only shown until the pre-rendered PNGs are ready).
         if color and state != "disabled":
-            return studio_icons.render_icon_color(spec, colors[state], icon_scale)
+            return studio_icons.render_icon_color(spec, colors[state], icon_scale, mode)
         return studio_icons.render_icon(spec, colors[state], icon_scale)
 
     for name, spec in studio_icons.ICON_MAP.items() if icon_style != "classic" else ():

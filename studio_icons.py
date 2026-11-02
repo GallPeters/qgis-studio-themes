@@ -1033,127 +1033,53 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 MARK_ARM = 3.0
 
 # ---- Colourful icons --------------------------------------------------------
-# The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
-# the manner of professional desktop icon sets (ArcGIS Pro, Office): flat
-# fills from one small palette in dark outlines (@icon_outline: the icon
-# colour on light themes, near black on dark ones), and line drawings
-# without fills (arrows, lists) in the theme's icon colour ("ink"), so an
-# icon is a neutral drawing with one or two colours where they mean
-# something: a gold folder, a blue database or floppy, a green add and a
-# red delete. Paper (documents, sheets, dials) is the theme's own sheet
-# colour (@icon_paper: white on light themes, a lifted grey on dark ones),
-# so it never glares.
+# The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons):
+# calm line icons in which colour marks only what a thing is: data blue,
+# folders and files sand, maps and terrain sage, places and removal dusty
+# red, add green. Each part of a glyph (one of its paths) has a material
+# (COLOR_RECIPES) whose hue colours its line, over a faint tint of the
+# same hue. The hues are greyed, close to the theme's icon colour, in two
+# variants: deeper for light themes, lighter for dark ones. Neutral parts
+# (paper, grey bodies, frames, handles) and glyphs without a recipe keep
+# the theme's icon colour ("ink"), so most actions stay grey. Only signs
+# (info, help, warning, OK) are solid, with a light or dark mark.
 #
-# A part's material (COLOR_RECIPES): "name" fills its closed outlines with
-# the material's fill, outlined in ink; "name!" fills its open lines too
-# (closed by a straight line, as SVG does: a cylinder's band, a hill under
-# the sky); "name/" draws the line only, in the material's line colour (an
-# arrow, a cross or a plus as a coloured sign); "ink" draws only the line,
-# in ink. A part the glyph fills itself (a dot) takes the line colour.
-PAPER = "paper"
-COLOR_MATERIALS = {
-    "paper": (PAPER, "#8a939d"), "white": ("#ffffff", "#ffffff"),
-    "folder": ("#e3bd62", "#a67c1c"), "glass": ("#abc7e3", "#4f87bf"),
-    "blue": ("#90b5dc", "#4a86c4"), "blueS": ("#4f8cc9", "#4a86c4"),
-    "green": ("#a9d09c", "#3f8a3e"), "greenS": ("#62a65a", "#3f8a3e"),
-    "red": ("#eab0aa", "#c4473e"), "redS": ("#d0584f", "#b23f37"),
-    "orange": ("#f0c48f", "#c26d1f"), "orangeS": ("#e2954a", "#b8661c"),
-    "yellow": ("#f1d88c", "#a67c1c"), "yellowS": ("#e6be4a", "#a67c1c"),
-    "gray": ("#b9c0c8", "#77818c"), "grayS": ("#9aa3ad", "#5f6872"),
-    "brown": ("#d8bf98", "#8a6a43"), "brownS": ("#b08d63", "#7a5a35"),
-    "dark": ("#4a515a", "#3a4048"),
+# A part's material: "name" draws its line in the material's hue and tints
+# its closed outlines; "name!" tints its open lines too (closed by a
+# straight line, as SVG does: a cylinder's band, a hill under the sky);
+# "name/" draws the line only; "ink" draws only the line, in the theme's
+# icon colour. Names ending in S are strong: a deeper tint.
+COLOR_HUES = {
+    "light": {"blue": "#506b88", "green": "#5b755f", "red": "#915955", "amber": "#89724a",
+              "orange": "#8d6851", "purple": "#6a6485", "teal": "#527372"},
+    "dark": {"blue": "#9badc2", "green": "#a2b5a3", "red": "#c49f9c", "amber": "#c5b394",
+             "orange": "#c5a794", "purple": "#ada8c2", "teal": "#9eb6b4"},
 }
-# Hues outside the palette, kept to a few: purple and teal as blue, pink
-# as red.
-COLOR_MATERIALS.update({
-    "purple": COLOR_MATERIALS["blue"], "purpleS": COLOR_MATERIALS["blueS"],
-    "teal": COLOR_MATERIALS["glass"], "tealS": COLOR_MATERIALS["blueS"],
-    "pink": COLOR_MATERIALS["red"], "pinkS": COLOR_MATERIALS["redS"],
-})
+COLOR_MODES = tuple(COLOR_HUES)
+# Solid signs, a little lighter than the lines, and their marks ("white"
+# and "dark" materials): white on light themes, dark on dark ones.
+SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
+SIGN_HUES = {
+    "light": {"blue": "#5c7796", "green": "#648168", "red": "#9b625e", "amber": "#bfa46f"},
+    "dark": {"blue": "#95a9bf", "green": "#9db39f", "red": "#c29b97", "amber": "#c9b58f"},
+}
+SIGN_MARKS = {"light": {"white": "#ffffff", "dark": "#2b2b2b"}, "dark": {"white": "#2b2b2b", "dark": "#2b2b2b"}}
+# Tint opacity under coloured lines (normal, strong parts) per theme, and
+# under ink lines (paper, grey bodies) on every theme.
+COLOR_TINT = {"light": (0.08, 0.15), "dark": (0.10, 0.17)}
+INK_TINT = (0.06, 0.14)
+# The hue of each material ("neutral": ink).
+MATERIAL_HUES = {
+    "paper": "neutral", "gray": "neutral", "grayS": "neutral", "white": "white", "dark": "dark",
+    "folder": "amber", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
+    "glass": "blue", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
+    "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
+    "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal",
+}
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = {"plus": "#3f8a3e", "minus": "#c4473e", "check": "#3f8a3e"}
-# Glyphs without a recipe: one fill by what the icon is about (the groups
-# below), outlined in ink; "neutral" glyphs (arrows, lists, settings) and
-# open line drawings stay in ink alone.
-GROUP_MATERIALS = {
-    "data": "blue", "raster": "green", "edit": "glass", "analysis": "blue", "view": "glass",
-    "style": "yellow", "danger": "red", "neutral": "ink",
+COLOR_MARKS = {
+    mode: {"plus": hues["green"], "minus": hues["red"], "check": hues["green"]} for mode, hues in COLOR_HUES.items()
 }
-COLOR_GROUPS = {
-    # Data: files, layers, databases, the web.
-    "data": (
-        "file", "files", "file-code", "file-database", "file-export", "file-import", "file-pencil",
-        "file-settings", "file-symlink", "file-zip", "folder", "folder-open", "database", "database-cog",
-        "database-export", "database-import", "database-plus", "table", "table-options", "stack-2", "stack-3",
-        "layers-difference", "layers-intersect", "layers-subtract", "layers-union", "package", "packages", "box",
-        "box-multiple", "sql", "sql-raised", "shp-raised", "feather", "cloud", "cloud-download", "cloud-upload",
-        "world", "world-cog", "world-download", "world-latitude", "world-search", "world-share", "world-www",
-        "map", "map-2", "network", "api", "link", "column-insert-right", "column-remove", "row-insert-bottom",
-        "template", "device-floppy", "binary", "html", "antenna",
-    ),
-    # Raster and terrain: imagery, elevation, light.
-    "raster": (
-        "photo", "photo-down", "mountain", "plant", "grain", "grid-4x4", "pyramid", "sun", "sun-high",
-        "brightness-down", "brightness-up", "contrast", "droplet", "droplet-half", "flame", "wave-sine",
-        "circle-half", "grid-dots", "chart-histogram", "triangle-square-circle", "triangles",
-    ),
-    # Editing and digitizing: pens, geometry, measuring.
-    "edit": (
-        "pencil", "pencil-bolt", "pencil-cog", "eraser", "cut", "copy", "clipboard", "brush", "highlight",
-        "vector", "vector-bezier-2", "vector-spline", "vector-triangle", "transform", "rotate",
-        "rotate-clockwise", "rotate-dot", "crop", "slice", "shape", "shape-2", "magnet", "line", "line-dashed",
-        "point", "polygon", "rectangle", "oval", "backspace", "replace", "arrow-merge", "arrows-join",
-        "arrows-split", "arrows-move", "arrows-move-horizontal", "ruler", "ruler-2", "ruler-3",
-        "ruler-measure", "angle", "border-corner-rounded", "border-corner-square", "border-outer",
-        "ease-in-out-control-points", "hexagon", "hexagons", "square", "square-rounded", "squares", "circle",
-        "circles", "triangle", "circle-dot", "pin", "pinned",
-    ),
-    # Analysis and processing: tools, maths, code, charts.
-    "analysis": (
-        "tool", "math", "math-function", "calculator", "sum", "chart-arcs", "chart-area-line", "chart-bar",
-        "chart-bar-popular", "chart-dots", "chart-pie", "chart-scatter", "class-equal-count",
-        "class-equal-interval", "class-fixed-interval", "class-logarithmic", "class-natural-breaks",
-        "class-pretty-breaks", "class-std-dev", "sitemap", "hierarchy-2", "hierarchy-3", "code", "braces",
-        "brackets", "variable", "terminal-2", "brand-python", "filter", "filter-code", "cpu", "decimal",
-        "number-123", "percentage", "dice", "circles-relation", "affiliate", "list-numbers", "sort-ascending",
-        "sort-descending", "equal", "bolt", "puzzle", "hexagon-letter-q", "category",
-    ),
-    # Viewing and navigating: zoom, pan, selection, time.
-    "view": (
-        "zoom-check", "zoom-in", "zoom-in-area", "zoom-out", "zoom-pan", "zoom-reset", "zoom-scan",
-        "hand-stop", "focus-2", "focus-centered", "current-location", "navigation-north", "eye", "eye-check",
-        "eye-minus", "eye-off", "search", "map-pin", "map-pin-search", "map-pins", "gps", "radar", "bookmark",
-        "bookmarks", "clock", "clock-play", "player-pause", "player-play", "player-play-back",
-        "player-record", "player-skip-back", "player-skip-forward", "player-stop", "player-track-next",
-        "player-track-prev", "movie", "calendar", "calendar-time", "stopwatch", "cube", "sphere", "marquee-2",
-        "lasso", "lasso-polygon", "pointer", "pointer-minus", "pointer-plus", "select-all", "deselect",
-        "circle-dashed", "maximize", "arrows-maximize", "layout-sidebar", "layout-sidebar-right",
-        "app-window", "route", "compass", "target", "refresh", "history", "repeat",
-    ),
-    # Styling, labels and layouts: text, colour, print.
-    "style": (
-        "label", "abc", "text-decrease", "text-direction-ltr", "text-increase", "text-size", "typography",
-        "letter-case", "heading", "cursor-text", "message", "message-dots", "message-question",
-        "message-report", "note", "notes", "palette", "color-swatch", "color-filter", "paint", "mask", "shadow",
-        "background", "frame", "layout", "layout-board", "layout-dashboard", "layout-grid",
-        "layout-align-bottom", "layout-align-center", "layout-align-left", "layout-align-middle",
-        "layout-align-right", "layout-align-top", "layout-distribute-horizontal",
-        "layout-distribute-vertical", "printer", "report", "star", "heart", "copyright", "language",
-        "sparkles", "file-type-pdf", "file-type-svg", "file-type-csv",
-    ),
-    # Removing and warnings.
-    "danger": (
-        "trash", "x", "file-x", "bug", "alert-triangle", "circle-off", "eye-x", "pencil-cancel",
-        "barrier-block", "logout", "chart-pie-off", "clock-off", "square-off",
-    ),
-}
-_GROUP_OF = {glyph: group for group, glyphs in COLOR_GROUPS.items() for glyph in glyphs}
-
-
-def color_group(spec):
-    """What a drawing is about, for its default material ("neutral": ink):
-    by its glyph, so a badge never changes it."""
-    return _GROUP_OF.get(spec.partition("+")[0], "neutral")
 
 
 def _mark_path(mark, c, arm):
@@ -1592,29 +1518,6 @@ def _arc_points(x1, y1, rx, ry, large, sweep, x2, y2, steps=24):
 
 
 @functools.lru_cache(maxsize=None)
-def _bounds(segments):
-    """(left, top, right, bottom) of a path's segments, in units."""
-    xs, ys = [], []
-    here = start = (12.0, 12.0)
-    for segment in segments:
-        if segment[0] == "Z":
-            here = start
-            continue
-        if segment[0] == "A":
-            points = _arc_points(*here, segment[1], segment[2], *segment[4:8])
-        elif segment[0] == "C":
-            points = [segment[1:3], segment[3:5], segment[5:7]]
-        else:
-            points = [segment[1:3]]
-        for x, y in points:
-            xs.append(x)
-            ys.append(y)
-        here = (segment[-2], segment[-1])
-        if segment[0] == "M":
-            start = here
-    return min(xs), min(ys), max(xs), max(ys)
-
-
 def _glyph_reach(name):
     """How far a glyph's lines reach from the centre (12, 12), in units."""
     reach = 0.0
@@ -1725,9 +1628,9 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
 
 # ---- Colourful rendering ----------------------------------------------------
 
-# Materials of each part (path) of a glyph, in path order (see
-# COLOR_MATERIALS); the last one repeats for any further parts. Glyphs not
-# listed take GROUP_MATERIALS' one for every part.
+# Materials of each part (path) of a glyph, in path order (see Colourful
+# icons above); the last one repeats for any further parts. Glyphs not
+# listed are drawn in ink.
 COLOR_RECIPES = {
     # Files and folders: white paper, a yellow folder.
     "folder": ("folder!",), "folder-open": ("folder!",),
@@ -1828,98 +1731,55 @@ COLOR_RECIPES = {
 }
 
 
-def _material(name):
-    """(fill colour, PAPER or None, fill open lines too, line colour or
-    "ink", colour of solid parts) of a part's material (see
-    COLOR_MATERIALS)."""
+def _material(name, mode, sign):
+    """(colour, or None for the theme's icon colour; tint opacity, 0 for
+    none; tint open lines too) of a part's material on a `mode` ("light"
+    or "dark") theme, in a sign or not."""
     if name == "ink":
-        return None, False, "ink", "ink"
+        return None, 0, False
+    base = name.rstrip("/!")
     whole = name.endswith("!")
-    fill, line = COLOR_MATERIALS[name.rstrip("/!")]
-    if name.endswith("/"):
-        return None, whole, line, line
-    return fill, whole, "ink", line
+    tinted = not name.endswith("/")
+    hue = MATERIAL_HUES[base]
+    if sign and hue in ("white", "dark"):
+        return SIGN_MARKS[mode][hue], 1.0 if tinted else 0, whole
+    if sign and base.endswith("S"):
+        return SIGN_HUES[mode][hue], 1.0, whole
+    if hue in ("neutral", "white", "dark"):
+        color, tints = None, INK_TINT
+    else:
+        color, tints = COLOR_HUES[mode][hue], COLOR_TINT[mode]
+    return color, tints[base.endswith("S")] if tinted else 0, whole
 
 
-@functools.lru_cache(maxsize=None)
-def color_parts(glyph):
-    """_material() of each part of a glyph, in path order."""
-    count = len(_glyph_paths(glyph))
-    recipe = COLOR_RECIPES.get(glyph) or (GROUP_MATERIALS[color_group(glyph)],)
-    return tuple(_material(recipe[min(i, len(recipe) - 1)]) for i in range(count))
-
-
-# Stands for the ink colour in _color_body until it knows which one.
-INK_MARK = "#ink"
-
-
-def _part_fill(segments, whole, attrs):
-    """The subpaths of a part to fill (None: none): its closed ones, or all
-    with `whole`; a part the glyph fills itself (a dot) entirely."""
-    if "fill=" in attrs:
-        return [segments]
-    shapes = [sub for sub, closed in _subpaths(segments) if closed or whole]
-    return shapes or None
-
-
-def _color_body(glyph, ink, paper, outline, draw):
-    """The fills and lines of a glyph in colour: (paper fills, fills,
-    coloured lines, ink parts, outlines), each drawn by draw(segments) ->
-    path data; paper in `paper`. In a glyph with fills, the outlines of
-    the fills and the ink lines on them (a clock's hands) are in `outline`,
-    other ink lines (a magnifier's handle) in `ink`, like a line drawing's.
-    Paper drawn over coloured fills (a
-    calculator's display, a printer's sheet) is cut out of them, since the
-    paper lies under the colours."""
-    papers, fills, colored, inked, cutouts = [], [], [], [], []
-    filled = []  # bounds of the fills
-    for (segments, attrs), (fill, whole, line, solid_color) in zip(_glyph_paths(glyph), color_parts(glyph)):
-        solid = "fill=" in attrs
-        shapes = _part_fill(segments, whole, attrs) if (fill or solid) else None
-        # An ink part: whether it outlines a fill, and its bounds.
-        ink_part = (bool(shapes) and not solid, _bounds(segments))
-        if shapes and not (solid and solid_color == "ink"):
-            filled.extend(_bounds(shape) for shape in shapes)
+def _color_body(glyph, mode, ink, draw):
+    """A glyph's parts in colour as SVG, each tint under its line: (the
+    coloured parts, the ink parts in `ink`), drawn by draw(segments) ->
+    path data."""
+    recipe = COLOR_RECIPES.get(glyph, ("ink",))
+    sign = glyph in SIGNS
+    color_tints, color_lines, ink_tints, ink_lines = [], [], [], []
+    for i, (segments, attrs) in enumerate(_glyph_paths(glyph)):
+        color, opacity, whole = _material(recipe[min(i, len(recipe) - 1)], mode, sign)
+        paint = color or ink
+        lines = color_lines if color else ink_lines
+        if "fill=" in attrs:
+            # A part the glyph fills itself (a dot): solid, like its line.
+            lines.append(f'<path d="{draw(segments)}" fill="{paint}" stroke="none"/>')
+            continue
+        shapes = [sub for sub, closed in _subpaths(segments) if closed or whole] if opacity else None
         if shapes:
             d = "".join(draw(shape) for shape in shapes)
-            if solid:
-                color = INK_MARK if solid_color == "ink" else solid_color
-            else:
-                color = paper if fill == PAPER else fill
-            path = f'<path d="{d}" fill="{color}" fill-rule="evenodd" stroke="none"/>'
-            if solid and solid_color == "ink":
-                inked.append((path, ink_part))
-            elif fill == PAPER:
-                papers.append(path)
-                if fills:
-                    cutouts.append(d)
-            else:
-                fills.append(path)
-        if not solid:
-            path = f'<path d="{draw(segments)}" stroke="{INK_MARK if line == "ink" else line}"/>'
-            if line == "ink":
-                inked.append((path, ink_part))
-            else:
-                colored.append(path)
-
-    def on_fill(part):
-        outlines, (left, top, right, bottom) = part
-        return outlines or any(
-            left >= a - 0.5 and top >= b - 0.5 and right <= c + 0.5 and bottom <= d + 0.5 for a, b, c, d in filled)
-
-    outlined = [path.replace(INK_MARK, outline) for path, part in inked if on_fill(part)]
-    inked = [path.replace(INK_MARK, ink) for path, part in inked if not on_fill(part)]
-    if cutouts:
-        fills = ['<mask id="p" maskUnits="userSpaceOnUse" x="-99" y="-99" width="999" height="999">'
-                 '<rect x="-99" y="-99" width="999" height="999" fill="#fff"/>'
-                 f'<path d="{"".join(cutouts)}" fill="#000" fill-rule="evenodd"/></mask>'
-                 f'<g mask="url(#p)">{"".join(fills)}</g>']
-    return papers, fills, colored, inked, outlined
+            (color_tints if color else ink_tints).append(
+                f'<path d="{d}" fill="{paint}" fill-opacity="{_num(opacity)}" fill-rule="evenodd" stroke="none"/>'
+            )
+        lines.append(f'<path d="{draw(segments)}" stroke="{paint}"/>')
+    return color_tints + color_lines, ink_tints + ink_lines
 
 
-def render_icon_color(spec, colors, scale=SCALE):
+def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     """The Colourful version of render_icon (same glyph placement and
-    badges): each part in its material, ink parts in colors["icon"]."""
+    badges) for a `mode` theme: ink parts in colors["icon"]."""
     glyph, _, badge = spec.partition("+")
     if badge:
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
@@ -1930,8 +1790,7 @@ def render_icon_color(spec, colors, scale=SCALE):
         offset = round(12 * (1 - scale), 3)
         transform = f"translate({offset} {offset}) scale({scale})"
     stroke = round(STROKE / scale, 3)
-    papers, fills, colored, inked, outlined = _color_body(
-        glyph, colors["icon"], colors.get("paper", "#ffffff"), colors.get("outline", colors["icon"]), _plain_path)
+    colored, inked = _color_body(glyph, mode, colors["icon"], _plain_path)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
              'fill="none" stroke-linecap="round" stroke-linejoin="round">']
     mask = ""
@@ -1943,12 +1802,12 @@ def render_icon_color(spec, colors, scale=SCALE):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    body = "".join(papers + fills + colored + inked + outlined)
+    body = "".join(colored + inked)
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
         parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
-                     f'stroke="{COLOR_MARKS[mark]}" stroke-width="{STROKE}"/>')
+                     f'stroke="{COLOR_MARKS[mode][mark]}" stroke-width="{STROKE}"/>')
     elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
         parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>')
@@ -1957,13 +1816,11 @@ def render_icon_color(spec, colors, scale=SCALE):
 
 
 def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
-                         accent="#000000", danger="#000000", paper="#000000", outline="#000000"):
-    """The Colourful version of render_icon_px, on the same pixel grid.
-    `layer`: "color" draws the coloured parts and the badge marks (fixed
-    colours), "paper" the paper fills, "ink" the ink parts and "outline"
-    the outlines of glyphs with fills, in `paper`, `ink` and `outline`
-    (masks the theme tints), "all" everything (badge dots in `accent` and
-    `danger`)."""
+                         accent="#000000", danger="#000000", mode="light"):
+    """The Colourful version of render_icon_px for a `mode` theme, on the
+    same pixel grid. `layer`: "color" draws the coloured parts and the
+    badge marks (fixed colours), "ink" the ink parts in `ink` (a mask the
+    theme tints), "all" everything (badge dots in `accent` and `danger`)."""
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
@@ -1988,10 +1845,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     def snap(value):
         return min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
-    papers, fills, colored, inked, outlined = _color_body(
-        glyph, ink, paper, outline, lambda segments: _snapped_path(segments, place, snap, unit))
-    body = {"color": fills + colored, "paper": papers, "ink": inked, "outline": outlined}.get(
-        layer, papers + fills + colored + inked + outlined)
+    colored, inked = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))
+    body = {"color": colored, "ink": inked}.get(layer, colored + inked)
     drawn = _num(width + STROKE_EXTRA)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
@@ -2014,7 +1869,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         middle = snap(BADGE_CENTER * px)
         arm = max(2, round(MARK_ARM * px))
         cap = "round" if mark == "check" else "square"
-        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mark]}" '
+        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
                      f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
     elif badge and badge not in BADGE_MARKS and layer == "all":
         fill = danger if badge == "x" else accent
