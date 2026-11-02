@@ -71,17 +71,11 @@ attribute form – with the same icons in Monochrome and Colourful. Both are
 pixel-sharp at every screen scaling. The images below show Studio Pro
 Light in each style.
 
-**Monochrome**
-
-![Monochrome icons, Studio Pro Light](docs/screenshots/pro-light_icons-mono.png)
-
-**Colourful**
-
-![Colourful icons, Studio Pro Light](docs/screenshots/pro-light_icons-color.png)
-
-**QGIS classic**
-
-![QGIS classic icons, Studio Pro Light](docs/screenshots/pro-light_icons-classic.png)
+| Monochrome | Colourful |
+|---|---|
+| ![Monochrome icons, Studio Pro Light](docs/screenshots/pro-light_icons-mono.png) | ![Colourful icons, Studio Pro Light](docs/screenshots/pro-light_icons-color.png) |
+| **QGIS classic** | |
+| ![QGIS classic icons, Studio Pro Light](docs/screenshots/pro-light_icons-classic.png) | |
 
 ## Features
 
