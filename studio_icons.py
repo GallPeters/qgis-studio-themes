@@ -1033,53 +1033,55 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 MARK_ARM = 3.0
 
 # ---- Colourful icons --------------------------------------------------------
-# The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons):
-# calm line icons in which colour marks only what a thing is: data blue,
-# folders and files sand, maps and terrain sage, places and removal dusty
-# red, add green. Each part of a glyph (one of its paths) has a material
-# (COLOR_RECIPES) whose hue colours its line, over a faint tint of the
-# same hue. The hues are greyed, close to the theme's icon colour, in two
-# variants: deeper for light themes, lighter for dark ones. Neutral parts
-# (paper, grey bodies, frames, handles) and glyphs without a recipe keep
-# the theme's icon colour ("ink"), so most actions stay grey. Only signs
-# (info, help, warning, OK) are solid, with a light or dark mark.
+# The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
+# the manner of professional colour icon sets (Fluent, Office, ArcGIS Pro):
+# objects have solid bodies in medium tones with a deeper edge of their own
+# hue: gold folders and boxes, blue databases, floppy disks and globes,
+# green maps and terrain, red pins, bookmarks and erasers. Each part of a
+# glyph (one of its paths) has a material (COLOR_RECIPES). Actions (zoom,
+# pan, settings) and glyphs without a recipe keep the theme's icon colour
+# ("ink"), with at most one coloured detail. Documents are white sheets on
+# light themes and soft grey ones on dark themes, the lines on them dark.
+# The medium tones read on light and dark windows alike.
 #
-# A part's material: "name" draws its line in the material's hue and tints
-# its closed outlines; "name!" tints its open lines too (closed by a
-# straight line, as SVG does: a cylinder's band, a hill under the sky);
+# A part's material: "name" fills its closed outlines with the hue's light
+# body (strong names, ending in S, and folders: its medium body) and draws
+# its line in the hue's edge; "name!" fills its open lines too (closed by
+# a straight line, as SVG does: a cylinder's band, a hill under the sky);
 # "name/" draws the line only; "ink" draws only the line, in the theme's
-# icon colour. Names ending in S are strong: a deeper tint.
-COLOR_HUES = {
-    "light": {"blue": "#506b88", "green": "#5b755f", "red": "#915955", "amber": "#89724a",
-              "orange": "#8d6851", "purple": "#6a6485", "teal": "#527372"},
-    "dark": {"blue": "#9badc2", "green": "#a2b5a3", "red": "#c49f9c", "amber": "#c5b394",
-             "orange": "#c5a794", "purple": "#ada8c2", "teal": "#9eb6b4"},
+# icon colour.
+COLOR_HUES = {  # (light body, medium body, edge)
+    "blue": ("#9cc0e6", "#5b93cf", "#336da6"),
+    "green": ("#a8d39b", "#62a862", "#3e7d40"),
+    "red": ("#eeaaa3", "#d0645b", "#a3463f"),
+    "amber": ("#f2cf72", "#dfa940", "#a57a20"),
+    "orange": ("#f2b88a", "#dc8c4c", "#a96427"),
+    "purple": ("#c0b0e6", "#8d76cc", "#634ca3"),
+    "teal": ("#97cfc8", "#46a398", "#2c7870"),
+    "neutral": ("#d6dbe1", "#9aa3ad", "#6b7480"),
 }
-COLOR_MODES = tuple(COLOR_HUES)
-# Solid signs, a little lighter than the lines, and their marks ("white"
-# and "dark" materials): white on light themes, dark on dark ones.
+# Paper (fill, edge) on light and dark themes, and the colour of ink lines
+# on paper on dark themes (a clock's hands), where the theme's light ink
+# would vanish.
+COLOR_MODES = ("light", "dark")
+PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
+PAPER_INK = "#3b4148"
+# A magnifier's light glass, in an ink frame.
+GLASS = "#c6dcf1"
+# Signs (info, help, warning, OK): solid, in the hue's medium body, with a
+# white (or dark) mark.
 SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
-SIGN_HUES = {
-    "light": {"blue": "#5c7796", "green": "#648168", "red": "#9b625e", "amber": "#bfa46f"},
-    "dark": {"blue": "#95a9bf", "green": "#9db39f", "red": "#c29b97", "amber": "#c9b58f"},
-}
-SIGN_MARKS = {"light": {"white": "#ffffff", "dark": "#2b2b2b"}, "dark": {"white": "#2b2b2b", "dark": "#2b2b2b"}}
-# Tint opacity under coloured lines (normal, strong parts) per theme, and
-# under ink lines (paper, grey bodies) on every theme.
-COLOR_TINT = {"light": (0.08, 0.15), "dark": (0.10, 0.17)}
-INK_TINT = (0.06, 0.14)
-# The hue of each material ("neutral": ink).
+DARK_MARK = "#33383e"
+# The hue of each material.
 MATERIAL_HUES = {
-    "paper": "neutral", "gray": "neutral", "grayS": "neutral", "white": "white", "dark": "dark",
+    "paper": "paper", "gray": "neutral", "grayS": "neutral", "white": "white", "dark": "dark",
     "folder": "amber", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
-    "glass": "blue", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
+    "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = {
-    mode: {"plus": hues["green"], "minus": hues["red"], "check": hues["green"]} for mode, hues in COLOR_HUES.items()
-}
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#4f9a4f", "minus": "#c8554d", "check": "#4f9a4f"})
 
 
 def _mark_path(mark, c, arm):
@@ -1732,49 +1734,78 @@ COLOR_RECIPES = {
 
 
 def _material(name, mode, sign):
-    """(colour, or None for the theme's icon colour; tint opacity, 0 for
-    none; tint open lines too) of a part's material on a `mode` ("light"
+    """(fill colour or None, line colour or None for the theme's icon
+    colour, fill open lines too) of a part's material on a `mode` ("light"
     or "dark") theme, in a sign or not."""
     if name == "ink":
-        return None, 0, False
+        return None, None, False
     base = name.rstrip("/!")
     whole = name.endswith("!")
-    tinted = not name.endswith("/")
+    line_only = name.endswith("/")
     hue = MATERIAL_HUES[base]
-    if sign and hue in ("white", "dark"):
-        return SIGN_MARKS[mode][hue], 1.0 if tinted else 0, whole
-    if sign and base.endswith("S"):
-        return SIGN_HUES[mode][hue], 1.0, whole
-    if hue in ("neutral", "white", "dark"):
-        color, tints = None, INK_TINT
-    else:
-        color, tints = COLOR_HUES[mode][hue], COLOR_TINT[mode]
-    return color, tints[base.endswith("S")] if tinted else 0, whole
+    if hue == "white":
+        return (None if line_only else "#ffffff"), "#ffffff", whole
+    if hue == "dark":
+        return None, DARK_MARK, whole
+    if hue == "paper":
+        fill, edge = PAPER[mode]
+        return (None if line_only else fill), edge, whole
+    if hue == "glass":
+        return (None if line_only else GLASS), None, whole
+    light, medium, edge = COLOR_HUES[hue]
+    if line_only:
+        return None, medium if mode == "dark" else edge, whole
+    if sign:
+        return medium, medium, whole
+    return (medium if base.endswith("S") or base == "folder" else light), edge, whole
+
+
+def _area(segments):
+    """The area of a path's bounding box, in square units."""
+    xs, ys = [], []
+    here = start = (12.0, 12.0)
+    for segment in segments:
+        if segment[0] == "Z":
+            here = start
+            continue
+        if segment[0] == "A":
+            points = _arc_points(*here, segment[1], segment[2], *segment[4:8])
+        elif segment[0] == "C":
+            points = [segment[1:3], segment[3:5], segment[5:7]]
+        else:
+            points = [segment[1:3]]
+        for x, y in points:
+            xs.append(x)
+            ys.append(y)
+        here = (segment[-2], segment[-1])
+        if segment[0] == "M":
+            start = here
+    return (max(xs) - min(xs)) * (max(ys) - min(ys)) if xs else 0.0
 
 
 def _color_body(glyph, mode, ink, draw):
-    """A glyph's parts in colour as SVG, each tint under its line: (the
-    coloured parts, the ink parts in `ink`), drawn by draw(segments) ->
-    path data."""
+    """A glyph's parts in colour as SVG: (the coloured parts, the ink parts
+    in `ink`), drawn by draw(segments) -> path data. Every fill comes
+    first, the largest first (a body under its window), then the lines."""
     recipe = COLOR_RECIPES.get(glyph, ("ink",))
     sign = glyph in SIGNS
-    color_tints, color_lines, ink_tints, ink_lines = [], [], [], []
+    # Ink lines on paper on dark themes: dark, in the colour layer.
+    on_paper = PAPER_INK if mode == "dark" and any(m.rstrip("/!") == "paper" for m in recipe) else None
+    fills, colored, inked = [], [], []
     for i, (segments, attrs) in enumerate(_glyph_paths(glyph)):
-        color, opacity, whole = _material(recipe[min(i, len(recipe) - 1)], mode, sign)
-        paint = color or ink
-        lines = color_lines if color else ink_lines
+        fill, line, whole = _material(recipe[min(i, len(recipe) - 1)], mode, sign)
+        line = line or on_paper
+        lines = colored if line else inked
         if "fill=" in attrs:
             # A part the glyph fills itself (a dot): solid, like its line.
-            lines.append(f'<path d="{draw(segments)}" fill="{paint}" stroke="none"/>')
+            lines.append(f'<path d="{draw(segments)}" fill="{fill or line or ink}" stroke="none"/>')
             continue
-        shapes = [sub for sub, closed in _subpaths(segments) if closed or whole] if opacity else None
-        if shapes:
-            d = "".join(draw(shape) for shape in shapes)
-            (color_tints if color else ink_tints).append(
-                f'<path d="{d}" fill="{paint}" fill-opacity="{_num(opacity)}" fill-rule="evenodd" stroke="none"/>'
-            )
-        lines.append(f'<path d="{draw(segments)}" stroke="{paint}"/>')
-    return color_tints + color_lines, ink_tints + ink_lines
+        if fill:
+            for shape, closed in _subpaths(segments):
+                if closed or whole:
+                    fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="{fill}" stroke="none"/>'))
+        lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"/>')
+    return [path for _, _, path in sorted(fills)] + colored, inked
 
 
 def render_icon_color(spec, colors, scale=SCALE, mode="light"):
