@@ -6,6 +6,7 @@ studio_icons.py) plus the theme's own themes/<folder>/variables.qss.
 Built themes live in the profile's themes folder, which QGIS also searches
 for theme icons, so dialogs opened later pick up the modern icons natively.
 """
+import concurrent.futures
 import ctypes
 import functools
 import hashlib
@@ -28,7 +29,7 @@ from qgis.PyQt.QtCore import (
 )
 from qgis.PyQt.QtGui import (
     QAction, QBrush, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
-    QPixmap, QRegion, QStandardItemModel,
+    QPixmap, QPixmapCache, QRegion, QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
@@ -54,7 +55,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "29"
+BUILD_FORMAT = "30"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -395,11 +396,16 @@ def load_masks(folder, size, width, scale):
     return masks
 
 
+# Threads writing a theme's icon files (see build_theme).
+WRITE_THREADS = 8
+
+
 def write_if_changed(path, text, written):
     """Write a build file unless it already holds `text`: an upgrade then
     rewrites only what changed (reading is much cheaper than writing), and
-    a file cut short by a crash is repaired. Adds `path` to `written`."""
-    data = text.encode("utf-8")
+    a file cut short by a crash is repaired. Adds `path` to `written`.
+    `text` may also be bytes."""
+    data = text if isinstance(text, bytes) else text.encode("utf-8")
     written.add(path)
     try:
         if path.read_bytes() == data:
@@ -407,6 +413,18 @@ def write_if_changed(path, text, written):
     except OSError:
         pass
     path.write_bytes(data)
+
+
+def classic_icon(name):
+    """QGIS's own drawing of an icon of its default theme (bytes), None if
+    it has none. Reading Qt resources is safe in any thread."""
+    resource = QFile(f":/images/themes/default/{name}")
+    if not resource.open(QIODevice.OpenModeFlag.ReadOnly):
+        return None
+    try:
+        return bytes(resource.readAll())
+    finally:
+        resource.close()
 
 
 def build_stamp(sources):
@@ -435,17 +453,26 @@ def prerender_masks(folders, sizes, scale, stop):
                 return False
     except OSError:
         return False
+    prune_masks(folders[-1])
     return True
+
+
+def prune_masks(folder):
+    """Delete the masks of other plugin versions next to `folder`: each
+    version draws its own set, and nothing else ever removes them."""
+    for other in folder.parent.iterdir():
+        if other.is_dir() and other != folder:
+            shutil.rmtree(other, ignore_errors=True)
 
 
 def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
                 icon_scale=studio_icons.SCALE, icon_style="mono"):
     """Write the resolved stylesheet and all icons for one theme into
-    `target`, in `icon_style` (ICON_STYLES; "classic" writes none, so QGIS
-    finds its own); style.qss gets the real stylesheet only when `active` (see
+    `target`, in `icon_style` (ICON_STYLES; "classic" writes QGIS's own);
+    style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
     startup costs only a few stat() calls; a rebuild rewrites only the
-    files whose content changed. Thread-safe (no Qt calls). Returns True
+    files whose content changed. Thread-safe (no GUI calls). Returns True
     when it (re)built the theme. `shared_stamp` must name the icon style."""
     stamp = build_stamp([THEMES_DIR / folder / "variables.qss"]) + shared_stamp
     stamp_file = target / STAMP
@@ -486,6 +513,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
             return studio_icons.render_icon_color(spec, colors[state], icon_scale, mode)
         return studio_icons.render_icon(spec, colors[state], icon_scale)
 
+    pending = []
     for name, spec in studio_icons.ICON_MAP.items() if icon_style != "classic" else ():
         path = icons / icon_file(name)
         if path.parent not in folders:
@@ -498,8 +526,25 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
                 if state_file.parent not in folders:
                     state_file.parent.mkdir(parents=True, exist_ok=True)
                     folders.add(state_file.parent)
-                write_if_changed(state_file, drawing(spec, state), written)
-        write_if_changed(path, svgs[spec], written)
+                pending.append((state_file, drawing(spec, state)))
+        pending.append((path, svgs[spec]))
+    if icon_style == "classic":
+        # QGIS's own icons, as files: QGIS keeps every icon it loaded from
+        # this folder by its path until it restarts, and would show those
+        # blank once the files were gone (after a switch from another style).
+        for name in studio_icons.ICON_MAP:
+            data = classic_icon(name) if name.endswith(".svg") else None
+            if data is not None:
+                path = icons / name
+                if path.parent not in folders:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    folders.add(path.parent)
+                pending.append((path, data))
+    # About 2,000 small files, each costing mostly the wait for the file
+    # system (and a virus scanner), not Python: written side by side.
+    with concurrent.futures.ThreadPoolExecutor(WRITE_THREADS) as pool:
+        for _ in pool.map(lambda job: write_if_changed(*job, written), pending):
+            pass
     # Icons of names no longer mapped (or of another style) would still be
     # found by QGIS.
     for root, dirs, files in os.walk(icons):
@@ -766,9 +811,12 @@ class IconSwapper(QObject):
         self._mask_folders = mask_folders(profile_masks) if profile_masks is not None else ()
         self._scale = studio_icons.SCALE
         self._colors = None
-        # The icon style (ICON_STYLES): "classic" swaps no icon, the swapper
-        # still doing its other work (checkboxes, page lists, dialogs).
+        # The icon style (ICON_STYLES): "classic" swaps only icons QGIS
+        # looked up by name, for its built-in ones (see _replacement), the
+        # swapper still doing its other work (checkboxes, page lists).
         self._style = "mono"
+        # QGIS's built-in icons by name, for the classic style.
+        self._classics = {}
         self._swapped = []
         self._watched = {}
         self._models = {}
@@ -1277,9 +1325,15 @@ class IconSwapper(QObject):
         needs the (slower) data comparison and `deferred` is set. `slot`
         (see _slot) remembers what the icon in that place turned out to be:
         only for icons without pixmaps, which the comparison fingerprints."""
-        if icon.isNull() or self._style == "classic":
+        if icon.isNull():
             return None
         key = icon.cacheKey()
+        if self._style == "classic":
+            # QGIS's own icon, from its resources: the copy QGIS keeps in
+            # its cache can still show the previous style's drawing after a
+            # switch at runtime. Only icons QGIS looked up by name.
+            name = self._base_names.get(key)
+            return None if name is None else self._classic_icon(name)
         name = self._names.get(key, self._UNKNOWN)
         if name is self._UNKNOWN:
             if slot is not None and not icon.availableSizes():
@@ -1392,6 +1446,13 @@ class IconSwapper(QObject):
             return
         view.setItemDelegate(delegate)
         self._delegates[id(view)] = (view, original, delegate)
+
+    def _classic_icon(self, name):
+        """QGIS's built-in icon for a QGIS icon name, None if it has none."""
+        if name not in self._classics:
+            path = f":/images/themes/default/{name}"
+            self._classics[name] = QIcon(path) if QFile.exists(path) else None
+        return self._classics[name]
 
     def _icon(self, name):
         """Our icon for a QGIS icon name, in the active theme."""
@@ -2750,7 +2811,8 @@ class QgisStudioThemesPlugin:
         """Show `style`'s icons at once: the active theme is rebuilt in it
         (the others when next shown), its icons swapped again from QGIS's
         own and the ribbon's pages rebuilt."""
-        if style not in ICON_STYLES or style == self.icon_style():
+        previous = self.icon_style()
+        if style not in ICON_STYLES or style == previous:
             return
         QgsSettings().setValue(ICON_STYLE_SETTING, style)
         if self._stamp_base is None:
@@ -2761,9 +2823,19 @@ class QgisStudioThemesPlugin:
             return
         name = self._studio_themes()[theme][0]
         if not self._build(name):
+            # Keep the style shown (the log has the error).
+            QgsSettings().setValue(ICON_STYLE_SETTING, previous)
+            self._shared_stamp = self._stamp_base + f"|icons-{previous}"
+            self.iface.messageBar().pushMessage(
+                "Studio Themes", "Could not change the icon style; see the QGIS Studio Themes log.",
+                Qgis.MessageLevel.Warning, 10,
+            )
             return
         # QGIS caches the icons it loaded from the theme folder: cleared by
-        # applying the theme again, the plugin following in _sync.
+        # applying the theme again, the plugin following in _sync. Those
+        # it keeps by path (until it restarts) read the new files, once Qt
+        # forgets the pixmaps it drew from the old ones.
+        QPixmapCache.clear()
         self._icons.restore()
         self._active = None
         QgsApplication.setUITheme(theme)

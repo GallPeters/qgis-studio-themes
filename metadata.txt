@@ -17,7 +17,7 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.3 (01.11.2026):
+     ** v1.3 (02.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
           - Monochrome: the theme's single-colour icons, as before.
           - Colourful: the same icons in the manner of professional colour icon sets such as Fluent and ArcGIS Pro: objects have solid bodies in medium tones with a deeper edge, such as gold folders, blue databases and floppy disks, green maps and red pins.
@@ -29,6 +29,8 @@ changelog=
           - Newly covered: the layout designer's items, attribute form widgets, shape tools, layer indicators, tasks, certificates, the console and the georeferencer.
           - The icon style changes at once, without restarting QGIS.
           - Every icon style stays pixel-sharp and as fast as before.
+          - Themes are built faster, so changing the theme or the icon style takes less time.
+          - Icon images left by earlier plugin versions are removed from the profile.
 
      ** v1.2 (29.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.

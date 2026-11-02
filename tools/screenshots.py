@@ -182,7 +182,14 @@ def run():
     for theme in THEMES or QgsApplication.applicationThemeRegistry().themes():
         if theme.removeprefix("Studio ") in QgisStudioThemesPlugin.THEMES:
             capture(theme, layer)
-    QgsApplication.exit()
+    leave(0)
+
+
+def leave(code):
+    """Quit at once: every image is written by now, and QGIS's own
+    shutdown from a --code script can crash (an access violation in its
+    teardown, after the images are saved)."""
+    os._exit(code)  # pylint: disable=protected-access
 
 
 def safe_run():
@@ -192,7 +199,7 @@ def safe_run():
         os.makedirs(OUT, exist_ok=True)
         with open(os.path.join(OUT, "error.txt"), "w", encoding="utf-8") as handle:
             traceback.print_exc(file=handle)
-        QgsApplication.exit(1)
+        leave(1)
 
 
 QTimer.singleShot(5000, safe_run)
