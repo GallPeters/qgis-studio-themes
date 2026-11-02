@@ -55,7 +55,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "30"
+BUILD_FORMAT = "31"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -210,7 +210,7 @@ ATLAS_COLUMNS = 32
 # dark ("color-light", "color-dark": every coloured part in its own colour,
 # stored in colour), and "ink", the parts drawn in the theme's icon colour
 # (a mask, tinted when loaded).
-MASK_FORMAT = 7
+MASK_FORMAT = 8
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},

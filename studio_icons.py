@@ -1130,7 +1130,33 @@ def unique_icons():
 # - feather (SpatiaLite): Tabler's three barbs, small steps along the
 #   quill, blurred together at toolbar sizes; here without the middle one,
 #   and the quill only below the vane.
+# Globes leaving a corner for their symbol (gear, arrow, magnifier): Tabler
+# draws their outline as one three-quarter arc, which the pixel snapping
+# can only move (see _snapped_path), a pixel off the latitude lines ending
+# on it; a half and a quarter circle are fitted to their snapped ends.
+GLOBE_OUTLINE = '<path d="M21 12a9 9 0 0 0 -18 0a9 9 0 0 0 9 9"/>'
 CUSTOM_GLYPHS = {
+    "world-cog": GLOBE_OUTLINE + (
+        '<path d="M3.6 9h16.8"/><path d="M3.6 15h8.9"/><path d="M11.5 3a17 17 0 0 0 0 18"/>'
+        '<path d="M12.5 3a16.992 16.992 0 0 1 2.522 10.376"/>'
+        '<path d="M17.001 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M19.001 15.5v1.5"/>'
+        '<path d="M19.001 21v1.5"/><path d="M22.032 17.25l-1.299 .75"/><path d="M17.27 20l-1.3 .75"/>'
+        '<path d="M15.97 17.25l1.3 .75"/><path d="M20.733 20l1.3 .75"/>'
+    ),
+    "world-download": GLOBE_OUTLINE + (
+        '<path d="M3.6 9h16.8"/><path d="M3.6 15h8.4"/><path d="M11.578 3a17 17 0 0 0 0 18"/>'
+        '<path d="M12.5 3c1.719 2.755 2.5 5.876 2.5 9"/><path d="M18 14v7m-3 -3l3 3l3 -3"/>'
+    ),
+    "world-search": GLOBE_OUTLINE + (
+        '<path d="M3.6 9h16.8"/><path d="M3.6 15h7.9"/><path d="M11.5 3a17 17 0 0 0 0 18"/>'
+        '<path d="M12.5 3a16.984 16.984 0 0 1 2.574 8.62"/>'
+        '<path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M20.2 20.2l1.8 1.8"/>'
+    ),
+    "world-share": GLOBE_OUTLINE + (
+        '<path d="M3.6 9h16.8"/><path d="M3.6 15h9.4"/><path d="M11.5 3a17 17 0 0 0 0 18"/>'
+        '<path d="M12.5 3a16.991 16.991 0 0 1 2.529 10.294"/><path d="M16 22l5 -5"/>'
+        '<path d="M21 21.5v-4.5h-4.5"/>'
+    ),
     # Playing backwards (Temporal Controller): Tabler's play, mirrored.
     "player-play-back": '<path d="M17 4v16l-13 -8l13 -8"/>',
     # Drawn after Tabler's glyphs of these names (same grid and style), for
@@ -1251,6 +1277,8 @@ CUSTOM_GLYPHS = {
 
 @functools.lru_cache(maxsize=None)
 def _glyph_body(name):
+    if name.startswith(COLOR_PREFIX):
+        return COLOR_GLYPHS[name[len(COLOR_PREFIX):]]
     if name in CUSTOM_GLYPHS:
         return CUSTOM_GLYPHS[name]
     svg = (GLYPHS_DIR / f"{name}.svg").read_text(encoding="utf-8")
@@ -1522,8 +1550,14 @@ def _arc_points(x1, y1, rx, ry, large, sweep, x2, y2, steps=24):
 @functools.lru_cache(maxsize=None)
 def _glyph_reach(name):
     """How far a glyph's lines reach from the centre (12, 12), in units."""
+    return _paths_reach(_glyph_paths(name))
+
+
+def _paths_reach(paths):
+    """How far the lines of (segments, attributes) paths reach from the
+    centre (12, 12), in units."""
     reach = 0.0
-    for segments, _ in _glyph_paths(name):
+    for segments, _ in paths:
         here = start = (12.0, 12.0)
         for segment in segments:
             if segment[0] == "Z":
@@ -1694,7 +1728,7 @@ COLOR_RECIPES = {
     "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
     "brand-python": ("blueS!", "yellowS!", "blueS/", "white/", "white/"),
     "terminal-2": ("greenS/", "greenS/", "grayS"), "code": ("blueS/", "blueS/", "grayS/"),
-    "filter": ("yellowS",), "filter-code": ("yellowS", "blueS/"),
+    "filter": ("grayS",), "filter-code": ("grayS", "blueS/"),
     # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
     "eye": ("blueS", "paper!"), "eye-off": ("blueS/", "ink", "redS/"),
     "eye-check": ("blueS", "paper!", "greenS/"), "eye-minus": ("blueS", "paper!", "redS/"),
@@ -1708,7 +1742,7 @@ COLOR_RECIPES = {
     "player-play": ("greenS",), "player-pause": ("blueS",), "player-stop": ("redS",),
     "player-record": ("redS",), "movie": ("gray!", "ink"),
     # Style, labels and layouts.
-    "palette": ("yellow!", "redS", "blueS", "greenS"),
+    "palette": ("paper!", "redS", "blueS", "greenS"),
     "color-swatch": ("blueS!", "yellowS!", "redS!", "white/"), "paint": ("orangeS", "grayS/", "grayS"),
     "brush": ("purpleS!", "brownS/"), "label": ("yellow",), "notes": ("yellow!", "orangeS/"),
     "message": ("ink", "ink", "blue!"), "message-dots": ("ink", "ink", "ink", "blue!"),
@@ -1717,7 +1751,7 @@ COLOR_RECIPES = {
     "star": ("yellowS",), "heart": ("redS",), "sparkles": ("yellowS",),
     "book": ("blue!", "blue!", "blueS/"),
     # Signs: information, help, warnings, ok, delete.
-    "info-circle": ("blueS", "white", "white/"), "info-square-rounded": ("blueS", "white/"),
+    "info-circle": ("blueS", "white", "white/"), "info-square-rounded": ("white/", "white/", "blueS"),
     "help-circle": ("blueS", "white/", "white/"), "alert-triangle": ("dark/", "yellowS", "dark/"),
     "circle-check": ("greenS", "white/"), "shield-check": ("blue", "greenS/"),
     "square-check": ("paper", "greenS/"),
@@ -1731,6 +1765,146 @@ COLOR_RECIPES = {
     "keyboard": ("gray", "ink"), "app-window": ("paper", "redS/", "yellowS/"),
     "list-details": ("ink", "ink", "ink", "ink", "blue", "green"),
 }
+
+# The Colourful drawings of the objects seen most, in the manner of QGIS's
+# own icons and professional sets: square corners, straight edges and small
+# real parts (a floppy's shutter and label, a document's lines of text, a
+# table's header row), on the same 24-unit grid. (body, materials), the
+# materials replacing the line drawing's recipe; Monochrome keeps the line
+# drawings. Parts lie back to front: a sheet behind another is drawn only
+# where it shows, as every fill is drawn under every line.
+_COLOR_DRAWINGS = {
+    # Save: a floppy with a metal shutter and its slot, a label with lines.
+    "device-floppy": ('<path d="M4 3h13l4 4v14h-17z"/><path d="M8 3h8v6h-8z"/><path d="M13 4.5v3"/>'
+                      '<path d="M7 13h10v8h-10z"/><path d="M9 16h6M9 18.5h6"/>',
+                      ("blueS", "gray", "grayS/", "paper", "ink")),
+    # Save As: a document with an arrow out.
+    "file-export": ('<path d="M4 2h10l4 4v16h-14z"/><path d="M14 2v4h4z"/><path d="M7 10h7M7 13h5"/>'
+                    '<path d="M11 17h10M18 14l3 3l-3 3"/>', ("paper", "gray", "ink", "blueS/")),
+    # Folders: a back with its tab and a front; open, the front tilted.
+    "folder": ('<path d="M2 4h7l2 2h11v14h-20z"/><path d="M2 9h20v11h-20z"/>', ("folder", "folder")),
+    "folder-open": ('<path d="M2 4h7l2 2h9v4h-18z"/><path d="M2 20v-16h0"/><path d="M2 20l3.5 -10h17.5l-3.5 10z"/>',
+                    ("brown", "brown", "folder")),
+    # Documents: a folded corner and lines of text.
+    "file": ('<path d="M5 2h10l5 5v15h-15z"/><path d="M15 2v5h5z"/><path d="M8 11h9M8 14h9M8 17h6"/>',
+             ("paper", "gray", "ink")),
+    "files": ('<path d="M8 6v-4h9l4 4v12h-5v-8l-4 -4z"/><path d="M3 6h9l4 4v12h-13z"/><path d="M12 6v4h4z"/>'
+              '<path d="M6 14h7M6 17h7"/>', ("paper", "paper", "gray", "ink")),
+    "copy": ('<path d="M8 8v-6h12v13h-4v-7z"/><path d="M4 8h12v14h-12z"/><path d="M7 12h6M7 15h6M7 18h4"/>',
+             ("paper", "paper", "ink")),
+    "clipboard": ('<path d="M4 4h16v18h-16z"/><path d="M7 7h10v12h-10z"/><path d="M9 2h6v4h-6z"/>'
+                  '<path d="M9 11h6M9 14h6M9 17h4"/>', ("brown", "paper", "grayS", "ink")),
+    "printer": ('<path d="M7 2h10v6h-10z"/><path d="M3 8h18v9h-18z"/><path d="M7 14h10v8h-10z"/>'
+                '<path d="M9 17h6M9 19.5h4"/><path d="M17 10.5h1.5"/>',
+                ("paper", "grayS", "paper", "ink", "greenS/")),
+    # Data: a cylinder with bands, stacked layers, a table with its header.
+    "database": ('<path d="M4 6v12c0 1.7 3.6 3 8 3s8 -1.3 8 -3v-12"/>'
+                 '<path d="M4 6c0 -1.7 3.6 -3 8 -3s8 1.3 8 3s-3.6 3 -8 3s-8 -1.3 -8 -3z"/>'
+                 '<path d="M4 10.5c0 1.7 3.6 3 8 3s8 -1.3 8 -3"/><path d="M4 14.5c0 1.7 3.6 3 8 3s8 -1.3 8 -3"/>',
+                 ("blueS!", "blue", "white/", "white/")),
+    "stack-2": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 12.5l5 -2.5l4 2l4 -2l5 2.5l-9 4.5z"/>'
+                '<path d="M3 17.5l5 -2.5l4 2l4 -2l5 2.5l-9 4.5z"/>', ("yellowS", "greenS", "blueS")),
+    "table": ('<path d="M3 4h18v16h-18z"/><path d="M3 4h18v4h-18z"/><path d="M3 12h18M3 16h18M9 8v12M15 8v12"/>',
+              ("paper", "blueS", "grayS/")),
+    # Magnifiers: light glass with a glint, a solid handle.
+    "search": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
+               '<path d="M6.5 9a3.5 3.5 0 0 1 3 -2.5"/>', ("glass", "grayS", "white/")),
+    "zoom-in": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
+                '<path d="M7 10h6M10 7v6"/>', ("glass", "grayS", "greenS/")),
+    "zoom-out": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
+                 '<path d="M7 10h6"/>', ("glass", "grayS", "redS/")),
+    # Objects.
+    "package": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 7.5v9.5l9 4.5v-9.5z"/>'
+                '<path d="M21 7.5v9.5l-9 4.5v-9.5z"/><path d="M7.5 5.25l9 4.5v3"/>',
+                ("yellow", "folder", "brown", "brownS/")),
+    "map": ('<path d="M3 5l6 -2l6 2l6 -2v16l-6 2l-6 -2l-6 2z"/><path d="M9 3v16M15 5v16"/>'
+            '<path d="M5 15l3 -3l3 2l3 -4l4 2"/>', ("green", "greenS/", "redS/")),
+    "photo": ('<path d="M3 4h18v16h-18z"/><path d="M3 18l5 -6l4 4l3 -3l6 6v1h-18z"/>'
+              '<path d="M14 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>', ("blue", "greenS", "yellowS")),
+    "lock": ('<path d="M5 11h14v10h-14z"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/><path d="M12 14.5v3"/>',
+             ("yellowS", "grayS/", "dark/")),
+    "calendar": ('<path d="M3 5h18v16h-18z"/><path d="M3 5h18v4h-18z"/><path d="M8 3v4M16 3v4"/>'
+                 '<path d="M6 13h2M11 13h2M16 13h2M6 17h2M11 17h2"/>', ("paper", "redS", "grayS/", "ink")),
+    "home": ('<path d="M5 11h14v10h-14z"/><path d="M2.5 12l9.5 -8.5l9.5 8.5z"/><path d="M10 15h4v6h-4z"/>',
+             ("yellow", "redS", "brownS")),
+    "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
+                  ("ink", "blueS", "greenS", "yellowS")),
+    # Layouts and reports: a page with a map frame, a legend and a title;
+    # a report page with a chart.
+    "layout": ('<path d="M3 3h18v18h-18z"/><path d="M5 5h10v9h-10z"/><path d="M17 6h2M17 9h2M17 12h2"/>'
+               '<path d="M5 17h10M5 19h7"/>', ("paper", "green", "ink", "ink")),
+    "report": ('<path d="M4 2h12l4 4v16h-16z"/><path d="M16 2v4h4z"/><path d="M8 18v-4M11.5 18v-7M15 18v-5"/>'
+               '<path d="M7 7h6"/>', ("paper", "gray", "blueS/", "ink")),
+    # Tools and devices.
+    "calculator": ('<path d="M5 2h14v20h-14z"/><path d="M7 4h10v5h-10z"/>'
+                   '<path d="M7.5 12.5h1.5M11.25 12.5h1.5M15 12.5h1.5M7.5 15.75h1.5M11.25 15.75h1.5M15 15.75h1.5'
+                   'M7.5 19h1.5M11.25 19h1.5M15 19h1.5"/>', ("gray", "paper", "ink")),
+    "terminal-2": ('<path d="M2 4h20v16h-20z"/><path d="M2 4h20v3h-20z"/><path d="M6 11l3 2.5l-3 2.5"/>'
+                   '<path d="M11 16h5"/>', ("grayS", "blueS", "white/", "white/")),
+    "pencil": ('<path d="M4 20l1 -4l11 -11l3 3l-11 11z"/><path d="M14.5 6.5l3 3"/><path d="M4 20l1 -4l3 3z"/>',
+               ("yellowS", "grayS/", "paper")),
+    "trash": ('<path d="M3 6h18v2h-18z"/><path d="M9 6v-2h6v2"/><path d="M5 8h14l-1 13h-12z"/>'
+              '<path d="M9.5 11v7M14.5 11v7"/>', ("grayS", "grayS/", "gray", "grayS/")),
+    # Marks, labels, messages, people, time.
+    "bookmark": ('<path d="M6 2h12v20l-6 -5l-6 5z"/>', ("redS",)),
+    "label": ('<path d="M2 7h14l6 5l-6 5h-14z"/><path d="M15 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>',
+              ("yellow", "brownS/")),
+    "message": ('<path d="M3 4h18v12h-9l-5 4v-4h-4z"/><path d="M7 8h10M7 11.5h7"/>', ("blue", "blueS/")),
+    "user": ('<path d="M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M4 21v-3l3 -4h10l3 4v3z"/>',
+             ("brown", "blueS")),
+    "clock": ('<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 4v1.5M20 12h-1.5M12 20v-1.5M4 12h1.5"/>'
+              '<path d="M12 7.5v4.5l3 2"/>', ("paper", "ink", "ink")),
+}
+COLOR_GLYPHS = {name: body for name, (body, _materials) in _COLOR_DRAWINGS.items()}
+COLOR_RECIPES.update({name: materials for name, (_body, materials) in _COLOR_DRAWINGS.items()})
+# How the paths of COLOR_GLYPHS are named for _glyph_paths.
+COLOR_PREFIX = "color:"
+# Colourful lines: round ends (they end inside the shapes they meet), sharp
+# joins, with acute ones cut flat rather than spiking.
+COLOR_STROKE = 'stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="2"'
+# Rounded corners up to this radius (units) are drawn square in Colourful
+# icons; larger arcs (circles, curves) keep their shape.
+SQUARE_RADIUS = 3.6
+
+
+def _square_corners(segments):
+    """Segments with every small rounded corner (a quarter arc) turned into
+    a right angle: two straight lines meeting where the arc's tangents do."""
+    out = []
+    here = start = (12.0, 12.0)
+    for segment in segments:
+        if segment[0] == "A":
+            rx, ry, _rotation, large, sweep, x, y = segment[1:8]
+            if rx <= SQUARE_RADIUS and _arc_kind(rx, ry, x - here[0], y - here[1]) == "quarter":
+                points = _arc_points(*here, rx, ry, large, sweep, x, y, steps=4)
+                mx, my = points[len(points) // 2]
+                # Of the two corners of the arc's box, the one it bulges to.
+                a, b = (x, here[1]), (here[0], y)
+                corner = a if (a[0] - mx) ** 2 + (a[1] - my) ** 2 < (b[0] - mx) ** 2 + (b[1] - my) ** 2 else b
+                out += [("L", *corner), ("L", x, y)]
+                here = (x, y)
+                continue
+        out.append(segment)
+        if segment[0] == "Z":
+            here = start
+        else:
+            here = (segment[-2], segment[-1])
+            if segment[0] == "M":
+                start = here
+    return tuple(out)
+
+
+@functools.lru_cache(maxsize=None)
+def _color_paths(glyph):
+    """The paths of a glyph's Colourful drawing: its own (COLOR_GLYPHS) or
+    the line drawing, with square corners."""
+    name = COLOR_PREFIX + glyph if glyph in COLOR_GLYPHS else glyph
+    return tuple((_square_corners(segments), attrs) for segments, attrs in _glyph_paths(name))
+
+
+@functools.lru_cache(maxsize=None)
+def _color_reach(glyph):
+    return _paths_reach(_color_paths(glyph))
 
 
 def _material(name, mode, sign):
@@ -1792,7 +1966,7 @@ def _color_body(glyph, mode, ink, draw):
     # Ink lines on paper on dark themes: dark, in the colour layer.
     on_paper = PAPER_INK if mode == "dark" and any(m.rstrip("/!") == "paper" for m in recipe) else None
     fills, colored, inked = [], [], []
-    for i, (segments, attrs) in enumerate(_glyph_paths(glyph)):
+    for i, (segments, attrs) in enumerate(_color_paths(glyph)):
         fill, line, whole = _material(recipe[min(i, len(recipe) - 1)], mode, sign)
         line = line or on_paper
         lines = colored if line else inked
@@ -1815,7 +1989,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     if badge:
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
     else:
-        reach = _glyph_reach(glyph)
+        reach = _color_reach(glyph)
         if reach > 0:
             scale = min(scale, (12 - STROKE / 2) / reach)
         offset = round(12 * (1 - scale), 3)
@@ -1823,7 +1997,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     stroke = round(STROKE / scale, 3)
     colored, inked = _color_body(glyph, mode, colors["icon"], _plain_path)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
-             'fill="none" stroke-linecap="round" stroke-linejoin="round">']
+             f'fill="none" {COLOR_STROKE}>']
     mask = ""
     if badge:
         parts.append(
@@ -1862,7 +2036,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         def place(x, y):
             return (0.2 + badged * x) * px, (0.2 + badged * y) * px
     else:
-        reach = _glyph_reach(glyph)
+        reach = _color_reach(glyph)
         unit = scale * px
         if reach > 0:
             unit = min(unit, (size / 2 - width / 2) / reach)
@@ -1881,7 +2055,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     drawn = _num(width + STROKE_EXTRA)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
-        f'viewBox="0 0 {size} {size}" fill="none" stroke-linecap="round" stroke-linejoin="round">',
+        f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>',
     ]
     mask = ""
     if badge:

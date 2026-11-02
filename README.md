@@ -60,9 +60,12 @@ without restarting QGIS.
 - **Colourful** – the same icons in the manner of professional colour icon
   sets such as Fluent and ArcGIS Pro: objects have solid bodies in medium
   tones with a deeper edge – gold folders, blue databases and floppy disks,
-  green maps, red pins and bookmarks. Actions (zoom, pan, settings) keep the
-  theme's icon colour with at most one coloured detail, and documents are
-  white sheets on light themes and soft grey ones on dark themes.
+  green maps, red pins and bookmarks. Corners are square and the objects
+  seen most are drawn in detail, like QGIS's own: a floppy disk with its
+  shutter and label, documents with lines of text, a table with its header.
+  Actions (zoom, pan, settings) keep the theme's icon colour with at most one
+  coloured detail, and documents are white sheets on light themes and soft
+  grey ones on dark themes.
 - **QGIS classic** – QGIS's own icons, with the rest of the theme.
 
 All three cover the whole interface – toolbars and menus, the ribbon,

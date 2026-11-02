@@ -21,9 +21,11 @@ changelog=
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
           - Monochrome: the theme's single-colour icons, as before.
           - Colourful: the same icons in the manner of professional colour icon sets such as Fluent and ArcGIS Pro: objects have solid bodies in medium tones with a deeper edge, such as gold folders, blue databases and floppy disks, green maps and red pins.
+          - Colourful icons have square corners and sharp angles, and the objects seen most are drawn in detail like QGIS's own: a floppy disk with its shutter and label, documents with lines of text, a table with its header, stacked layers, a printer, a calculator, a layout page and more.
           - Colourful icons keep actions such as zoom, pan and settings in the theme's icon colour, with at most one coloured detail.
           - Documents are white sheets on light themes and soft grey ones on dark themes, so they never glare.
           - Info, help, warning and OK are solid signs.
+          - The palette icon is white with coloured paints, the filter grey, and About QGIS a solid blue sign.
           - QGIS classic: QGIS's own icons, with the rest of the theme.
           - Over 350 more QGIS icons are replaced, in Monochrome and Colourful alike.
           - Newly covered: the layout designer's items, attribute form widgets, shape tools, layer indicators, tasks, certificates, the console and the georeferencer.
