@@ -36,7 +36,8 @@ from qgis.PyQt.QtWidgets import (
     QAbstractButton, QAbstractItemView, QAbstractSpinBox, QApplication, QComboBox, QDialog,
     QDialogButtonBox, QDockWidget, QFormLayout, QLabel, QListWidget, QMenu, QMenuBar, QStackedWidget,
     QStyle, QStyledItemDelegate, QVBoxLayout,
-    QLineEdit, QSizePolicy, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView, QTreeWidget,
+    QLineEdit, QProgressBar, QSizePolicy, QStyleOptionViewItem, QTabBar, QToolBar, QToolButton, QTreeView,
+    QTreeWidget,
     QWidget,
 )
 
@@ -1011,6 +1012,11 @@ class IconSwapper(QObject):
     @property
     def mask_folders(self):
         return self._mask_folders
+
+    @property
+    def icons_dir(self):
+        """The active theme's icon folder (None without a Studio theme)."""
+        return self._icons_dir if self._theme is not None else None
 
     @property
     def scale(self):
@@ -3107,6 +3113,18 @@ class QgisStudioThemesPlugin:
             f" QLabel#mItemCount {{ color: {t['@text_dim']}; background-color: {t['@control_bg']};"
             " border-radius: 8px; padding: 1px 7px; }"
         )
+        # The countdown of timed messages draws QGIS's own dark pause (and
+        # play) image and a black edge through its own stylesheet: the
+        # theme's images (QGIS swaps them by renaming the image in it) and
+        # edge colour instead.
+        countdown = bar.findChild(QProgressBar, "mCountdown")
+        icons_dir = self._icons.icons_dir
+        if countdown is not None and icons_dir is not None:
+            sheet = countdown.styleSheet()
+            themed = sheet.replace(":/images/themes/default/mIconTimer", f"{icons_dir.as_posix()}/mIconTimer")
+            themed = themed.replace("rgba(0, 0, 0, 75%)", t["@menu_edge"])
+            if themed != sheet:
+                countdown.setStyleSheet(themed)
         # QGIS gives the Show more button black text on the button itself,
         # which the bar's stylesheet cannot override: the link colour.
         for button in item.findChildren(QToolButton):
