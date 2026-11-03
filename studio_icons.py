@@ -1056,15 +1056,17 @@ MARK_ARM = 3.0
 # "name/" draws the line only; "ink" draws only the line, in the theme's
 # icon colour.
 COLOR_HUES = {  # (light body, medium body, edge)
-    # Calm and cool: 78% of the hues' saturation, gold and orange 82%.
-    "blue": ("#a4c0de", "#6893c2", "#406d99"),
-    "green": ("#abcda1", "#6aa06a", "#457646"),
-    "red": ("#e6b1ab", "#c36f68", "#984f4a"),
-    "amber": ("#e6ca7e", "#d1a44e", "#99762c"),
-    "orange": ("#e9b993", "#cf8d59", "#9d6533"),
-    "purple": ("#c2b6e0", "#917fc3", "#685699"),
-    "teal": ("#9dc9c3", "#509990", "#347069"),
-    "neutral": ("#d7dbe0", "#9ca3ab", "#6d747e"),
+    # 88% of the hues' full saturation, gold and orange 90%.
+    "blue": ("#a0c0e2", "#6293c8", "#3a6d9f"),
+    "green": ("#aad09e", "#66a466", "#427944"),
+    "red": ("#eaaea7", "#c96a62", "#9d4b45"),
+    "amber": ("#eccc78", "#d7a648", "#9e7827"),
+    "orange": ("#edb98f", "#d58d53", "#a2642e"),
+    "purple": ("#c1b3e3", "#8f7bc7", "#65519e"),
+    "teal": ("#9accc5", "#4c9d94", "#31736c"),
+    "neutral": ("#d7dbe0", "#9ba3ac", "#6c747f"),
+    # The toolbox's red, at full strength (ArcGIS's red toolboxes).
+    "toolred": ("#d0645b", "#c4473e", "#8f322b"),
 }
 # Paper (fill, edge) on light and dark themes, and the colour of ink lines
 # on paper on dark themes (a clock's hands), where the theme's light ink
@@ -1073,7 +1075,7 @@ COLOR_MODES = ("light", "dark")
 PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
 PAPER_INK = "#3b4148"
 # A magnifier's light glass, in an ink frame.
-GLASS = "#cbdcec"
+GLASS = "#c9dcee"
 # Signs (info, help, warning, OK): solid, in the hue's medium body, with a
 # white (or dark) mark.
 SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
@@ -1084,10 +1086,11 @@ MATERIAL_HUES = {
     "folder": "amber", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
     "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
-    "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal",
+    "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred",
+    "toolredS": "toolred",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#579257", "minus": "#ba615b", "check": "#579257"})
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#549554", "minus": "#c15b54", "check": "#549554"})
 
 
 def _mark_path(mark, c, arm):
@@ -1732,7 +1735,8 @@ COLOR_RECIPES = {
     "polygon": ("greenS", "greenS", "greenS", "greenS", "greenS/"), "point": ("redS",),
     "line": ("blueS", "blueS", "ink"),
     # Analysis: tools, charts, maths, code, Python.
-    "tool": ("grayS!",), "toolbox": ("redS", "red", "grayS/", "red/", "paper"), "bolt": ("yellowS",), "puzzle": ("greenS",),
+    "tool": ("grayS!",), "bolt": ("yellowS",), "puzzle": ("greenS",),
+    "toolbox": ("toolredS", "toolredS", "grayS/", "toolred/", "paper"),
     "calculator": ("gray!", "paper!", "ink"),
     "chart-bar": ("tealS", "orangeS", "blueS", "ink"), "chart-pie": ("blueS", "orangeS"),
     "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
