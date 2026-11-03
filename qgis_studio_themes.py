@@ -210,7 +210,7 @@ ATLAS_COLUMNS = 32
 # dark ("color-light", "color-dark": every coloured part in its own colour,
 # stored in colour), and "ink", the parts drawn in the theme's icon colour
 # (a mask, tinted when loaded).
-MASK_FORMAT = 12
+MASK_FORMAT = 14
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
@@ -3083,6 +3083,12 @@ class QgisStudioThemesPlugin:
             f" QLabel#mItemCount {{ color: {t['@text_dim']}; background-color: {t['@control_bg']};"
             " border-radius: 8px; padding: 1px 7px; }"
         )
+        # QGIS gives the Show more button black text on the button itself,
+        # which the bar's stylesheet cannot override: the link colour.
+        for button in item.findChildren(QToolButton):
+            sheet = button.styleSheet()
+            if "color: black" in sheet:
+                button.setStyleSheet(sheet.replace("color: black", f"color: {t['@accent']}"))
 
     @staticmethod
     def _set_color_scheme(name):

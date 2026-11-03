@@ -1056,30 +1056,34 @@ MARK_ARM = 3.0
 # "name/" draws the line only; "ink" draws only the line, in the theme's
 # icon colour.
 COLOR_HUES = {  # (light body, medium body, edge)
-    # 88% of the hues' full saturation, gold and orange 90%.
-    "blue": ("#a0c0e2", "#6293c8", "#3a6d9f"),
-    "green": ("#aad09e", "#66a466", "#427944"),
-    "red": ("#eaaea7", "#c96a62", "#9d4b45"),
+    # 90% of the hues' full saturation, every hue alike.
+    "blue": ("#a0c0e2", "#6193c9", "#396da0"),
+    "green": ("#a9d09e", "#66a466", "#417a43"),
+    "red": ("#eaada7", "#ca6961", "#9e4a44"),
     "amber": ("#eccc78", "#d7a648", "#9e7827"),
     "orange": ("#edb98f", "#d58d53", "#a2642e"),
-    "purple": ("#c1b3e3", "#8f7bc7", "#65519e"),
-    "teal": ("#9accc5", "#4c9d94", "#31736c"),
+    "purple": ("#c1b3e3", "#8f7ac8", "#65509f"),
+    "teal": ("#9accc6", "#4b9e94", "#30746d"),
     "neutral": ("#d7dbe0", "#9ba3ac", "#6c747f"),
-    # The toolbox's red, at full strength (ArcGIS's red toolboxes).
-    "toolred": ("#d0645b", "#c4473e", "#8f322b"),
+    # The toolbox's red (ArcGIS's red toolboxes).
+    "toolred": ("#ca6961", "#bd4d45", "#8a3630"),
 }
-# Paper (fill, edge) on light and dark themes, and the colour of ink lines
-# on paper on dark themes (a clock's hands), where the theme's light ink
-# would vanish.
+# Paper (fill, edge) on light and dark themes.
 COLOR_MODES = ("light", "dark")
 PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
-PAPER_INK = "#3b4148"
 # A magnifier's light glass, in an ink frame.
-GLASS = "#c9dcee"
+GLASS = "#c8dcef"
 # Signs (info, help, warning, OK): solid, in the hue's medium body, with a
 # white (or dark) mark.
 SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
 DARK_MARK = "#33383e"
+# Details on a fill (a clock's hands, a gear on a page, the lines of a
+# message) are drawn in a colour with at least this contrast to it (WCAG's
+# minimum for graphics), so they read on light and dark themes alike.
+DETAIL_CONTRAST = 3.0
+# What the theme's icon colour is like on light and dark themes, to tell
+# whether it reads on a fill.
+THEME_INK = {"light": "#3a3d42", "dark": "#d4d6d8"}
 # The hue of each material.
 MATERIAL_HUES = {
     "paper": "paper", "gray": "neutral", "grayS": "neutral", "white": "white", "dark": "dark",
@@ -1090,7 +1094,7 @@ MATERIAL_HUES = {
     "toolredS": "toolred",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#549554", "minus": "#c15b54", "check": "#549554"})
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653"})
 
 
 def _mark_path(mark, c, arm):
@@ -1166,10 +1170,10 @@ CUSTOM_GLYPHS = {
         '<path d="M12.5 3a16.991 16.991 0 0 1 2.529 10.294"/><path d="M16 22l5 -5"/>'
         '<path d="M21 21.5v-4.5h-4.5"/>'
     ),
-    # A toolbox, as ArcGIS shows its toolboxes: a box, its lid, the handle,
-    # the lid's seam and a latch.
+    # A toolbox, as ArcGIS shows its toolboxes: a box, its lid, the handle
+    # and a latch.
     "toolbox": ('<path d="M2 10h20v10h-20z"/><path d="M2 10l2 -3h16l2 3z"/><path d="M9 7v-3h6v3"/>'
-                '<path d="M2 13h20"/><path d="M10.5 11.5h3v3h-3z"/>'),
+                '<path d="M10.5 11.5h3v3h-3z"/>'),
     # Playing backwards (Temporal Controller): Tabler's play, mirrored.
     "player-play-back": '<path d="M17 4v16l-13 -8l13 -8"/>',
     # Drawn after Tabler's glyphs of these names (same grid and style), for
@@ -1736,7 +1740,7 @@ COLOR_RECIPES = {
     "line": ("blueS", "blueS", "ink"),
     # Analysis: tools, charts, maths, code, Python.
     "tool": ("grayS!",), "bolt": ("yellowS",), "puzzle": ("greenS",),
-    "toolbox": ("toolredS", "toolredS", "grayS/", "toolred/", "paper"),
+    "toolbox": ("toolredS", "toolredS", "grayS/", "paper"),
     "calculator": ("gray!", "paper!", "ink"),
     "chart-bar": ("tealS", "orangeS", "blueS", "ink"), "chart-pie": ("blueS", "orangeS"),
     "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
@@ -1848,6 +1852,15 @@ _COLOR_DRAWINGS = {
              'L20 9.83L20.47 8.91L20.7 7.9L20.68 6.86L20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6L17.14 3.32'
              'L16.1 3.3L15.09 3.53L14.17 4L13.39 4.68L12.8 5.53L12.44 6.51L12.32 7.54L12.46 8.56L12.85 9.52'
              'L3.69 18.69L3.39 19.2L3.39 19.8L3.69 20.31L4.2 20.61L4.8 20.61z"/>', ("grayS",)),
+    # About: a square sign with a large i, its dot and stem solid.
+    "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M10.6 5.4h2.8v2.8h-2.8z" fill="mark"/>'
+                            '<path d="M9.5 10h3.9v7h1.6v2h-6v-2h1.6v-5h-1.1z" fill="mark"/>',
+                            ("blueS", "white", "white")),
+    # Labels: abc on a yellow label, like QGIS's own.
+    "abc": ('<path d="M1.5 6h21v12h-21z"/><path d="M3 16v-6a2 2 0 1 1 4 0v6"/><path d="M3 13h4"/>'
+            '<path d="M10 8v6a2 2 0 1 0 4 0v-1a2 2 0 1 0 -4 0v1"/>'
+            '<path d="M20.732 12a2 2 0 0 0 -3.732 1v1a2 2 0 0 0 3.726 1.01"/>',
+            ("yellow", "ink")),
     # Python's two snakes as closed shapes, with their eyes.
     "brand-python": ('<path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v3h-3'
                      'a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z"/>'
@@ -1965,6 +1978,12 @@ def _material(name, mode, sign):
 
 def _area(segments):
     """The area of a path's bounding box, in square units."""
+    left, top, right, bottom = _extent(segments)
+    return (right - left) * (bottom - top)
+
+
+def _extent(segments):
+    """(left, top, right, bottom) of a path's segments, in units."""
     xs, ys = [], []
     here = start = (12.0, 12.0)
     for segment in segments:
@@ -1983,7 +2002,30 @@ def _area(segments):
         here = (segment[-2], segment[-1])
         if segment[0] == "M":
             start = here
-    return (max(xs) - min(xs)) * (max(ys) - min(ys)) if xs else 0.0
+    return (min(xs), min(ys), max(xs), max(ys)) if xs else (0.0, 0.0, 0.0, 0.0)
+
+
+def _luminance(color):
+    """Relative luminance (WCAG) of a #rrggbb colour."""
+    def channel(value):
+        value /= 255
+        return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(int(color[i:i + 2], 16)) for i in (1, 3, 5))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a, b):
+    high, low = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+def _legible(candidates, under):
+    """The first of `candidates` that reads on the fill colour `under`
+    (DETAIL_CONTRAST), else the one that reads best."""
+    for color in candidates:
+        if _contrast(color, under) >= DETAIL_CONTRAST:
+            return color
+    return max(candidates, key=lambda color: _contrast(color, under))
 
 
 def _color_body(glyph, mode, ink, draw):
@@ -1992,12 +2034,19 @@ def _color_body(glyph, mode, ink, draw):
     first, the largest first (a body under its window), then the lines."""
     recipe = COLOR_RECIPES.get(glyph, ("ink",))
     sign = glyph in SIGNS
-    # Ink lines on paper on dark themes: dark, in the colour layer.
-    on_paper = PAPER_INK if mode == "dark" and any(m.rstrip("/!") == "paper" for m in recipe) else None
+    paths = _color_paths(glyph)
+    parts = [_material(recipe[min(i, len(recipe) - 1)], mode, sign) for i in range(len(paths))]
+    # The fills, to give the details drawn on them a colour that reads.
+    areas = [
+        (_extent(shape), fill)
+        for (segments, attrs), (fill, _line, whole) in zip(paths, parts) if fill and "fill=" not in attrs
+        for shape, closed in _subpaths(segments) if closed or whole
+    ]
     fills, colored, inked = [], [], []
-    for i, (segments, attrs) in enumerate(_color_paths(glyph)):
-        fill, line, whole = _material(recipe[min(i, len(recipe) - 1)], mode, sign)
-        line = line or on_paper
+    for i, (segments, attrs) in enumerate(paths):
+        fill, line, whole = parts[i]
+        if fill is None or "fill=" in attrs:
+            line = _on_fill(segments, line, areas, mode, recipe[min(i, len(recipe) - 1)])
         lines = colored if line else inked
         if "fill=" in attrs:
             # A part the glyph fills itself (a dot): solid, like its line.
@@ -2009,6 +2058,27 @@ def _color_body(glyph, mode, ink, draw):
                     fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="{fill}" stroke="none"/>'))
         lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"/>')
     return [path for _, _, path in sorted(fills)] + colored, inked
+
+
+def _on_fill(segments, line, areas, mode, material):
+    """The colour of a detail (a part without a fill of its own): `line`
+    (None: the theme's icon colour), or, when it lies on a fill it does
+    not read on, a deeper shade of its hue, dark grey or white."""
+    left, top, right, bottom = _extent(segments)
+    under = [
+        (area, fill) for area, fill in areas
+        if left >= area[0] - 0.5 and top >= area[1] - 0.5 and right <= area[2] + 0.5 and bottom <= area[3] + 0.5
+    ]
+    if not under:
+        return line
+    # The smallest fill holding it lies on top.
+    _area_box, color = min(under, key=lambda item: (item[0][2] - item[0][0]) * (item[0][3] - item[0][1]))
+    current = line or THEME_INK[mode]
+    if _contrast(current, color) >= DETAIL_CONTRAST:
+        return line
+    hue = MATERIAL_HUES.get(material.rstrip("/!"))
+    deeper = [COLOR_HUES[hue][2]] if hue in COLOR_HUES else []
+    return _legible(deeper + [DARK_MARK, "#ffffff"], color)
 
 
 def render_icon_color(spec, colors, scale=SCALE, mode="light"):
