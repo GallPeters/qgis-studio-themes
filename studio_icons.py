@@ -1065,6 +1065,8 @@ COLOR_HUES = {  # (light body, medium body, edge)
     "purple": ("#c1b3e3", "#8f7ac8", "#65509f"),
     "teal": ("#9accc6", "#4b9e94", "#30746d"),
     "neutral": ("#d7dbe0", "#9ba3ac", "#6c747f"),
+    # Wood: a clipboard's board, a brush's handle.
+    "wood": ("#d8b48e", "#b88352", "#7d5429"),
     # The toolbox's red (ArcGIS's red toolboxes).
     "toolred": ("#ca6961", "#bd4d45", "#8a3630"),
 }
@@ -1090,7 +1092,7 @@ MATERIAL_HUES = {
     "folder": "amber", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
     "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
-    "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred",
+    "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
     "toolredS": "toolred",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
@@ -1716,7 +1718,7 @@ COLOR_RECIPES = {
     "world": ("blue", "blueS/"), "world-www": ("blue!", "blueS/", "blueS/", "blue!", "blueS/", "blueS/", "ink"),
     "world-cog": ("blue!", "blueS/"), "world-download": ("blue!", "blueS/"), "world-share": ("blue!", "blueS/"),
     "world-latitude": ("blue", "blueS/"), "sphere": ("blueS/", "blue"), "cube": ("blue!", "blueS/"),
-    "package": ("brown", "brownS/"), "box": ("gray", "grayS/"), "packages": ("gray", "grayS/"),
+    "package": ("brown", "brownS/"), "box": ("blue", "blueS/"), "packages": ("gray", "grayS/"),
     "cloud": ("glass!",), "cloud-download": ("glass!", "greenS/"),
     "cloud-upload": ("glass!", "blueS/"),
     "network": ("blue", "blueS/", "blueS/", "blueS/", "ink", "ink", "greenS", "ink"),
@@ -1728,11 +1730,11 @@ COLOR_RECIPES = {
     "plant": ("brownS!", "greenS!", "greenS!", "greenS/"), "droplet": ("blueS",), "droplet-half": ("blueS",),
     "flame": ("orangeS",), "pyramid": ("yellow!", "orangeS/"),
     # Editing: pencils, erasers, scissors, rulers, magnets, shapes.
-    "pencil": ("grayS!", "ink"), "pencil-bolt": ("grayS!", "ink", "orangeS"),
-    "pencil-cog": ("grayS!", "ink", "grayS"), "pencil-cancel": ("grayS!", "ink", "redS/"),
+    "pencil": ("yellowS!", "ink"), "pencil-bolt": ("yellowS!", "ink", "orangeS"),
+    "pencil-cog": ("yellowS!", "ink", "grayS"), "pencil-cancel": ("yellowS!", "ink", "redS/"),
     "eraser": ("pinkS!", "ink"), "highlight": ("yellowS!", "ink", "ink", "yellowS!"),
     "cut": ("redS", "redS", "grayS/", "grayS/"),
-    "copy": ("paper", "paper!"), "clipboard": ("gray!", "gray!"),
+    "copy": ("paper", "paper!"), "clipboard": ("woodS!", "gray!"),
     "ruler": ("gray!", "ink"), "ruler-2": ("gray!", "ink"),
     "ruler-3": ("gray!", "ink"), "ruler-measure": ("gray!", "ink"),
     "magnet": ("redS!", "white/", "white/"),
@@ -1782,6 +1784,33 @@ COLOR_RECIPES = {
     "lock": ("grayS", "dark/", "grayS/"), "lock-open": ("grayS", "dark/", "grayS/"),
     "keyboard": ("gray", "ink"), "app-window": ("paper", "redS/", "yellowS/"),
     "list-details": ("ink", "ink", "ink", "ink", "blue", "green"),
+    # Renderers and labelling (Layer Styling, Layer Properties).
+    "square-rounded": ("blue",), "category": ("redS", "blueS", "greenS", "yellowS"),
+    "chart-bar-popular": ("yellowS", "orangeS", "redS", "ink"),
+    "list-tree": ("ink", "ink", "ink", "blueS/", "greenS/", "redS/"),
+    "square-off": ("ink", "redS/"), "circle-off": ("ink", "redS/"),
+    "arrows-join": ("greenS/", "blueS/", "ink"), "circles": ("blueS", "redS", "greenS"),
+    "circles-relation": ("blueS/", "greenS/"),
+    "barrier-block": ("redS", "ink", "white/", "white/", "white/", "ink"),
+    "vector-spline": ("ink", "ink", "blueS/"), "corner-down-right": ("blueS/",),
+    "typography": ("ink", "ink", "blueS/", "blueS/", "blueS/"),
+    "text-size": ("blueS/", "blueS/", "blueS/", "ink"),
+    "border-outer": ("glass", "ink"), "shadow": ("gray", "ink"), "mask": ("paper", "blue"),
+    "background": ("yellow", "ink"), "adjustments-horizontal": ("blueS", "ink", "ink") * 3,
+    # Objects and data drawn in lines until 1.4.
+    "book-2": ("blue!", "ink", "ink"), "box-multiple": ("blue!", "blue!"), "note": ("ink", "yellow!"),
+    "chart-area-line": ("green!", "blueS/"), "color-filter": ("redS/", "greenS/", "blue"),
+    "layers-union": ("blue!",), "layers-intersect": ("blue", "glass"), "layers-subtract": ("blue", "ink"),
+    "layers-difference": ("blue!", "ink"), "hexagons": ("green",), "squares": ("blue", "glass"),
+    "triangles": ("green", "greenS"), "triangle-square-circle": ("yellowS", "greenS", "blueS"),
+    "circle": ("blue",), "square": ("blue",), "triangle": ("blue",), "oval": ("blue",),
+    "rectangle": ("blue",), "hexagon": ("blue",),
+    "dice": ("paper", "ink"), "cpu": ("gray", "blueS", "ink"), "stopwatch": ("paper", "ink"),
+    "message-report": ("yellow!", "dark/", "dark/"), "lifebuoy": ("paper", "redS", "white/"),
+    "navigation-north": ("redS!", "ink"), "target": ("redS", "paper", "redS"),
+    "current-location": ("blueS", "ink"), "focus-2": ("redS", "ink"),
+    "player-play-back": ("greenS",), "player-skip-back": ("blueS", "ink"), "player-skip-forward": ("blueS", "ink"),
+    "player-track-next": ("blueS",), "player-track-prev": ("blueS",),
 }
 
 # The Colourful drawings of the objects seen most, in the manner of QGIS's
@@ -1811,7 +1840,7 @@ _COLOR_DRAWINGS = {
     "copy": ('<path d="M8 8v-6h12v13h-4v-7z"/><path d="M4 8h12v14h-12z"/><path d="M7 12h6M7 15h6M7 18h4"/>',
              ("paper", "paper", "ink")),
     "clipboard": ('<path d="M4 4h16v18h-16z"/><path d="M7 7h10v12h-10z"/><path d="M9 2h6v4h-6z"/>'
-                  '<path d="M9 11h6M9 14h6M9 17h4"/>', ("gray", "paper", "grayS", "ink")),
+                  '<path d="M9 11h6M9 14h6M9 17h4"/>', ("woodS", "paper", "grayS", "ink")),
     "printer": ('<path d="M7 2h10v6h-10z"/><path d="M3 8h18v9h-18z"/><path d="M7 14h10v8h-10z"/>'
                 '<path d="M9 17h6M9 19.5h4"/><path d="M17 10.5h1.5"/>',
                 ("paper", "grayS", "paper", "ink", "greenS/")),
@@ -1847,11 +1876,10 @@ _COLOR_DRAWINGS = {
              ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
-    # A wrench: a thin handle with a rounded end and an open-end head.
-    "tool": ('<path d="M5.31 20.31L14.48 11.15L15.44 11.54L16.46 11.68L17.49 11.56L18.47 11.2L19.32 10.61'
-             'L20 9.83L20.47 8.91L20.7 7.9L20.68 6.86L20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6L17.14 3.32'
-             'L16.1 3.3L15.09 3.53L14.17 4L13.39 4.68L12.8 5.53L12.44 6.51L12.32 7.54L12.46 8.56L12.85 9.52'
-             'L3.69 18.69L3.39 19.2L3.39 19.8L3.69 20.31L4.2 20.61L4.8 20.61z"/>', ("grayS",)),
+    # A wrench: a thin handle with a rounded end and an open-end head, its
+    # curves arcs (a polygon's many corners bend when fitted to pixels).
+    "tool": ('<path d="M5.35 20.35L14.52 11.17A4.2 4.2 0 0 0 20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6'
+             'A4.2 4.2 0 0 0 12.83 9.48L3.65 18.65A1.2 1.2 0 1 0 5.35 20.35z"/>', ("grayS",)),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
                             ("blueS", "white/", "white/")),
@@ -1862,6 +1890,9 @@ _COLOR_DRAWINGS = {
             '<path d="M9.5 9v4.5a1.5 1.5 0 1 0 3 0v-.75a1.5 1.5 0 1 0 -3 0v.75"/>'
             '<path d="M17.549 12a1.5 1.5 0 0 0 -2.799 .75v.75a1.5 1.5 0 0 0 2.795 .758"/>',
             ("yellow", "ink")),
+    # A label's background: a shape under its hatching.
+    "background": ('<path d="M4 4h16v16h-16z"/><path d="M4 8l4 -4"/><path d="M14 4l-10 10"/>'
+                   '<path d="M4 20l16 -16"/><path d="M20 10l-10 10"/><path d="M20 16l-4 4"/>', ("yellow", "ink")),
     # Python's two snakes as closed shapes, with their eyes.
     "brand-python": ('<path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v3h-3'
                      'a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z"/>'
@@ -1871,7 +1902,7 @@ _COLOR_DRAWINGS = {
     # A brush: its head, a closed handle, the ferrule.
     "brush": ('<path d="M3 21v-4a4 4 0 1 1 4 4h-4"/>'
               '<path d="M21 3a16 16 0 0 0 -12.8 10.2l2.6 2.6a16 16 0 0 0 10.2 -12.8z"/>'
-              '<path d="M10.6 9a9 9 0 0 1 4.4 4.4"/>', ("blueS!", "brown", "brownS/")),
+              '<path d="M10.6 9a9 9 0 0 1 4.4 4.4"/>', ("blueS!", "wood", "woodS/")),
     # Layouts and reports: a page with a map frame, a legend and a title;
     # a report page with a chart.
     "layout": ('<path d="M3 3h18v18h-18z"/><path d="M5 5h10v9h-10z"/><path d="M17 6h2M17 9h2M17 12h2"/>'
@@ -1885,7 +1916,7 @@ _COLOR_DRAWINGS = {
     "terminal-2": ('<path d="M2 4h20v16h-20z"/><path d="M2 4h20v3h-20z"/><path d="M6 11l3 2.5l-3 2.5"/>'
                    '<path d="M11 16h5"/>', ("grayS", "blueS", "white/", "white/")),
     "pencil": ('<path d="M4 20l1 -4l11 -11l3 3l-11 11z"/><path d="M14.5 6.5l3 3"/><path d="M4 20l1 -4l3 3z"/>',
-               ("grayS", "ink", "paper")),
+               ("yellowS", "ink", "paper")),
     "trash": ('<path d="M3 6h18v2h-18z"/><path d="M9 6v-2h6v2"/><path d="M5 8h14l-1 13h-12z"/>'
               '<path d="M9.5 11v7M14.5 11v7"/>', ("grayS", "grayS/", "gray", "grayS/")),
     # Marks, labels, messages, people, time.
