@@ -55,7 +55,7 @@ FONTS_DIR = PLUGIN_DIR / "fonts"
 METADATA = PLUGIN_DIR / "metadata.txt"
 STAMP = ".studio-build"
 # Bump when the layout of a built theme changes, so old builds are redone.
-BUILD_FORMAT = "31"
+BUILD_FORMAT = "32"
 FULL_STYLE = "style.full.qss"
 # What QGIS loads for every Studio theme except the configured one (see
 # QgisStudioThemesPlugin._select_style): a runtime switch then costs QGIS
@@ -210,7 +210,7 @@ ATLAS_COLUMNS = 32
 # dark ("color-light", "color-dark": every coloured part in its own colour,
 # stored in colour), and "ink", the parts drawn in the theme's icon colour
 # (a mask, tinted when loaded).
-MASK_FORMAT = 8
+MASK_FORMAT = 9
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
@@ -1447,6 +1447,14 @@ class IconSwapper(QObject):
         view.setItemDelegate(delegate)
         self._delegates[id(view)] = (view, original, delegate)
 
+    def _own_icon(self, action):
+        """The icon of an action that gets one of its own (ACTION_ICONS),
+        None for any other action and in the classic style."""
+        name = studio_icons.ACTION_ICONS.get(action.objectName())
+        if name is None or self._style == "classic" or self._theme is None:
+            return None
+        return self._icon(name)
+
     def _classic_icon(self, name):
         """QGIS's built-in icon for a QGIS icon name, None if it has none."""
         if name not in self._classics:
@@ -1592,6 +1600,12 @@ class IconSwapper(QObject):
             return False
         icon = self._get(owner, kind, index)
         key = icon.cacheKey()
+        if isinstance(owner, QAction) and self._own_icon(owner) is not None:
+            own = self._own_icon(owner)
+            if self._ours.get(key) != studio_icons.ACTION_ICONS[owner.objectName()]:
+                owner.setIcon(own)
+            self._watch(owner)
+            return True
         if key in self._ours:
             return True
         if slot is None and key not in self._names:
@@ -2037,6 +2051,11 @@ class IconSwapper(QObject):
             if self._theme is None or sip.isdeleted(action):
                 return
             icon = action.icon()
+            own = self._own_icon(action)
+            if own is not None:
+                if self._ours.get(icon.cacheKey()) != studio_icons.ACTION_ICONS[action.objectName()]:
+                    action.setIcon(own)
+                return
             if icon.cacheKey() in self._ours:
                 return
             new = self._replacement(icon)

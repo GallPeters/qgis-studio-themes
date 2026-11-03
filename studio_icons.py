@@ -111,6 +111,9 @@ ICON_MAP = {
     "processingModel.svg": "hierarchy-2",
     "processingScript.svg": "file-code",
     "processingAlgorithm.svg": "tool",
+    # Not a QGIS icon: the plugin's own for the Processing Toolbox action,
+    # which QGIS gives its algorithms' icon (see ACTION_ICONS).
+    "processingToolbox.svg": "toolbox",
     "mIconLayerTree.svg": "stack-2",
     # ---- Layer types (layer tree, browser, combo boxes) -------------------
     "mIconPointLayer.svg": "point",
@@ -960,6 +963,14 @@ NOT_REPLACED = (
 # resource path (the QGIS logo on the Dev Tools documentation page).
 RESOURCE_PATHS = {
     "qgis_icon.svg": ":/images/icons/qgis_icon.svg",
+    "processingToolbox.svg": ":/images/themes/default/processingAlgorithm.svg",
+}
+
+# Actions (by object name) that get an icon of their own instead of the one
+# QGIS gives them: the Processing Toolbox action shows a toolbox, not the
+# icon of the algorithms in it.
+ACTION_ICONS = {
+    "toolboxAction": "processingToolbox.svg",
 }
 
 # Icons that QGIS core plugins load from their own folder instead of the
@@ -1036,8 +1047,10 @@ MARK_ARM = 3.0
 # The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
 # the manner of professional colour icon sets (Fluent, Office, ArcGIS Pro):
 # objects have solid bodies in medium tones with a deeper edge of their own
-# hue: gold folders and boxes, blue databases, floppy disks and globes,
-# green maps and terrain, red pins, bookmarks and erasers. Each part of a
+# hue: gold folders, blue databases, floppy disks and globes, green maps
+# and terrain, red pins, bookmarks and erasers. Gold is kept for folders
+# and a few things that are gold (a star, the sun); tools and objects such
+# as rulers, pencils and locks are grey. Each part of a
 # glyph (one of its paths) has a material (COLOR_RECIPES). Actions (zoom,
 # pan, settings) and glyphs without a recipe keep the theme's icon colour
 # ("ink"), with at most one coloured detail. Documents are white sheets on
@@ -1051,14 +1064,15 @@ MARK_ARM = 3.0
 # "name/" draws the line only; "ink" draws only the line, in the theme's
 # icon colour.
 COLOR_HUES = {  # (light body, medium body, edge)
-    "blue": ("#9cc0e6", "#5b93cf", "#336da6"),
-    "green": ("#a8d39b", "#62a862", "#3e7d40"),
-    "red": ("#eeaaa3", "#d0645b", "#a3463f"),
-    "amber": ("#f2cf72", "#dfa940", "#a57a20"),
-    "orange": ("#f2b88a", "#dc8c4c", "#a96427"),
-    "purple": ("#c0b0e6", "#8d76cc", "#634ca3"),
-    "teal": ("#97cfc8", "#46a398", "#2c7870"),
-    "neutral": ("#d6dbe1", "#9aa3ad", "#6b7480"),
+    # Calm and cool: 70% of the hues' saturation, gold and orange 75%.
+    "blue": ("#a7c0db", "#6c94be", "#446d95"),
+    "green": ("#accba3", "#6d9e6d", "#477449"),
+    "red": ("#e3b3ae", "#be736d", "#94534e"),
+    "amber": ("#e2c882", "#cba354", "#947431"),
+    "orange": ("#e5ba97", "#ca8e5e", "#996537"),
+    "purple": ("#c3b8de", "#9383bf", "#695996"),
+    "teal": ("#9fc7c2", "#54958d", "#376d67"),
+    "neutral": ("#d8dbdf", "#9da3aa", "#6e747d"),
 }
 # Paper (fill, edge) on light and dark themes, and the colour of ink lines
 # on paper on dark themes (a clock's hands), where the theme's light ink
@@ -1067,7 +1081,7 @@ COLOR_MODES = ("light", "dark")
 PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
 PAPER_INK = "#3b4148"
 # A magnifier's light glass, in an ink frame.
-GLASS = "#c6dcf1"
+GLASS = "#ccdceb"
 # Signs (info, help, warning, OK): solid, in the hue's medium body, with a
 # white (or dark) mark.
 SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
@@ -1081,7 +1095,7 @@ MATERIAL_HUES = {
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#4f9a4f", "minus": "#c8554d", "check": "#4f9a4f"})
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#5a8f5a", "minus": "#b6655f", "check": "#5a8f5a"})
 
 
 def _mark_path(mark, c, arm):
@@ -1157,6 +1171,10 @@ CUSTOM_GLYPHS = {
         '<path d="M12.5 3a16.991 16.991 0 0 1 2.529 10.294"/><path d="M16 22l5 -5"/>'
         '<path d="M21 21.5v-4.5h-4.5"/>'
     ),
+    # A toolbox, as ArcGIS shows its toolboxes: a box, its lid, the handle,
+    # the lid's seam and a latch.
+    "toolbox": ('<path d="M2 10h20v10h-20z"/><path d="M2 10l2 -3h16l2 3z"/><path d="M9 7v-3h6v3"/>'
+                '<path d="M2 13h20"/><path d="M10.5 11.5h3v3h-3z"/>'),
     # Playing backwards (Temporal Controller): Tabler's play, mirrored.
     "player-play-back": '<path d="M17 4v16l-13 -8l13 -8"/>',
     # Drawn after Tabler's glyphs of these names (same grid and style), for
@@ -1682,9 +1700,9 @@ COLOR_RECIPES = {
     "device-floppy": ("blueS!", "grayS", "gray!"),
     # Magnifiers: light blue glass in an ink frame.
     "search": ("glass", "ink"), "zoom-in": ("glass", "green/", "green/", "ink"),
-    "zoom-out": ("glass", "red/", "ink"), "zoom-check": ("glass", "ink", "greenS/"),
+    "zoom-out": ("glass", "red/", "ink"), "zoom-check": ("glass", "ink", "dark/"),
     "zoom-pan": ("glass", "ink", "tealS/"), "zoom-scan": ("glass", "ink", "grayS/"),
-    "zoom-in-area": ("greenS/", "greenS/", "glass", "ink", "grayS/"), "zoom-reset": ("ink", "ink", "tealS/"),
+    "zoom-in-area": ("dark/", "dark/", "glass", "ink", "grayS/"), "zoom-reset": ("ink", "ink", "tealS/"),
     "map-pin-search": ("redS/", "redS/", "glass", "ink"),
     "world-search": ("blue!", "blueS/", "blueS/", "blueS/", "blueS/", "glass", "ink"),
     # Data: databases, tables, layers, maps, the world.
@@ -1699,7 +1717,7 @@ COLOR_RECIPES = {
     "world": ("blue", "blueS/"), "world-www": ("blue!", "blueS/", "blueS/", "blue!", "blueS/", "blueS/", "ink"),
     "world-cog": ("blue!", "blueS/"), "world-download": ("blue!", "blueS/"), "world-share": ("blue!", "blueS/"),
     "world-latitude": ("blue", "blueS/"), "sphere": ("blueS/", "blue"), "cube": ("blue!", "blueS/"),
-    "package": ("brown", "brownS/"), "box": ("brown", "brownS/"), "packages": ("brown", "brownS/"),
+    "package": ("brown", "brownS/"), "box": ("gray", "grayS/"), "packages": ("gray", "grayS/"),
     "cloud": ("glass!",), "cloud-download": ("glass!", "greenS/"),
     "cloud-upload": ("glass!", "blueS/"),
     "network": ("blue", "blueS/", "blueS/", "blueS/", "ink", "ink", "greenS", "ink"),
@@ -1708,25 +1726,25 @@ COLOR_RECIPES = {
     "photo": ("yellowS/", "glass", "greenS!", "greenS!"),
     "photo-down": ("yellowS/", "glass!", "greenS!", "greenS!", "blueS/"),
     "mountain": ("green!", "greenS/"), "sun": ("yellowS", "orangeS/"), "sun-high": ("yellowS", "orangeS/"),
-    "plant": ("brownS!", "greenS", "greenS", "greenS/"), "droplet": ("blueS",), "droplet-half": ("blueS",),
+    "plant": ("brownS!", "greenS!", "greenS!", "greenS/"), "droplet": ("blueS",), "droplet-half": ("blueS",),
     "flame": ("orangeS",), "pyramid": ("yellow!", "orangeS/"),
     # Editing: pencils, erasers, scissors, rulers, magnets, shapes.
-    "pencil": ("yellowS!", "ink"), "pencil-bolt": ("yellowS!", "ink", "orangeS"),
-    "pencil-cog": ("yellowS!", "ink", "grayS"), "pencil-cancel": ("yellowS!", "ink", "redS/"),
+    "pencil": ("grayS!", "ink"), "pencil-bolt": ("grayS!", "ink", "orangeS"),
+    "pencil-cog": ("grayS!", "ink", "grayS"), "pencil-cancel": ("grayS!", "ink", "redS/"),
     "eraser": ("pinkS!", "ink"), "highlight": ("yellowS!", "ink", "ink", "yellowS!"),
     "cut": ("redS", "redS", "grayS/", "grayS/"),
-    "copy": ("paper", "paper!"), "clipboard": ("brown!", "gray!"),
-    "ruler": ("yellow!", "orangeS/"), "ruler-2": ("yellow!", "orangeS/"),
-    "ruler-3": ("yellow!", "orangeS/"), "ruler-measure": ("yellow!", "orangeS/"),
+    "copy": ("paper", "paper!"), "clipboard": ("gray!", "gray!"),
+    "ruler": ("gray!", "ink"), "ruler-2": ("gray!", "ink"),
+    "ruler-3": ("gray!", "ink"), "ruler-measure": ("gray!", "ink"),
     "magnet": ("redS!", "white/", "white/"),
     "polygon": ("greenS", "greenS", "greenS", "greenS", "greenS/"), "point": ("redS",),
     "line": ("blueS", "blueS", "ink"),
     # Analysis: tools, charts, maths, code, Python.
-    "tool": ("grayS!",), "bolt": ("yellowS",), "puzzle": ("greenS",),
+    "tool": ("grayS!",), "toolbox": ("redS", "red", "grayS/", "red/", "paper"), "bolt": ("yellowS",), "puzzle": ("greenS",),
     "calculator": ("gray!", "paper!", "ink"),
     "chart-bar": ("tealS", "orangeS", "blueS", "ink"), "chart-pie": ("blueS", "orangeS"),
     "chart-dots": ("ink", "redS", "blueS", "greenS", "ink"),
-    "brand-python": ("blueS!", "yellowS!", "blueS/", "white/", "white/"),
+    
     "terminal-2": ("greenS/", "greenS/", "grayS"), "code": ("blueS/", "blueS/", "grayS/"),
     "filter": ("grayS",), "filter-code": ("grayS", "blueS/"),
     # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
@@ -1744,7 +1762,7 @@ COLOR_RECIPES = {
     # Style, labels and layouts.
     "palette": ("paper!", "redS", "blueS", "greenS"),
     "color-swatch": ("blueS!", "yellowS!", "redS!", "white/"), "paint": ("orangeS", "grayS/", "grayS"),
-    "brush": ("purpleS!", "brownS/"), "label": ("yellow",), "notes": ("yellow!", "orangeS/"),
+    "label": ("gray",), "notes": ("paper!", "grayS/"),
     "message": ("ink", "ink", "blue!"), "message-dots": ("ink", "ink", "ink", "blue!"),
     "printer": ("gray!", "paper!", "paper!"),
     "layout": ("blue", "green", "yellow"), "layout-board": ("paper", "ink"),
@@ -1757,11 +1775,11 @@ COLOR_RECIPES = {
     "square-check": ("paper", "greenS/"),
     "x": ("red/",), "plus": ("green/",), "minus": ("red/",),
     "trash": ("grayS/", "grayS/", "grayS/", "gray!", "grayS/"),
-    "bug": ("greenS", "greenS", "ink"), "logout": ("brown!", "redS/", "redS/"),
+    "bug": ("greenS", "greenS", "ink"), "logout": ("gray!", "redS/", "redS/"),
     # Places, people and things.
-    "home": ("redS/", "yellow!", "brownS!"), "user": ("yellow", "blueS!"),
-    "users": ("yellow", "blueS!", "yellow/", "blue!"), "settings": ("grayS", "paper"),
-    "lock": ("yellowS", "dark/", "grayS/"), "lock-open": ("yellowS", "dark/", "grayS/"),
+    "home": ("redS/", "paper!", "grayS!"), "user": ("gray", "blueS!"),
+    "users": ("gray", "blueS!", "gray/", "blue!"), "settings": ("grayS", "paper"),
+    "lock": ("grayS", "dark/", "grayS/"), "lock-open": ("grayS", "dark/", "grayS/"),
     "keyboard": ("gray", "ink"), "app-window": ("paper", "redS/", "yellowS/"),
     "list-details": ("ink", "ink", "ink", "ink", "blue", "green"),
 }
@@ -1783,8 +1801,8 @@ _COLOR_DRAWINGS = {
                     '<path d="M11 17h10M18 14l3 3l-3 3"/>', ("paper", "gray", "ink", "blueS/")),
     # Folders: a back with its tab and a front; open, the front tilted.
     "folder": ('<path d="M2 4h7l2 2h11v14h-20z"/><path d="M2 9h20v11h-20z"/>', ("folder", "folder")),
-    "folder-open": ('<path d="M2 4h7l2 2h9v4h-18z"/><path d="M2 20v-16h0"/><path d="M2 20l3.5 -10h17.5l-3.5 10z"/>',
-                    ("brown", "brown", "folder")),
+    "folder-open": ('<path d="M2 20v-16h7l2 2h9v4h-14.5z"/><path d="M2 20l3.5 -10h17.5l-3.5 10z"/>',
+                    ("yellow", "folder")),
     # Documents: a folded corner and lines of text.
     "file": ('<path d="M5 2h10l5 5v15h-15z"/><path d="M15 2v5h5z"/><path d="M8 11h9M8 14h9M8 17h6"/>',
              ("paper", "gray", "ink")),
@@ -1793,7 +1811,7 @@ _COLOR_DRAWINGS = {
     "copy": ('<path d="M8 8v-6h12v13h-4v-7z"/><path d="M4 8h12v14h-12z"/><path d="M7 12h6M7 15h6M7 18h4"/>',
              ("paper", "paper", "ink")),
     "clipboard": ('<path d="M4 4h16v18h-16z"/><path d="M7 7h10v12h-10z"/><path d="M9 2h6v4h-6z"/>'
-                  '<path d="M9 11h6M9 14h6M9 17h4"/>', ("brown", "paper", "grayS", "ink")),
+                  '<path d="M9 11h6M9 14h6M9 17h4"/>', ("gray", "paper", "grayS", "ink")),
     "printer": ('<path d="M7 2h10v6h-10z"/><path d="M3 8h18v9h-18z"/><path d="M7 14h10v8h-10z"/>'
                 '<path d="M9 17h6M9 19.5h4"/><path d="M17 10.5h1.5"/>',
                 ("paper", "grayS", "paper", "ink", "greenS/")),
@@ -1810,25 +1828,35 @@ _COLOR_DRAWINGS = {
     "search": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
                '<path d="M6.5 9a3.5 3.5 0 0 1 3 -2.5"/>', ("glass", "grayS", "white/")),
     "zoom-in": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
-                '<path d="M7 10h6M10 7v6"/>', ("glass", "grayS", "greenS/")),
+                '<path d="M7 10h6M10 7v6"/>', ("glass", "grayS", "dark/")),
     "zoom-out": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
-                 '<path d="M7 10h6"/>', ("glass", "grayS", "redS/")),
+                 '<path d="M7 10h6"/>', ("glass", "grayS", "dark/")),
     # Objects.
     "package": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 7.5v9.5l9 4.5v-9.5z"/>'
                 '<path d="M21 7.5v9.5l-9 4.5v-9.5z"/><path d="M7.5 5.25l9 4.5v3"/>',
-                ("yellow", "folder", "brown", "brownS/")),
+                ("blue", "blueS", "blue", "blueS/")),
     "map": ('<path d="M3 5l6 -2l6 2l6 -2v16l-6 2l-6 -2l-6 2z"/><path d="M9 3v16M15 5v16"/>'
             '<path d="M5 15l3 -3l3 2l3 -4l4 2"/>', ("green", "greenS/", "redS/")),
     "photo": ('<path d="M3 4h18v16h-18z"/><path d="M3 18l5 -6l4 4l3 -3l6 6v1h-18z"/>'
               '<path d="M14 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>', ("blue", "greenS", "yellowS")),
     "lock": ('<path d="M5 11h14v10h-14z"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/><path d="M12 14.5v3"/>',
-             ("yellowS", "grayS/", "dark/")),
+             ("grayS", "grayS/", "dark/")),
     "calendar": ('<path d="M3 5h18v16h-18z"/><path d="M3 5h18v4h-18z"/><path d="M8 3v4M16 3v4"/>'
                  '<path d="M6 13h2M11 13h2M16 13h2M6 17h2M11 17h2"/>', ("paper", "redS", "grayS/", "ink")),
     "home": ('<path d="M5 11h14v10h-14z"/><path d="M2.5 12l9.5 -8.5l9.5 8.5z"/><path d="M10 15h4v6h-4z"/>',
-             ("yellow", "redS", "brownS")),
+             ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
+    # Python's two snakes as closed shapes, with their eyes.
+    "brand-python": ('<path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v3h-3'
+                     'a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z"/>'
+                     '<path d="M16 15v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-5a2 2 0 0 1 2 -2h4a2 2 0 0 0 2 -2v-3h3'
+                     'a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2z"/><path d="M11 6l0 .01"/><path d="M13 18l0 .01"/>',
+                     ("blueS", "yellowS", "white/", "white/")),
+    # A brush: its head, a closed handle, the ferrule.
+    "brush": ('<path d="M3 21v-4a4 4 0 1 1 4 4h-4"/>'
+              '<path d="M21 3a16 16 0 0 0 -12.8 10.2l2.6 2.6a16 16 0 0 0 10.2 -12.8z"/>'
+              '<path d="M10.6 9a9 9 0 0 1 4.4 4.4"/>', ("blueS!", "brown", "brownS/")),
     # Layouts and reports: a page with a map frame, a legend and a title;
     # a report page with a chart.
     "layout": ('<path d="M3 3h18v18h-18z"/><path d="M5 5h10v9h-10z"/><path d="M17 6h2M17 9h2M17 12h2"/>'
@@ -1842,16 +1870,16 @@ _COLOR_DRAWINGS = {
     "terminal-2": ('<path d="M2 4h20v16h-20z"/><path d="M2 4h20v3h-20z"/><path d="M6 11l3 2.5l-3 2.5"/>'
                    '<path d="M11 16h5"/>', ("grayS", "blueS", "white/", "white/")),
     "pencil": ('<path d="M4 20l1 -4l11 -11l3 3l-11 11z"/><path d="M14.5 6.5l3 3"/><path d="M4 20l1 -4l3 3z"/>',
-               ("yellowS", "grayS/", "paper")),
+               ("grayS", "ink", "paper")),
     "trash": ('<path d="M3 6h18v2h-18z"/><path d="M9 6v-2h6v2"/><path d="M5 8h14l-1 13h-12z"/>'
               '<path d="M9.5 11v7M14.5 11v7"/>', ("grayS", "grayS/", "gray", "grayS/")),
     # Marks, labels, messages, people, time.
     "bookmark": ('<path d="M6 2h12v20l-6 -5l-6 5z"/>', ("redS",)),
     "label": ('<path d="M2 7h14l6 5l-6 5h-14z"/><path d="M15 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>',
-              ("yellow", "brownS/")),
+              ("gray", "grayS/")),
     "message": ('<path d="M3 4h18v12h-9l-5 4v-4h-4z"/><path d="M7 8h10M7 11.5h7"/>', ("blue", "blueS/")),
     "user": ('<path d="M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M4 21v-3l3 -4h10l3 4v3z"/>',
-             ("brown", "blueS")),
+             ("gray", "blueS")),
     "clock": ('<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 4v1.5M20 12h-1.5M12 20v-1.5M4 12h1.5"/>'
               '<path d="M12 7.5v4.5l3 2"/>', ("paper", "ink", "ink")),
 }

@@ -58,9 +58,9 @@ without restarting QGIS.
 - **Monochrome** – the default: clean line icons in the theme's own icon
   colour, calm and consistent across toolbars, menus and panels.
 - **Colourful** – the same icons in the manner of professional colour icon
-  sets such as Fluent and ArcGIS Pro: objects have solid bodies in medium
-  tones with a deeper edge – gold folders, blue databases and floppy disks,
-  green maps, red pins and bookmarks. Corners are square and the objects
+  sets such as Fluent and ArcGIS Pro: objects have solid bodies in calm,
+  cool medium tones with a deeper edge – gold folders, blue databases and
+  floppy disks, green maps, red pins and bookmarks, a red toolbox. Corners are square and the objects
   seen most are drawn in detail, like QGIS's own: a floppy disk with its
   shutter and label, documents with lines of text, a table with its header.
   Actions (zoom, pan, settings) keep the theme's icon colour with at most one
