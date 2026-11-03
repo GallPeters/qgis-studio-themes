@@ -47,6 +47,7 @@ changelog=
           - Colourful: more objects are coloured, such as layer set operations, shape tools, the north arrow, a target, a lifebuoy, notes, a chip and the media controls.
           - The 2.5D renderer shows a blue box, the editing pencil is yellow and Paste shows a wooden clipboard.
           - The wrench is drawn with true curves, so it stays sharp and undistorted at small sizes.
+          - Blocking shows a clean road barrier, and the status bar's coordinate/extent toggle keeps the modern icons when clicked.
 
      ** v1.2 (29.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.

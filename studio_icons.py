@@ -1791,7 +1791,6 @@ COLOR_RECIPES = {
     "square-off": ("ink", "redS/"), "circle-off": ("ink", "redS/"),
     "arrows-join": ("greenS/", "blueS/", "ink"), "circles": ("blueS", "redS", "greenS"),
     "circles-relation": ("blueS/", "greenS/"),
-    "barrier-block": ("redS", "ink", "white/", "white/", "white/", "ink"),
     "vector-spline": ("ink", "ink", "blueS/"), "corner-down-right": ("blueS/",),
     "typography": ("ink", "ink", "blueS/", "blueS/", "blueS/"),
     "text-size": ("blueS/", "blueS/", "blueS/", "ink"),
@@ -1890,6 +1889,9 @@ _COLOR_DRAWINGS = {
             '<path d="M9.5 9v4.5a1.5 1.5 0 1 0 3 0v-.75a1.5 1.5 0 1 0 -3 0v.75"/>'
             '<path d="M17.549 12a1.5 1.5 0 0 0 -2.799 .75v.75a1.5 1.5 0 0 0 2.795 .758"/>',
             ("yellow", "ink")),
+    # Blocking: a road barrier, a red board with white stripes on two legs.
+    "barrier-block": ('<path d="M3 6h18v7h-18z"/><path d="M8.5 7.5l-2.5 4M14 7.5l-2.5 4M19.5 7.5l-2.5 4"/>'
+                      '<path d="M6 13v7M18 13v7M4 20h4M16 20h4"/>', ("redS", "white/", "ink")),
     # A label's background: a shape under its hatching.
     "background": ('<path d="M4 4h16v16h-16z"/><path d="M4 8l4 -4"/><path d="M14 4l-10 10"/>'
                    '<path d="M4 20l16 -16"/><path d="M20 10l-10 10"/><path d="M20 16l-4 4"/>', ("yellow", "ink")),

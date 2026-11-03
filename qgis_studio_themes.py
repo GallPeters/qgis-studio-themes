@@ -210,7 +210,7 @@ ATLAS_COLUMNS = 32
 # dark ("color-light", "color-dark": every coloured part in its own colour,
 # stored in colour), and "ink", the parts drawn in the theme's icon colour
 # (a mask, tinted when loaded).
-MASK_FORMAT = 18
+MASK_FORMAT = 19
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},
@@ -832,6 +832,8 @@ class IconSwapper(QObject):
         # Collapsible group boxes whose collapse button is swapped again on
         # every open and close (see _hook_collapse).
         self._collapsibles = {}
+        # Tool buttons swapped again on every click (see _hook_toggle).
+        self._toggles = {}
         # Page lists with their own icon size (see _page_list), and feature
         # picker text fields (see _hook_picker).
         self._page_lists = {}
@@ -1729,6 +1731,7 @@ class IconSwapper(QObject):
                 self._swap(widget, None, None, deferred)
                 # A collapsible group box's collapse button is a tool button.
                 self._hook_collapse(widget)
+                self._hook_toggle(widget)
             # Drop-down choices (align, distribute, export...): actions added
             # to the button itself, or a menu outside the scanned tree.
             for extra in widget.actions():
@@ -1887,6 +1890,23 @@ class IconSwapper(QObject):
         box.collapsedStateChanged.connect(changed)
         self._collapsibles[id(box)] = (box, changed)
         self._filter(button, self._SHOW)
+
+    def _hook_toggle(self, button):
+        """Swap a button's icon again whenever it is clicked: QGIS gives
+        some another icon of its own each time (the status bar's
+        coordinate/extent toggle)."""
+        if id(button) in self._toggles:
+            return
+
+        def reswap(button=button):
+            if self._theme is not None and not sip.isdeleted(button):
+                self._swap(button, None, None, False)
+
+        def clicked(_checked=False):
+            QTimer.singleShot(0, reswap)
+
+        button.clicked.connect(clicked)
+        self._toggles[id(button)] = (button, clicked)
 
     @staticmethod
     def _sort_themes(combo):
@@ -2086,6 +2106,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(box):
                 box.collapsedStateChanged.disconnect(changed)
         self._collapsibles = {}
+        for button, clicked in self._toggles.values():
+            if not sip.isdeleted(button):
+                button.clicked.disconnect(clicked)
+        self._toggles = {}
         for widget, size in self._page_lists.values():
             if not sip.isdeleted(widget):
                 widget.setIconSize(size)
