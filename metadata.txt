@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.4
+version=1.3
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -17,14 +17,7 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.4 (04.11.2026):
-          - Colourful: the symbology and labelling icons are coloured, such as Single Symbol, Categorized, Graduated, Rule-based, No Symbols, Merged Features, Inverted Polygons and Blocking.
-          - Colourful: the label settings tabs are coloured, such as Text, Formatting, Buffer, Mask, Background, Shadow and Rendering.
-          - Colourful: more objects are coloured, such as layer set operations, shape tools, the north arrow, a target, a lifebuoy, notes, a chip and the media controls.
-          - The 2.5D renderer shows a blue box, the editing pencil is yellow and Paste shows a wooden clipboard.
-          - The wrench is drawn with true curves, so it stays sharp and undistorted at small sizes.
-
-     ** v1.3 (02.11.2026):
+     ** v1.3 (04.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
           - Monochrome: the theme's single-colour icons, as before.
           - Colourful: the same icons in the manner of professional colour icon sets such as Fluent and ArcGIS Pro: objects have solid bodies in calm medium tones with a deeper edge, such as gold folders, blue databases and floppy disks, green maps and red pins.
@@ -49,6 +42,11 @@ changelog=
           - Themes are built faster, so changing the theme or the icon style takes less time.
           - Ribbon tabs open at once: their pages are prepared in idle time after startup, and the tab shown is saved without slowing tab clicks.
           - Icon images left by earlier plugin versions are removed from the profile.
+          - Colourful: the symbology and labelling icons are coloured, such as Single Symbol, Categorized, Graduated, Rule-based, No Symbols, Merged Features, Inverted Polygons and Blocking.
+          - Colourful: the label settings tabs are coloured, such as Text, Formatting, Buffer, Mask, Background, Shadow and Rendering.
+          - Colourful: more objects are coloured, such as layer set operations, shape tools, the north arrow, a target, a lifebuoy, notes, a chip and the media controls.
+          - The 2.5D renderer shows a blue box, the editing pencil is yellow and Paste shows a wooden clipboard.
+          - The wrench is drawn with true curves, so it stays sharp and undistorted at small sizes.
 
      ** v1.2 (29.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.
