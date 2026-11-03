@@ -1852,14 +1852,15 @@ _COLOR_DRAWINGS = {
              'L20 9.83L20.47 8.91L20.7 7.9L20.68 6.86L20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6L17.14 3.32'
              'L16.1 3.3L15.09 3.53L14.17 4L13.39 4.68L12.8 5.53L12.44 6.51L12.32 7.54L12.46 8.56L12.85 9.52'
              'L3.69 18.69L3.39 19.2L3.39 19.8L3.69 20.31L4.2 20.61L4.8 20.61z"/>', ("grayS",)),
-    # About: a square sign with a large i, its dot and stem solid.
-    "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M10.6 5.4h2.8v2.8h-2.8z" fill="mark"/>'
-                            '<path d="M9.5 10h3.9v7h1.6v2h-6v-2h1.6v-5h-1.1z" fill="mark"/>',
-                            ("blueS", "white", "white")),
-    # Labels: abc on a yellow label, like QGIS's own.
-    "abc": ('<path d="M1.5 6h21v12h-21z"/><path d="M3 16v-6a2 2 0 1 1 4 0v6"/><path d="M3 13h4"/>'
-            '<path d="M10 8v6a2 2 0 1 0 4 0v-1a2 2 0 1 0 -4 0v1"/>'
-            '<path d="M20.732 12a2 2 0 0 0 -3.732 1v1a2 2 0 0 0 3.726 1.01"/>',
+    # About: a square sign with the i of the round info sign.
+    "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
+                            ("blueS", "white/", "white/")),
+    # Labels: a small abc on a yellow label pointed at its right end, like
+    # QGIS's own, with a margin of yellow around the letters.
+    "abc": ('<path d="M1.5 6h18l3 6l-3 6h-18z"/><path d="M7.25 12v3"/>'
+            '<path d="M7.25 12.75v.75a1.5 1.5 0 1 1 -3 0v-.75a1.5 1.5 0 1 1 3 0"/>'
+            '<path d="M9.5 9v4.5a1.5 1.5 0 1 0 3 0v-.75a1.5 1.5 0 1 0 -3 0v.75"/>'
+            '<path d="M17.549 12a1.5 1.5 0 0 0 -2.799 .75v.75a1.5 1.5 0 0 0 2.795 .758"/>',
             ("yellow", "ink")),
     # Python's two snakes as closed shapes, with their eyes.
     "brand-python": ('<path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v3h-3'
@@ -2045,7 +2046,8 @@ def _color_body(glyph, mode, ink, draw):
     fills, colored, inked = [], [], []
     for i, (segments, attrs) in enumerate(paths):
         fill, line, whole = parts[i]
-        if fill is None or "fill=" in attrs:
+        # Signs keep their designed marks (white on the disc).
+        if not sign and (fill is None or "fill=" in attrs):
             line = _on_fill(segments, line, areas, mode, recipe[min(i, len(recipe) - 1)])
         lines = colored if line else inked
         if "fill=" in attrs:
@@ -2073,8 +2075,10 @@ def _on_fill(segments, line, areas, mode, material):
         return line
     # The smallest fill holding it lies on top.
     _area_box, color = min(under, key=lambda item: (item[0][2] - item[0][0]) * (item[0][3] - item[0][1]))
-    current = line or THEME_INK[mode]
-    if _contrast(current, color) >= DETAIL_CONTRAST:
+    # The theme's icon colour is drawn in one layer for every theme: it
+    # must read in both kinds of theme, or the detail gets a fixed colour.
+    current = [line] if line else list(THEME_INK.values())
+    if min(_contrast(c, color) for c in current) >= DETAIL_CONTRAST:
         return line
     hue = MATERIAL_HUES.get(material.rstrip("/!"))
     deeper = [COLOR_HUES[hue][2]] if hue in COLOR_HUES else []

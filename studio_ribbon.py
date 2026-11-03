@@ -261,6 +261,12 @@ TABS = (
 )
 # The tab shown when none was chosen yet.
 DEFAULT_TAB = "Home"
+# Milliseconds before the tab shown is saved, after the last click.
+TAB_SAVE_DELAY = 1000
+# The pages not shown are built after startup (PREBUILD_DELAY ms), one
+# every PREBUILD_STEP ms, so the first click on a tab needs no building.
+PREBUILD_DELAY = 4000
+PREBUILD_STEP = 60
 # Menu items the ribbon leaves out: View > Toolbars (the ribbon stands for
 # the toolbars) and submenus whose commands QGIS's tool buttons on the
 # ribbon already offer (Measure, Select...).
@@ -600,14 +606,25 @@ class Ribbon(QWidget):
     def _show_page(self, index):
         if index < 0:
             return
-        page = self.pages.widget(index)
-        if index not in self._built:
-            self._built.add(index)
-            old = page.takeWidget()
-            content = self._build(index, old)
-            page.setWidget(content)
+        self._ensure_built(index)
         self.pages.setCurrentIndex(index)
         self._fit_height()
+
+    def _ensure_built(self, index):
+        if index not in self._built:
+            self._built.add(index)
+            page = self.pages.widget(index)
+            old = page.takeWidget()
+            page.setWidget(self._build(index, old))
+
+    def prebuild_next(self):
+        """Build one page not built yet (in idle time, so the first click
+        on each tab shows it at once); False when every page is built."""
+        for index in range(self.pages.count()):
+            if index not in self._built:
+                self._ensure_built(index)
+                return True
+        return False
 
     def _tab_clicked(self, _index):
         # Collapsed: a tab shows its page again.
@@ -689,6 +706,12 @@ class StudioRibbon(QObject):
         self._window = None
         self._host = None
         self._ribbon = None
+        # The tab shown, saved when the tabs rest (see _tab_changed).
+        self._tab = None
+        self._tab_timer = QTimer(self)
+        self._tab_timer.setSingleShot(True)
+        self._tab_timer.setInterval(TAB_SAVE_DELAY)
+        self._tab_timer.timeout.connect(self._save_tab)
         # Toolbars hidden for the ribbon (by objectName, so they survive a
         # session), toolbars watched, and the tab index of each toolbar's
         # groups (QGIS's own; others are on PLUGIN_TAB).
@@ -807,8 +830,25 @@ class StudioRibbon(QObject):
         titles = [title for title, _groups in TABS]
         tab = settings.value(TAB_SETTING, DEFAULT_TAB, type=str)
         self._ribbon.show_tab(titles.index(tab if tab in titles else DEFAULT_TAB))
-        self._ribbon.tabs.currentChanged.connect(lambda index: QgsSettings().setValue(TAB_SETTING, titles[index]))
+        self._ribbon.tabs.currentChanged.connect(self._tab_changed)
         self._ribbon.collapse.toggled.connect(lambda collapsed: QgsSettings().setValue(COLLAPSED_SETTING, collapsed))
+        QTimer.singleShot(PREBUILD_DELAY, self._prebuild)
+
+    def _tab_changed(self, index):
+        # Saved once the tabs rest: writing QGIS's settings costs a few
+        # milliseconds, on every click while browsing the tabs.
+        self._tab = TABS[index][0]
+        self._tab_timer.start()
+
+    def _save_tab(self):
+        if self._tab is not None:
+            QgsSettings().setValue(TAB_SETTING, self._tab)
+            self._tab = None
+
+    def _prebuild(self):
+        """Build the pages not shown yet one by one, between events."""
+        if self._ribbon is not None and self._ribbon.prebuild_next():
+            QTimer.singleShot(PREBUILD_STEP, self._prebuild)
 
     def deactivate(self, forget=False):
         """Hide the ribbon and show the toolbars it hid. Only `forget` (the
@@ -817,6 +857,8 @@ class StudioRibbon(QObject):
         session must know to show them again."""
         if self._ribbon is None:
             return
+        self._tab_timer.stop()
+        self._save_tab()
         window = self._window
         self._give_back()
         if not sip.isdeleted(window):

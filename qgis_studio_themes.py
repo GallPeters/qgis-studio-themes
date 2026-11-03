@@ -210,7 +210,7 @@ ATLAS_COLUMNS = 32
 # dark ("color-light", "color-dark": every coloured part in its own colour,
 # stored in colour), and "ink", the parts drawn in the theme's icon colour
 # (a mask, tinted when loaded).
-MASK_FORMAT = 14
+MASK_FORMAT = 17
 MASK_LAYERS = {
     "glyph": {"icon": "#000000", "accent": "none", "danger": "none"},
     "accent": {"icon": "none", "accent": "#000000", "danger": "none"},

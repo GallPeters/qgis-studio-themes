@@ -31,7 +31,7 @@ changelog=
           - The ribbon's Processing Toolbox button is called Processing and keeps its tool icon.
           - The Processing tool icon is a realistic wrench with a thin handle and an open jaw.
           - Small details on coloured shapes, such as clock hands, the gear on Project Properties and the lines in Map Tips, always have enough contrast to read on light and dark themes.
-          - About QGIS has a large i with a clear dot, and the labelling icons show abc on a yellow label, like QGIS's own.
+          - About QGIS is a blue square sign with the same i as the other info signs, and the labelling icons show a dark abc on a pointed yellow label, like QGIS's own.
           - The message bar's Show more link is in the theme's link colour, no longer black on dark themes.
           - The Python, brush and plant icons are filled, and the marks in the zoom magnifiers are dark so they read on the glass.
           - QGIS classic: QGIS's own icons, with the rest of the theme.
@@ -40,6 +40,7 @@ changelog=
           - The icon style changes at once, without restarting QGIS.
           - Every icon style stays pixel-sharp and as fast as before.
           - Themes are built faster, so changing the theme or the icon style takes less time.
+          - Ribbon tabs open at once: their pages are prepared in idle time after startup, and the tab shown is saved without slowing tab clicks.
           - Icon images left by earlier plugin versions are removed from the profile.
 
      ** v1.2 (29.10.2026):
