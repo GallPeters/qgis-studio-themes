@@ -49,6 +49,7 @@ changelog=
           - The wrench is drawn with true curves, so it stays sharp and undistorted at small sizes.
           - Blocking shows a clean road barrier, and the status bar's coordinate/extent toggle keeps the modern icons when clicked.
           - The countdown of timed messages shows the theme's pause and play icons and edge, no longer black on dark themes.
+          - Fixed an error (QVBoxLayout object is not callable) when opening other plugins' dialogs that store their layout as an attribute named layout.
 
      ** v1.2 (29.10.2026):
           - New settings window in Plugins > QGIS Studio Themes > Settings.

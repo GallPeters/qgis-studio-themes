@@ -1834,10 +1834,14 @@ class IconSwapper(QObject):
         Option dialogs (Layer Properties...) are left alone: their pages
         scroll, and following each page's height would resize the window on
         every page change (on Wayland, each change is also a request to the
-        compositor, which can stall moving the window)."""
-        own = dialog.minimumSize()
-        if (dialog.layout() is None or id(dialog) in self._rooms or (own.width() == 0 and own.height() == 0)
-                or dialog.findChild(QStackedWidget, "mOptionsStackedWidget") is not None):
+        compositor, which can stall moving the window).
+
+        Other plugins' dialogs are Python subclasses that often shadow Qt
+        methods with attributes (self.layout = QVBoxLayout()), so the
+        dialog's methods are called through QWidget, never the instance."""
+        own = QWidget.minimumSize(dialog)
+        if (QWidget.layout(dialog) is None or id(dialog) in self._rooms or (own.width() == 0 and own.height() == 0)
+                or QWidget.findChild(dialog, QStackedWidget, "mOptionsStackedWidget") is not None):
             return
         self._rooms[id(dialog)] = (dialog, own)
         self._filter(dialog, self._LAYOUT_REQUEST)
@@ -1848,13 +1852,13 @@ class IconSwapper(QObject):
         if entry is None or sip.isdeleted(dialog):
             return
         own = entry[1]
-        need = dialog.minimumSizeHint()
-        screen = dialog.screen()
+        need = dialog.minimumSizeHint()  # a virtual: a dialog's own override counts
+        screen = QWidget.screen(dialog)
         limit = screen.availableGeometry().size() if screen is not None else need
-        width = max(own.width(), min(need.width(), limit.width())) if own.width() else dialog.minimumWidth()
-        height = max(own.height(), min(need.height(), limit.height())) if own.height() else dialog.minimumHeight()
-        if (width, height) != (dialog.minimumWidth(), dialog.minimumHeight()):
-            dialog.setMinimumSize(width, height)
+        width = max(own.width(), min(need.width(), limit.width())) if own.width() else QWidget.minimumWidth(dialog)
+        height = max(own.height(), min(need.height(), limit.height())) if own.height() else QWidget.minimumHeight(dialog)
+        if (width, height) != (QWidget.minimumWidth(dialog), QWidget.minimumHeight(dialog)):
+            QWidget.setMinimumSize(dialog, width, height)
 
     def _hide_row_focus(self, tree):
         """Trees showing focus across all columns (renderer categories,
