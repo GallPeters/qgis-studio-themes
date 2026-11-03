@@ -27,7 +27,9 @@ changelog=
           - Documents are white sheets on light themes and soft grey ones on dark themes, so they never glare.
           - Info, help, warning and OK are solid signs.
           - The palette icon is white with coloured paints, the filter grey, and About QGIS a solid blue sign.
-          - The Processing Toolbox shows a red toolbox, as in ArcGIS; its algorithms keep their tool icon.
+          - Processing Toolbox groups show a red toolbox, as in ArcGIS; the tools in them keep their tool icon.
+          - The ribbon's Processing Toolbox button is called Processing and keeps its tool icon.
+          - The Processing tool icon is a realistic wrench with a thin handle and an open jaw.
           - The Python, brush and plant icons are filled, and the marks in the zoom magnifiers are dark so they read on the glass.
           - QGIS classic: QGIS's own icons, with the rest of the theme.
           - Over 350 more QGIS icons are replaced, in Monochrome and Colourful alike.

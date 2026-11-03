@@ -377,7 +377,7 @@ LABELS_BY_NAME = {
     "mActionCopyLayer": "Copy Layer", "mActionPasteLayer": "Paste Layer",
     "mActionAddToOverview": "Show in Overview", "mActionAddAllToOverview": "Show All",
     "mActionRemoveAllFromOverview": "Hide All", "mActionReindexMesh": "Reindex",
-    "toolboxAction": "Toolbox", "modelerAction": "Model Designer", "historyAction": "History",
+    "toolboxAction": "Processing", "modelerAction": "Model Designer", "historyAction": "History",
     "resultsViewer": "Results Viewer", "editInPlaceFeatures": "Edit In-Place", "optionsAction": "Options",
     "mActionManagePlugins": "Manage Plugins", "dbManager": "DB Manager", "mActionQueryHistory": "Query History",
     "mActionOptions": "Options", "mActionConfigureShortcuts": "Shortcuts", "mActionCustomization": "Customization",

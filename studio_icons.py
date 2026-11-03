@@ -111,8 +111,8 @@ ICON_MAP = {
     "processingModel.svg": "hierarchy-2",
     "processingScript.svg": "file-code",
     "processingAlgorithm.svg": "tool",
-    # Not a QGIS icon: the plugin's own for the Processing Toolbox action,
-    # which QGIS gives its algorithms' icon (see ACTION_ICONS).
+    # Not a QGIS icon: the plugin's own for the Processing Toolbox's groups
+    # (see IconSwapper.GROUP_ICON).
     "processingToolbox.svg": "toolbox",
     "mIconLayerTree.svg": "stack-2",
     # ---- Layer types (layer tree, browser, combo boxes) -------------------
@@ -963,14 +963,6 @@ NOT_REPLACED = (
 # resource path (the QGIS logo on the Dev Tools documentation page).
 RESOURCE_PATHS = {
     "qgis_icon.svg": ":/images/icons/qgis_icon.svg",
-    "processingToolbox.svg": ":/images/themes/default/processingAlgorithm.svg",
-}
-
-# Actions (by object name) that get an icon of their own instead of the one
-# QGIS gives them: the Processing Toolbox action shows a toolbox, not the
-# icon of the algorithms in it.
-ACTION_ICONS = {
-    "toolboxAction": "processingToolbox.svg",
 }
 
 # Icons that QGIS core plugins load from their own folder instead of the
@@ -1064,15 +1056,15 @@ MARK_ARM = 3.0
 # "name/" draws the line only; "ink" draws only the line, in the theme's
 # icon colour.
 COLOR_HUES = {  # (light body, medium body, edge)
-    # Calm and cool: 70% of the hues' saturation, gold and orange 75%.
-    "blue": ("#a7c0db", "#6c94be", "#446d95"),
-    "green": ("#accba3", "#6d9e6d", "#477449"),
-    "red": ("#e3b3ae", "#be736d", "#94534e"),
-    "amber": ("#e2c882", "#cba354", "#947431"),
-    "orange": ("#e5ba97", "#ca8e5e", "#996537"),
-    "purple": ("#c3b8de", "#9383bf", "#695996"),
-    "teal": ("#9fc7c2", "#54958d", "#376d67"),
-    "neutral": ("#d8dbdf", "#9da3aa", "#6e747d"),
+    # Calm and cool: 78% of the hues' saturation, gold and orange 82%.
+    "blue": ("#a4c0de", "#6893c2", "#406d99"),
+    "green": ("#abcda1", "#6aa06a", "#457646"),
+    "red": ("#e6b1ab", "#c36f68", "#984f4a"),
+    "amber": ("#e6ca7e", "#d1a44e", "#99762c"),
+    "orange": ("#e9b993", "#cf8d59", "#9d6533"),
+    "purple": ("#c2b6e0", "#917fc3", "#685699"),
+    "teal": ("#9dc9c3", "#509990", "#347069"),
+    "neutral": ("#d7dbe0", "#9ca3ab", "#6d747e"),
 }
 # Paper (fill, edge) on light and dark themes, and the colour of ink lines
 # on paper on dark themes (a clock's hands), where the theme's light ink
@@ -1081,7 +1073,7 @@ COLOR_MODES = ("light", "dark")
 PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
 PAPER_INK = "#3b4148"
 # A magnifier's light glass, in an ink frame.
-GLASS = "#ccdceb"
+GLASS = "#cbdcec"
 # Signs (info, help, warning, OK): solid, in the hue's medium body, with a
 # white (or dark) mark.
 SIGNS = frozenset(("info-circle", "info-square-rounded", "help-circle", "alert-triangle", "circle-check"))
@@ -1095,7 +1087,7 @@ MATERIAL_HUES = {
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#5a8f5a", "minus": "#b6655f", "check": "#5a8f5a"})
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#579257", "minus": "#ba615b", "check": "#579257"})
 
 
 def _mark_path(mark, c, arm):
@@ -1847,6 +1839,11 @@ _COLOR_DRAWINGS = {
              ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
+    # A wrench: a thin handle with a rounded end and an open-end head.
+    "tool": ('<path d="M5.31 20.31L14.48 11.15L15.44 11.54L16.46 11.68L17.49 11.56L18.47 11.2L19.32 10.61'
+             'L20 9.83L20.47 8.91L20.7 7.9L20.68 6.86L20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6L17.14 3.32'
+             'L16.1 3.3L15.09 3.53L14.17 4L13.39 4.68L12.8 5.53L12.44 6.51L12.32 7.54L12.46 8.56L12.85 9.52'
+             'L3.69 18.69L3.39 19.2L3.39 19.8L3.69 20.31L4.2 20.61L4.8 20.61z"/>', ("grayS",)),
     # Python's two snakes as closed shapes, with their eyes.
     "brand-python": ('<path d="M8 9v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-4a2 2 0 0 0 -2 2v3h-3'
                      'a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z"/>'
