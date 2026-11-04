@@ -1174,6 +1174,15 @@ def _shadow(body, mode, offset):
             f"{silhouette}</g>")
 
 
+def color_ink_px(width):
+    """Width in device pixels of the lines Colourful icons draw in the
+    theme's icon colour (actions, ink-only icons) and of their badge marks,
+    on a screen whose lines are `width`: 1 px up to 175 percent, like the
+    coloured hairlines beside them (at the screen's width they read twice
+    as heavy), 2 px at 200 percent, where 1 px would be faint."""
+    return 1 if width <= 2 else 2
+
+
 def color_stroke_px(width):
     """Width in device pixels of the coloured edges and details of
     Colourful icons on a screen whose lines are `width`: a hairline of
@@ -2649,7 +2658,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     px = size / 24
     width = stroke_px(size) if width is None else width
     if glyph in DETAILED and size >= DETAIL_MIN:
-        return _detailed_px(glyph, badge, size, width, layer, accent, danger, mode)
+        return _detailed_px(glyph, badge, size, color_ink_px(width), layer, accent, danger, mode)
     if badge:
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
         unit = badged * px
@@ -2671,8 +2680,10 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         low, high = line / 2, size - line / 2
         return lambda value: min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
-    snap = snapper(width)
-    # A sign's mark is a symbol, not an edge: it keeps the full width.
+    # Ink lines and badge marks (color_ink_px), on their own grid.
+    ink_width = color_ink_px(width)
+    snap = snapper(ink_width)
+    # A sign's mark is a symbol, not an edge: it keeps the screen's width.
     thin = width if glyph in SIGNS else color_stroke_px(width)
     snap_thin = snapper(thin)
     # The coloured parts are drawn finer than the ink ones, each on the
@@ -2682,7 +2693,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         colored = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0]
     # The ink parts are needed for the shadow in the colour layer too.
     inked = "".join(_color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1])
-    drawn = _num(width + STROKE_EXTRA)
+    drawn = _num(ink_width + STROKE_EXTRA)
     fine = f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{"".join(colored)}</g>'
     if layer == "ink":
         body = inked
