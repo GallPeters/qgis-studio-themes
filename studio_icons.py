@@ -2235,11 +2235,14 @@ DETAILED = {
 _DETAIL_ID = re.compile(r'id="(\w+)"|url\(#(\w+)\)')
 
 
-def _detailed(glyph, transform, edge=1):
+def _detailed(glyph, transform, edge=1, snap=None):
     """(defs, drawing) of a detailed glyph placed by `transform` (from its
-    32 px grid), edges `edge` units wide unless drawn otherwise, its ids
+    32 px grid), or with `snap` (factor, offset) drawn in device pixels on
+    the pixel grid; edges `edge` wide unless drawn otherwise, its ids
     prefixed so they never meet a badge's mask."""
     defs, body = DETAILED[glyph]
+    if snap is not None:
+        defs, body = _snap_detailed(defs, *snap), _snap_detailed(body, *snap)
 
     def rename(match):
         return f'id="d{match.group(1)}"' if match.group(1) else f"url(#d{match.group(2)})"
@@ -2247,6 +2250,99 @@ def _detailed(glyph, transform, edge=1):
     return (f"<defs>{_DETAIL_ID.sub(rename, defs)}</defs>",
             f'<g transform="{transform}" fill="none" stroke-linecap="butt" stroke-linejoin="miter" '
             f'stroke-width="{_num(edge)}">{_DETAIL_ID.sub(rename, body)}</g>')
+
+
+def _grid(factor, offset):
+    """Map a coordinate of the 32 px grid to device pixels at `factor`
+    (and `offset`), keeping it on the pixel grid as drawn: whole units
+    (fill boundaries) on pixel edges, half units (the centres of 1 px
+    edges) on pixel centres, anything between in proportion. Scaling the
+    drawing as a whole instead put the edges between pixels at 1.31x (42 px,
+    150 percent ribbons), smearing each over two."""
+    def place(value):
+        whole = math.floor(value + 1e-9)
+        part = value - whole
+        start = round(offset + whole * factor)
+        if abs(part - 0.5) < 1e-6:
+            return start + 0.5
+        return start + part * (round(offset + (whole + 1) * factor) - start)
+    return place
+
+
+_ELEMENT = re.compile(r"<(\w+)\b([^>]*?)(/?)>")
+_ATTR = re.compile(r'([\w:-]+)="([^"]*)"')
+_ARGS_DETAIL = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6, "S": 4, "A": 7, "Z": 0}
+
+
+def _snap_detailed(markup, factor, offset):
+    """A detailed drawing's markup (32 px grid, absolute coordinates) in
+    device pixels on the pixel grid (see _grid): sharp at any size."""
+    place = _grid(factor, offset)
+
+    def path(d):
+        tokens = _TOKEN.findall(d)
+        out, i = [], 0
+        while i < len(tokens):
+            command = tokens[i]
+            i += 1
+            count = _ARGS_DETAIL[command]
+            while True:
+                args = [float(v) for v in tokens[i:i + count]]
+                i += count
+                if command in "MLCS":
+                    args = [place(v) for v in args]
+                elif command in "HV":
+                    args = [place(args[0])]
+                elif command == "A":
+                    args = [args[0] * factor, args[1] * factor, *args[2:5], place(args[5]), place(args[6])]
+                out.append(command + " ".join(_num(v) for v in args))
+                # Implicit repeats of the command (none in the drawings, but
+                # keep to the SVG grammar).
+                if count == 0 or i >= len(tokens) or tokens[i].isalpha():
+                    break
+        return "".join(out)
+
+    def span(start, length):
+        """(start, length) of a box side; thin ones (text lines) stay whole
+        pixels so every line of a page is as thick as the next."""
+        if length <= 1.5:
+            # On a whole pixel, even from a half unit (a line at 17.5).
+            return math.floor(place(start) + 0.5), max(1, round(length * factor))
+        return place(start), place(start + length) - place(start)
+
+    def element(match):
+        tag, text, close = match.groups()
+        if tag in ("linearGradient", "radialGradient", "stop"):
+            return match.group(0)  # fractions of the shape they paint
+        attrs = dict(_ATTR.findall(text))
+        num = {k: float(v) for k, v in attrs.items() if re.fullmatch(r"-?[\d.]+", v)}
+        if tag == "rect":
+            attrs["x"], attrs["width"] = (_num(v) for v in span(num["x"], num["width"]))
+            attrs["y"], attrs["height"] = (_num(v) for v in span(num["y"], num["height"]))
+            if "rx" in num:
+                attrs["rx"] = _num(num["rx"] * factor)
+        elif tag in ("circle", "ellipse"):
+            rx = num.get("r", num.get("rx"))
+            ry = num.get("r", num.get("ry"))
+            left, right = place(num["cx"] - rx), place(num["cx"] + rx)
+            top, bottom = place(num["cy"] - ry), place(num["cy"] + ry)
+            attrs["cx"], attrs["cy"] = _num((left + right) / 2), _num((top + bottom) / 2)
+            if tag == "circle":
+                attrs["r"] = _num(((right - left) + (bottom - top)) / 4)
+            else:
+                attrs["rx"], attrs["ry"] = _num((right - left) / 2), _num((bottom - top) / 2)
+        elif tag == "path":
+            attrs["d"] = path(attrs["d"])
+        elif tag == "g" and attrs.get("transform", "").startswith("rotate("):
+            angle, cx, cy = (float(v) for v in attrs["transform"][7:-1].split())
+            attrs["transform"] = f"rotate({_num(angle)} {_num(place(cx))} {_num(place(cy))})"
+        if "stroke-width" in num:
+            attrs["stroke-width"] = _num(num["stroke-width"] * factor)
+        if "stroke-dasharray" in attrs:
+            attrs["stroke-dasharray"] = " ".join(_num(float(v) * factor) for v in attrs["stroke-dasharray"].split())
+        return f"<{tag}" + "".join(f' {k}="{v}"' for k, v in attrs.items()) + f"{close}>"
+
+    return _ELEMENT.sub(element, markup)
 
 
 def _badge_mask(center, radius, size):
@@ -2266,12 +2362,15 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
         return open_ + "</svg>"
     if badge:
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
-        factor = badged * size / 32
-        transform = f"translate({_num(0.2 * px)} {_num(0.2 * px)}) scale({_num(factor)})"
+        factor, offset = badged * size / 32, 0.2 * px
     else:
-        factor = size / 32
-        transform = f"scale({_num(factor)})"
-    defs, body = _detailed(glyph, transform, round(1 / factor, 4) if hairline else 1)
+        factor, offset = size / 32, 0.0
+    if hairline:
+        # Device pixels, every coordinate on the pixel grid, 1 px edges.
+        defs, body = _detailed(glyph, "translate(0 0)", 1, snap=(factor, offset))
+    else:
+        transform = f"translate({_num(offset)} {_num(offset)}) scale({_num(factor)})"
+        defs, body = _detailed(glyph, transform)
     body = _shadow(body, mode, max(1, round(size / 32))) + _deepen(body, mode)
     parts = [open_, defs]
     if not badge:

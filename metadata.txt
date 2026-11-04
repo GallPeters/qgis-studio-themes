@@ -26,6 +26,7 @@ changelog=
           - Colourful: vertex tools show red vertices on a blue curve (Simplify, Reshape, vertex and shape tools), model diagrams a yellow input, blue algorithms and green outputs (Model Designer, Models), Split Features a grey blade and Split Parts green and blue arrows.
           - The extent button of extent fields (Processing and others) shows an extent frame instead of the info sign.
           - GeoPackage is a brown box, like QGIS's own.
+          - The detailed icons are drawn on the screen's pixel grid at every size, so they stay sharp in the ribbon and toolbars at 125, 150 and 200 percent scaling (they were blurred when scaled to 42 px).
           - Colourful icons are lit from the top-left: their outlines are a deep shade of each object's colour on light and dark themes alike, so shapes stay crisp, and a soft shadow falls to the bottom-right. Highlights, badge marks and lines in the theme's icon colour are unchanged.
 
      ** v1.3 (04.11.2026):
