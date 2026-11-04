@@ -1175,12 +1175,12 @@ def _shadow(body, mode, offset):
 
 def color_stroke_px(width):
     """Width in device pixels of the coloured edges and details of
-    Colourful icons on a screen whose lines are `width`: a pixel finer
-    from 2 px up (1 px at 125 to 175 percent, 2 at 200), as in ArcGIS Pro
-    and Fluent, whose objects have fine edges; their solid bodies carry
-    the shape. Lines in the theme's icon colour (actions) and the marks
-    of signs keep `width`."""
-    return max(1, width - 1)
+    Colourful icons on a screen whose lines are `width`: a hairline of
+    1 px on every screen (200 percent included), as in ArcGIS Pro and
+    Fluent, whose objects have fine edges; their solid bodies carry the
+    shape. Lines in the theme's icon colour (actions) and the marks of
+    signs keep `width`."""
+    return 1
 
 
 def _mark_path(mark, c, arm):
@@ -2235,9 +2235,10 @@ DETAILED = {
 _DETAIL_ID = re.compile(r'id="(\w+)"|url\(#(\w+)\)')
 
 
-def _detailed(glyph, transform):
+def _detailed(glyph, transform, edge=1):
     """(defs, drawing) of a detailed glyph placed by `transform` (from its
-    32 px grid), its ids prefixed so they never meet a badge's mask."""
+    32 px grid), edges `edge` units wide unless drawn otherwise, its ids
+    prefixed so they never meet a badge's mask."""
     defs, body = DETAILED[glyph]
 
     def rename(match):
@@ -2245,7 +2246,7 @@ def _detailed(glyph, transform):
 
     return (f"<defs>{_DETAIL_ID.sub(rename, defs)}</defs>",
             f'<g transform="{transform}" fill="none" stroke-linecap="butt" stroke-linejoin="miter" '
-            f'stroke-width="1">{_DETAIL_ID.sub(rename, body)}</g>')
+            f'stroke-width="{_num(edge)}">{_DETAIL_ID.sub(rename, body)}</g>')
 
 
 def _badge_mask(center, radius, size):
@@ -2254,9 +2255,10 @@ def _badge_mask(center, radius, size):
             f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="#000"/></mask></defs>')
 
 
-def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode):
+def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairline=True):
     """render_icon_color_px for a detailed glyph: fixed colours (nothing
-    in the ink layer), badges as usual."""
+    in the ink layer), badges as usual; with `hairline`, edges exactly one
+    device pixel at any size (see color_stroke_px)."""
     px = size / 24
     open_ = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
              f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>')
@@ -2264,10 +2266,12 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode):
         return open_ + "</svg>"
     if badge:
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
-        transform = f"translate({_num(0.2 * px)} {_num(0.2 * px)}) scale({_num(badged * size / 32)})"
+        factor = badged * size / 32
+        transform = f"translate({_num(0.2 * px)} {_num(0.2 * px)}) scale({_num(factor)})"
     else:
-        transform = f"scale({_num(size / 32)})"
-    defs, body = _detailed(glyph, transform)
+        factor = size / 32
+        transform = f"scale({_num(factor)})"
+    defs, body = _detailed(glyph, transform, round(1 / factor, 4) if hairline else 1)
     body = _shadow(body, mode, max(1, round(size / 32))) + _deepen(body, mode)
     parts = [open_, defs]
     if not badge:
@@ -2493,7 +2497,8 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     pre-rendered PNG."""
     glyph, _, badge = spec.partition("+")
     if glyph in DETAILED:
-        return _detailed_px(glyph, badge, 24, 1, "all", colors["accent"], colors["danger"], mode)
+        # Scalable: its edges scale with it (no device pixel to keep to).
+        return _detailed_px(glyph, badge, 24, 1, "all", colors["accent"], colors["danger"], mode, hairline=False)
     if badge:
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
     else:
