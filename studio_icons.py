@@ -1143,13 +1143,14 @@ def _shading(body):
     return f"<defs>{stops}</defs>"
 
 
-# Outlines and shadow, as if lit from the top-left: coloured edges are
-# deepened towards black on every theme (a deep shade of each object's own
-# colour, so shapes stay crisp on light and dark windows alike, more on
-# dark ones), and a soft shadow falls a pixel to the bottom-right.
-# Highlights (light lines), the theme's icon colour and badge marks keep
-# their colours.
-OUTLINE_DEEPEN = {"light": 0.32, "dark": 0.5}
+# Outlines and shadow, as if lit from above: coloured edges are deepened
+# a little towards black on every theme (a deep shade of each object's own
+# colour, not near-black, so 1 px edges stay crisp but read fine on light
+# and dark windows alike, more on dark ones), and a soft shadow falls a
+# pixel below the object; none to the side, which made vertical edges read
+# as 2 px. Highlights (light lines), the theme's icon colour and badge
+# marks keep their colours.
+OUTLINE_DEEPEN = {"light": 0.15, "dark": 0.3}
 SHADOW_OPACITY = {"light": 0.2, "dark": 0.55}
 _EDGE = re.compile(r'stroke="(#[0-9a-fA-F]{6})"')
 _PAINT = re.compile(r'(fill|stroke|stop-color)="(#[0-9a-fA-F]{6}|url\(#\w+\))"')
@@ -1166,10 +1167,10 @@ def _deepen(body, mode):
 
 
 def _shadow(body, mode, offset):
-    """The shadow of `body` (SVG): its silhouette in black, `offset` to
-    the bottom-right, faint."""
+    """The shadow of `body` (SVG): its silhouette in black, `offset`
+    below it, faint."""
     silhouette = _PAINT.sub(lambda match: f'{match.group(1)}="#000000"', body)
-    return (f'<g transform="translate({_num(offset)} {_num(offset)})" opacity="{SHADOW_OPACITY[mode]}">'
+    return (f'<g transform="translate(0 {_num(offset)})" opacity="{SHADOW_OPACITY[mode]}">'
             f"{silhouette}</g>")
 
 
@@ -2624,7 +2625,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     coloured = f'<g stroke-width="{fine}">{"".join(colored)}</g>'
     body = _deepen(coloured, mode) + "".join(inked)
     parts.append(_shading(body))
-    # The shadow a pixel down-right at 32 px (0.75 of a unit).
+    # The shadow a pixel below at 32 px (0.75 of a unit).
     shadow = _shadow(coloured + "".join(inked), mode, round(0.75 / scale, 3))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{shadow}{body}</g></g>')
     if badge in BADGE_MARKS:
