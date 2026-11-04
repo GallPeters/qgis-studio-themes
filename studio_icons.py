@@ -1968,10 +1968,12 @@ _COLOR_DRAWINGS = {
                 '<path d="M9 17h6M9 19.5h4"/><path d="M17 10.5h1.5"/>',
                 ("paper", "grayS", "paper", "ink", "greenS/")),
     # Data: a cylinder with bands, stacked layers, a table with its header.
+    # The database's bands are plain deep lines, as on a regular database
+    # icon (white ones shone like rings).
     "database": ('<path d="M4 6v12c0 1.7 3.6 3 8 3s8 -1.3 8 -3v-12"/>'
                  '<path d="M4 6c0 -1.7 3.6 -3 8 -3s8 1.3 8 3s-3.6 3 -8 3s-8 -1.3 -8 -3z"/>'
                  '<path d="M4 10.5c0 1.7 3.6 3 8 3s8 -1.3 8 -3"/><path d="M4 14.5c0 1.7 3.6 3 8 3s8 -1.3 8 -3"/>',
-                 ("blueS!", "blue", "white/", "white/")),
+                 ("blueS!", "blue", "blueS/", "blueS/")),
     "stack-2": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 12.5l5 -2.5l4 2l4 -2l5 2.5l-9 4.5z"/>'
                 '<path d="M3 17.5l5 -2.5l4 2l4 -2l5 2.5l-9 4.5z"/>', ("yellowS", "greenS", "blueS")),
     "table": ('<path d="M3 4h18v16h-18z"/><path d="M3 4h18v4h-18z"/><path d="M3 12h18M3 16h18M9 8v12M15 8v12"/>',
@@ -2002,10 +2004,12 @@ _COLOR_DRAWINGS = {
              ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
-    # A wrench: a thin handle with a rounded end and an open-end head, its
+    # A wrench: a sturdy handle (4 units, about 40 percent of the head, as
+    # real open-end wrenches; a 2.4 unit one nearly vanished at 16 px) with
+    # a round end, an open-end head of radius 4.7 and a straight jaw, its
     # curves arcs (a polygon's many corners bend when fitted to pixels).
-    "tool": ('<path d="M5.35 20.35L14.52 11.17A4.2 4.2 0 0 0 20.4 5.86L17.37 8.89L15.11 6.63L18.14 3.6'
-             'A4.2 4.2 0 0 0 12.83 9.48L3.65 18.65A1.2 1.2 0 1 0 5.35 20.35z"/>', ("grayS",)),
+    "tool": ('<path d="M6.41 20.41L14.71 12.12A4.7 4.7 0 0 0 20.53 5.66L17.64 8.55L15.45 6.36L18.34 3.47'
+             'A4.7 4.7 0 0 0 11.88 9.29L3.59 17.59A2 2 0 0 0 6.41 20.41z"/>', ("grayS",)),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
                             ("blueS", "white/", "white/")),
@@ -2129,14 +2133,14 @@ DETAILED = {
         '<rect x="7.5" y="16.5" width="17" height="11" fill="#ffffff" stroke="#1f4c80"/>'
         + _lines(10, (19.5, 22.5), 12) + '<rect x="7.5" y="16.5" width="17" height="2" fill="#e05a4f"/>',
     ),
+    # A regular database: a cylinder in a calm, even shade with two deep
+    # band lines and a lighter lid; no glossy rings or glint.
     "database": (
-        _lg("a", (0, "#2e66a6"), (.35, "#7fb6ec"), (.6, "#5a97d6"), (1, "#244f86"), x2=1, y2=0)
-        + _lg("t", (0, "#cfe5fb"), (1, "#8fbcea")),
+        _lg("a", (0, "#3f78b8"), (.45, "#5d95d1"), (1, "#3a6ea8"), x2=1, y2=0)
+        + _lg("t", (0, "#a9cdf2"), (1, "#7fb0e3")),
         '<path d="M5.5 7.5V24.5A10.5 3.5 0 0 0 26.5 24.5V7.5" fill="url(#a)" stroke="#1d4677"/>'
-        '<path d="M5.5 13.5A10.5 3.5 0 0 0 26.5 13.5M5.5 19A10.5 3.5 0 0 0 26.5 19" stroke="#d6eafd" opacity=".9"/>'
-        '<path d="M5.5 14.5A10.5 3.5 0 0 0 26.5 14.5M5.5 20A10.5 3.5 0 0 0 26.5 20" stroke="#1d4677" opacity=".45"/>'
-        '<ellipse cx="16" cy="7.5" rx="10.5" ry="3.5" fill="url(#t)" stroke="#1d4677"/>'
-        '<ellipse cx="14" cy="7" rx="5" ry="1.2" fill="#ffffff" opacity=".6"/>',
+        '<path d="M5.5 13.5A10.5 3.5 0 0 0 26.5 13.5M5.5 19A10.5 3.5 0 0 0 26.5 19" stroke="#1d4677"/>'
+        '<ellipse cx="16" cy="7.5" rx="10.5" ry="3.5" fill="url(#t)" stroke="#1d4677"/>',
     ),
     "table": (
         _lg("a", (0, "#72aee8"), (1, "#3672ba")),
