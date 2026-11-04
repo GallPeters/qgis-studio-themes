@@ -1097,6 +1097,59 @@ MATERIAL_HUES = {
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
 COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653"})
+# Fills are shaded from top to bottom, as in Fluent and ArcGIS Pro, rather
+# than flat: lit towards white at the top, deepened towards the hue's own
+# edge at the bottom (a richer colour than darkening towards black).
+SHADE_TOP = 0.25
+SHADE_BOTTOM = 0.18
+_SHADE = re.compile(r'fill="url\(#g([0-9a-f]{6})\)"')
+# How much a detail's hue is deepened, per step, to read on a fill.
+DEEP = 0.22
+# The hue of each fill colour (paper is grey, glass blue), for details on
+# them: a fill's edge colour, and shading towards it.
+FILL_HUES = {
+    **{tone: hue for hue, tones in COLOR_HUES.items() for tone in tones[:2]},
+    **{fill: "neutral" for fill, _edge in PAPER.values()},
+    GLASS: "blue", "#ffffff": "neutral",
+}
+
+
+def _mix(color, other, amount):
+    """#rrggbb `color` moved `amount` (0 to 1) towards `other`."""
+    a = [int(color[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(other[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * amount):02x}" for x, y in zip(a, b))
+
+
+def _shade_to(fill):
+    """What a fill deepens towards at its bottom: its hue's edge, or
+    black for a colour of no hue."""
+    hue = FILL_HUES.get(fill)
+    return COLOR_HUES[hue][2] if hue in COLOR_HUES else "#000000"
+
+
+def _shading(body):
+    """The <defs> of the shaded fills `body` (SVG text) refers to."""
+    used = sorted(set(_SHADE.findall(body)))
+    if not used:
+        return ""
+    stops = "".join(
+        f'<linearGradient id="g{c}" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0" stop-color="{_mix("#" + c, "#ffffff", SHADE_TOP)}"/>'
+        f'<stop offset="1" stop-color="{_mix("#" + c, _shade_to("#" + c), SHADE_BOTTOM)}"/></linearGradient>'
+        for c in used
+    )
+    return f"<defs>{stops}</defs>"
+
+
+def color_stroke_px(width):
+    """Width in device pixels of the coloured edges and details of
+    Colourful icons on a screen whose lines are `width`: a pixel finer
+    from 2 px up (1 px at 125 to 175 percent, 2 at 200), as in ArcGIS Pro
+    and Fluent, whose objects have fine edges; their solid bodies carry
+    the shape. Lines in the theme's icon colour (actions) and the marks
+    of signs keep `width`."""
+    return max(1, width - 1)
 
 
 def _mark_path(mark, c, arm):
@@ -2090,7 +2143,7 @@ def _color_body(glyph, mode, ink, draw):
         if fill:
             for shape, closed in _subpaths(segments):
                 if closed or whole:
-                    fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="{fill}" stroke="none"/>'))
+                    fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="url(#g{fill[1:]})" stroke="none"/>'))
         lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"/>')
     return [path for _, _, path in sorted(fills)] + colored, inked
 
@@ -2113,8 +2166,17 @@ def _on_fill(segments, line, areas, mode, material):
     current = [line] if line else list(THEME_INK.values())
     if min(_contrast(c, color) for c in current) >= DETAIL_CONTRAST:
         return line
+    # A detail keeps to its own hue, or that of the fill under it (an ink
+    # detail): its edge, then that edge deepened, as professional colour
+    # sets draw a globe's meridians in deep blue and a page's lines in
+    # grey. Near-black only when no shade of the hue reads.
     hue = MATERIAL_HUES.get(material.rstrip("/!"))
-    deeper = [COLOR_HUES[hue][2]] if hue in COLOR_HUES else []
+    if hue not in COLOR_HUES:
+        hue = FILL_HUES.get(color)
+    deeper = []
+    if hue in COLOR_HUES:
+        edge = COLOR_HUES[hue][2]
+        deeper = [edge, _mix(edge, "#000000", DEEP), _mix(edge, "#000000", 2 * DEEP)]
     return _legible(deeper + [DARK_MARK, "#ffffff"], color)
 
 
@@ -2143,7 +2205,10 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    body = "".join(colored + inked)
+    # Coloured edges and details finer than ink lines (see color_stroke_px).
+    fine = stroke if glyph in SIGNS else round(stroke * 2 / 3, 3)
+    body = f'<g stroke-width="{fine}">{"".join(colored)}</g>{"".join(inked)}'
+    parts.append(_shading(body))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
@@ -2180,18 +2245,29 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
 
         def place(x, y):
             return middle + (x - 12) * unit, middle + (y - 12) * unit
-    offset = 0.5 if width % 2 else 0.0
-    low, high = width / 2, size - width / 2
+    def snapper(line):
+        # Lines of odd width sit on pixel centres, even ones on pixel edges.
+        offset = 0.5 if line % 2 else 0.0
+        low, high = line / 2, size - line / 2
+        return lambda value: min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
-    def snap(value):
-        return min(max(math.floor(value - offset + 0.5) + offset, low), high)
-
-    colored, inked = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))
-    body = {"color": colored, "ink": inked}.get(layer, colored + inked)
+    snap = snapper(width)
+    # A sign's mark is a symbol, not an edge: it keeps the full width.
+    thin = width if glyph in SIGNS else color_stroke_px(width)
+    snap_thin = snapper(thin)
+    # The coloured parts are drawn finer than the ink ones, each on the
+    # grid of its own width so both stay sharp.
+    colored = inked = []
+    if layer != "ink":
+        colored = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0]
+    if layer != "color":
+        inked = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1]
     drawn = _num(width + STROKE_EXTRA)
+    body = f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{"".join(colored)}</g>{"".join(inked)}'
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>',
+        _shading(body),
     ]
     mask = ""
     if badge:
@@ -2204,7 +2280,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
-    parts.append(f'<g{mask} stroke-width="{drawn}">{"".join(body)}</g>')
+    parts.append(f'<g{mask} stroke-width="{drawn}">{body}</g>')
     if badge in BADGE_MARKS and layer in ("color", "all"):
         mark = BADGE_MARKS[badge]
         middle = snap(BADGE_CENTER * px)

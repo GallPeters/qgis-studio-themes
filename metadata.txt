@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.3
+version=1.4
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,12 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.4 (04.11.2026):
+          - Colourful icons are finer and more professional, in the manner of ArcGIS Pro and Fluent.
+          - Object edges and details are a pixel thinner on scaled screens (1 px at 125 to 175 percent scaling, 2 px at 200), while action icons, signs and badges keep their weight.
+          - Fills are softly shaded from top to bottom, deepening into their own colour instead of a flat tone.
+          - Details keep to their object's colour: a globe's meridians and a map's folds are deep blue and deep green rather than black, and the lines on pages, clipboards and calculators a calm grey.
 
      ** v1.3 (04.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
