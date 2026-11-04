@@ -176,7 +176,8 @@ ICON_MAP = {
     "tracking.svg": "route",
     # ---- Attributes / analysis --------------------------------------------
     "mActionIdentify.svg": "info-circle",
-    "mActionMapIdentification.svg": "info-circle",
+    # The extent widget's button (QgsExtentWidget), not an identify tool.
+    "mActionMapIdentification.svg": "frame",
     # Identify Results panel: its pick modes match the selection tools.
     "mActionIdentifyByRectangle.svg": "marquee-2",
     "mActionIdentifyByPolygon.svg": "lasso-polygon",
@@ -1872,6 +1873,36 @@ COLOR_RECIPES = {
 # materials replacing the line drawing's recipe; Monochrome keeps the line
 # drawings. Parts lie back to front: a sheet behind another is drawn only
 # where it shows, as every fill is drawn under every line.
+# Nodes and dots: vertex tools show red vertices on a blue curve, as QGIS
+# marks vertices; model diagrams show a yellow input, blue algorithms and
+# green outputs, as in the model designer; selection tools a yellow knot.
+COLOR_RECIPES.update({
+    "ease-in-out-control-points": ("redS", "ink", "redS", "ink", "ink", "ink", "blueS/"),
+    "vector-bezier-2": ("redS", "redS", "ink", "ink", "redS", "redS", "blueS/"),
+    "vector": ("redS",) * 4 + ("ink",),
+    "vector-triangle": ("redS",) * 3 + ("ink",),
+    "shape": ("redS",) * 4 + ("ink",),
+    "shape-2": ("redS",) * 4 + ("ink",),
+    "transform": ("blueS", "ink", "ink", "greenS"),
+    "rotate-dot": ("ink", "redS"),
+    "circle-dot": ("redS", "ink"),
+    "focus-centered": ("redS", "ink"),
+    "hierarchy-2": ("yellowS", "blueS", "greenS", "ink"),
+    "hierarchy-3": ("yellowS", "blueS", "greenS", "greenS", "greenS", "blueS", "ink"),
+    "sitemap": ("blueS", "greenS", "yellowS", "ink"),
+    "affiliate": ("ink", "ink", "blueS", "blueS", "blueS", "yellowS"),
+    "share": ("blueS", "greenS", "greenS", "ink"),
+    "lasso": ("ink", "yellowS", "ink"),
+    "lasso-polygon": ("ink", "yellowS", "ink"),
+    "grid-dots": ("blueS",),
+    "grain": ("blueS",),
+    "layout-grid": ("blue",),
+    "layout-dashboard": ("blue",),
+    "toggle-left": ("paper", "grayS"),
+    # Split Features: a grey blade; Split Parts like Merge Features.
+    "slice": ("grayS!",),
+    "arrows-split": ("greenS/", "blueS/", "ink"),
+})
 _COLOR_DRAWINGS = {
     # Save: a floppy with a metal shutter and its slot, a label with lines.
     "device-floppy": ('<path d="M4 3h13l4 4v14h-17z"/><path d="M8 3h8v6h-8z"/><path d="M13 4.5v3"/>'
@@ -1915,7 +1946,10 @@ _COLOR_DRAWINGS = {
     # Objects.
     "package": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 7.5v9.5l9 4.5v-9.5z"/>'
                 '<path d="M21 7.5v9.5l-9 4.5v-9.5z"/><path d="M7.5 5.25l9 4.5v3"/>',
-                ("blue", "blueS", "blue", "blueS/")),
+                # GeoPackage: a brown box, like QGIS's own.
+                ("wood", "woodS", "wood", "woodS/")),
+    # An extent: a light blue map area inside crop marks.
+    "frame": ('<path d="M7 7h10v10h-10z"/><path d="M4 7h16M4 17h16M7 4v16M17 4v16"/>', ("blue", "ink")),
     "map": ('<path d="M3 5l6 -2l6 2l6 -2v16l-6 2l-6 -2l-6 2z"/><path d="M9 3v16M15 5v16"/>'
             '<path d="M5 15l3 -3l3 2l3 -4l4 2"/>', ("green", "greenS/", "redS/")),
     "photo": ('<path d="M3 4h18v16h-18z"/><path d="M3 18l5 -6l4 4l3 -3l6 6v1h-18z"/>'
@@ -1986,6 +2020,247 @@ _COLOR_DRAWINGS = {
 }
 COLOR_GLYPHS = {name: body for name, (body, _materials) in _COLOR_DRAWINGS.items()}
 COLOR_RECIPES.update({name: materials for name, (_body, materials) in _COLOR_DRAWINGS.items()})
+
+
+# ---- Detailed Colourful icons -----------------------------------------------
+# The objects seen most are drawn by hand on a 32 px grid, in the manner of
+# ArcGIS Pro's large icons: 1 px edges, shaded volumes (a cylinder, a lit
+# globe), highlights, texture details and soft shadows. They are used from
+# DETAIL_MIN device pixels up (toolbars on scaled screens, large panels);
+# smaller icons keep the pixel-snapped drawings, as such detail turns soft
+# when scaled below its grid (real sets draw small sizes separately).
+DETAIL_MIN = 32
+_TEXT = "#97a1ab"
+
+
+def _lg(id_, *stops, x2=0, y2=1):
+    """A linear gradient (top to bottom unless x2/y2 say otherwise)."""
+    st = "".join(f'<stop offset="{o}" stop-color="{c}"/>' for o, c in stops)
+    return f'<linearGradient id="{id_}" x1="0" y1="0" x2="{x2}" y2="{y2}">{st}</linearGradient>'
+
+
+def _gear(cx, cy, r_out, r_in, teeth):
+    points = []
+    for i in range(teeth * 4):
+        a = 2 * math.pi * i / (teeth * 4) - math.pi / 2
+        r = r_out if i % 4 in (0, 1) else r_in
+        points.append(f"{cx + r * math.cos(a):.2f} {cy + r * math.sin(a):.2f}")
+    return "M" + "L".join(points) + "Z"
+
+
+def _lines(x, ys, w, h=1, color=_TEXT):
+    return "".join(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{color}"/>' for y in ys)
+
+
+# Glyph: (gradients and clips, drawing), in 32 px units.
+DETAILED = {
+    "folder": (
+        _lg("a", (0, "#e9b552"), (1, "#d4952c")) + _lg("b", (0, "#ffe08f"), (1, "#f2b74a")),
+        '<path d="M3.5 6.5H12.5L15 9H28.5V26.5H3.5Z" fill="url(#a)" stroke="#a5731c"/>'
+        '<path d="M3.5 12.5H28.5V26.5H3.5Z" fill="url(#b)" stroke="#a5731c"/>'
+        '<path d="M4.5 13.5H27.5" stroke="#fff4d2"/><path d="M4.5 7.5H12L14.5 10" stroke="#f6d27e"/>',
+    ),
+    "file": (
+        _lg("a", (0, "#ffffff"), (1, "#eceff3")) + _lg("b", (0, "#f3f5f7"), (1, "#cfd5dc")),
+        '<path d="M7.5 3.5H19.5L25.5 9.5V28.5H7.5Z" fill="url(#a)" stroke="#7d8792"/>'
+        '<path d="M19.5 3.5V9.5H25.5Z" fill="url(#b)" stroke="#7d8792" stroke-linejoin="round"/>'
+        '<rect x="10" y="12" width="8" height="1.5" fill="#3d7fc8"/>'
+        + _lines(10, (15, 17.5, 20, 22.5), 13) + _lines(10, (25,), 8),
+    ),
+    "device-floppy": (
+        _lg("a", (0, "#6aa9e6"), (1, "#2c66ab")) + _lg("b", (0, "#f1f3f5"), (1, "#b3bcc6")),
+        '<path d="M4.5 4.5H24L27.5 8V27.5H4.5Z" fill="url(#a)" stroke="#1f4c80"/>'
+        '<path d="M5.5 5.5V26.5" stroke="#9cc8f2" opacity=".7"/>'
+        '<rect x="9.5" y="4.5" width="13" height="8" fill="url(#b)" stroke="#4f5a66"/>'
+        '<rect x="17.5" y="6" width="2.5" height="5" fill="#3d4650"/>'
+        '<rect x="7.5" y="16.5" width="17" height="11" fill="#ffffff" stroke="#1f4c80"/>'
+        + _lines(10, (19.5, 22.5), 12) + '<rect x="7.5" y="16.5" width="17" height="2" fill="#e05a4f"/>',
+    ),
+    "database": (
+        _lg("a", (0, "#2e66a6"), (.35, "#7fb6ec"), (.6, "#5a97d6"), (1, "#244f86"), x2=1, y2=0)
+        + _lg("t", (0, "#cfe5fb"), (1, "#8fbcea")),
+        '<path d="M5.5 7.5V24.5A10.5 3.5 0 0 0 26.5 24.5V7.5" fill="url(#a)" stroke="#1d4677"/>'
+        '<path d="M5.5 13.5A10.5 3.5 0 0 0 26.5 13.5M5.5 19A10.5 3.5 0 0 0 26.5 19" stroke="#d6eafd" opacity=".9"/>'
+        '<path d="M5.5 14.5A10.5 3.5 0 0 0 26.5 14.5M5.5 20A10.5 3.5 0 0 0 26.5 20" stroke="#1d4677" opacity=".45"/>'
+        '<ellipse cx="16" cy="7.5" rx="10.5" ry="3.5" fill="url(#t)" stroke="#1d4677"/>'
+        '<ellipse cx="14" cy="7" rx="5" ry="1.2" fill="#ffffff" opacity=".6"/>',
+    ),
+    "table": (
+        _lg("a", (0, "#72aee8"), (1, "#3672ba")),
+        '<rect x="3.5" y="5.5" width="25" height="21" fill="#ffffff" stroke="#5d6873"/>'
+        '<rect x="4" y="11" width="7" height="15" fill="#eef3f9"/>'
+        '<path d="M11.5 11V26M19.5 11V26M4 15.5H28M4 20.5H28" stroke="#b4bdc7"/>'
+        '<rect x="3.5" y="5.5" width="25" height="5" fill="url(#a)" stroke="#24548c"/>'
+        '<path d="M4.5 6.5H27.5" stroke="#b8d8f6"/><path d="M11.5 6V10M19.5 6V10" stroke="#24548c" opacity=".6"/>'
+        '<rect x="3.5" y="5.5" width="25" height="21" stroke="#5d6873"/>',
+    ),
+    "stack-2": (
+        _lg("y", (0, "#ffe08a"), (1, "#e3a634")) + _lg("g", (0, "#a6d98f"), (1, "#4f9d46"))
+        + _lg("b", (0, "#8cc0f0"), (1, "#3570b8")),
+        '<path d="M3.5 21L16 27.5L28.5 21L16 14.5Z" fill="url(#b)" stroke="#204f86" stroke-linejoin="round"/>'
+        '<path d="M3.5 16L16 22.5L28.5 16L16 9.5Z" fill="url(#g)" stroke="#36752f" stroke-linejoin="round"/>'
+        '<path d="M3.5 11L16 17.5L28.5 11L16 4.5Z" fill="url(#y)" stroke="#a0711a" stroke-linejoin="round"/>'
+        '<path d="M6 11L16 5.8L26 11" stroke="#fff4cf" opacity=".9" stroke-linejoin="round"/>',
+    ),
+    "map": (
+        _lg("l", (0, "#c9e8b8"), (1, "#9fd08a")) + _lg("m", (0, "#a9d695"), (1, "#7cb867")),
+        '<path d="M3.5 7.5L11.5 4.5V24.5L3.5 27.5Z" fill="url(#l)" stroke="#3b7a32" stroke-linejoin="round"/>'
+        '<path d="M11.5 4.5L20.5 7.5V27.5L11.5 24.5Z" fill="url(#m)" stroke="#3b7a32" stroke-linejoin="round"/>'
+        '<path d="M20.5 7.5L28.5 4.5V24.5L20.5 27.5Z" fill="url(#l)" stroke="#3b7a32" stroke-linejoin="round"/>'
+        '<path d="M4 19C8 17 9.5 21.5 13.5 19.5S21 13.5 28 15" stroke="#3f86d1" stroke-width="1.4"/>'
+        '<path d="M6 12L11.5 14L17 10.5L24 12.5" stroke="#c9443a" stroke-dasharray="2 1"/>'
+        '<circle cx="24" cy="12.5" r="1.6" fill="#c9443a" stroke="#ffffff" stroke-width=".7"/>',
+    ),
+    "world": (
+        '<radialGradient id="o" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#a9d4f7"/>'
+        '<stop offset=".6" stop-color="#4d8fd6"/><stop offset="1" stop-color="#25599a"/></radialGradient>'
+        + _lg("c", (0, "#8fd07a"), (1, "#3f8a3a")) + '<clipPath id="k"><circle cx="16" cy="16" r="12.5"/></clipPath>',
+        '<circle cx="16" cy="16" r="12.5" fill="url(#o)"/><g clip-path="url(#k)">'
+        '<path d="M8.5 6C12 5 14.5 7.5 13.5 10S9 12.5 10 15.5S13.5 18.5 12.5 22S9.5 26 8 24S6.5 18 5 15.5S5.5 8 8.5 6Z" '
+        'fill="url(#c)" stroke="#2f6e2b" stroke-width=".75"/>'
+        '<path d="M18.5 8C21.5 7 24.5 8 25.5 10.5S23 13 23.5 15.5S23.5 20.5 21.5 23S19 22 19 20S16.5 17 17 15S16 10 18.5 8Z" '
+        'fill="url(#c)" stroke="#2f6e2b" stroke-width=".75"/>'
+        '<ellipse cx="16" cy="16" rx="5.5" ry="12.5" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/>'
+        '<path d="M3.5 16H28.5M5 10H27M5 22H27" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/></g>'
+        '<ellipse cx="11.5" cy="9.5" rx="5" ry="3" fill="#ffffff" opacity=".28"/>'
+        '<circle cx="16" cy="16" r="12.5" stroke="#1d4677"/>',
+    ),
+    "photo": (
+        _lg("s", (0, "#a9d3f6"), (1, "#e8f4fe")) + _lg("m", (0, "#86c874"), (1, "#478f3f"))
+        + _lg("n", (0, "#b5c9b0"), (1, "#7d9878")) + '<clipPath id="k"><rect x="5" y="7" width="22" height="18"/></clipPath>',
+        '<rect x="3.5" y="5.5" width="25" height="21" fill="#ffffff" stroke="#5d6873"/>'
+        '<rect x="5" y="7" width="22" height="18" fill="url(#s)"/><g clip-path="url(#k)">'
+        '<circle cx="22" cy="11.5" r="2.5" fill="#f8cf4f" stroke="#c9951e" stroke-width=".8"/>'
+        '<path d="M14 25L20 15.5L27.5 25Z" fill="url(#n)" stroke="#5f7a5a" stroke-width=".8"/>'
+        '<path d="M4 25L12 13.5L19.5 25Z" fill="url(#m)" stroke="#36752f" stroke-width=".8" stroke-linejoin="round"/>'
+        '<path d="M10.2 16.1L12 13.5L13.8 16.1L12.8 15.6L12 16.4L11.2 15.6Z" fill="#ffffff"/></g>'
+        '<rect x="5" y="7" width="22" height="18" stroke="#9aa5b0" stroke-width=".8"/>',
+    ),
+    "printer": (
+        _lg("a", (0, "#e7eaee"), (1, "#98a2ad")),
+        '<rect x="9.5" y="3.5" width="13" height="9" fill="#ffffff" stroke="#7d8792"/>' + _lines(11.5, (6,), 9)
+        + '<rect x="4.5" y="11.5" width="23" height="11" rx="1.5" fill="url(#a)" stroke="#5d6873"/>'
+        '<path d="M6 12.5H26" stroke="#ffffff" opacity=".9"/>'
+        '<rect x="7.5" y="18.5" width="17" height="2.5" fill="#3d4650"/>'
+        '<circle cx="24" cy="15" r="1.1" fill="#56c25a" stroke="#2f7a33" stroke-width=".5"/>'
+        '<rect x="9.5" y="20.5" width="13" height="8" fill="#ffffff" stroke="#7d8792"/>'
+        + _lines(11.5, (23,), 9) + _lines(11.5, (25.5,), 6),
+    ),
+    "toolbox": (
+        _lg("a", (0, "#e8786c"), (1, "#b2362d")) + _lg("l", (0, "#ee8a7f"), (1, "#c84a40"))
+        + _lg("m", (0, "#f4f6f8"), (1, "#a4adb7")),
+        '<path d="M12.5 8.5V5.5H19.5V8.5" stroke="#5d6873" stroke-width="1.6"/>'
+        '<rect x="3.5" y="11.5" width="25" height="15" fill="url(#a)" stroke="#7a241e"/>'
+        '<path d="M3.5 11.5L6 8.5H26L28.5 11.5Z" fill="url(#l)" stroke="#7a241e" stroke-linejoin="round"/>'
+        '<path d="M4.5 12.5H27.5" stroke="#f6b0a8"/>'
+        '<rect x="4" y="16" width="24" height="1.5" fill="#7a241e" opacity=".45"/>'
+        '<rect x="13.5" y="14.5" width="5" height="5" rx=".8" fill="url(#m)" stroke="#4f5a66"/>'
+        '<rect x="15.3" y="16.3" width="1.4" height="1.4" fill="#4f5a66"/>',
+    ),
+    "map-pin": (
+        _lg("a", (0, "#f08a7f"), (1, "#b2362d")),
+        '<ellipse cx="16" cy="29" rx="5" ry="1.3" fill="#000000" opacity=".2"/>'
+        '<path d="M16 28.5C16 28.5 25.5 19 25.5 12.5A9.5 9.5 0 0 0 6.5 12.5C6.5 19 16 28.5 16 28.5Z" '
+        'fill="url(#a)" stroke="#86271f"/>'
+        '<circle cx="16" cy="12.5" r="3.7" fill="#ffffff" stroke="#86271f"/>'
+        '<path d="M9.5 10A7 7 0 0 1 13.5 5.8" stroke="#f9c4be" stroke-width="1.2"/>',
+    ),
+    "pencil": (
+        _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
+        '<g transform="rotate(-45 16 16)">'
+        '<rect x="7" y="13" width="15" height="2" fill="#ffe08a"/>'
+        '<rect x="7" y="15" width="15" height="2" fill="#f2bb3c"/>'
+        '<rect x="7" y="17" width="15" height="2" fill="#d6951f"/>'
+        '<rect x="22" y="13" width="3" height="6" fill="url(#m)"/>'
+        '<path d="M22.7 13V19M24.3 13V19" stroke="#7d8792" stroke-width=".5"/>'
+        '<rect x="25" y="13" width="3" height="6" rx=".6" fill="#ea8f95"/>'
+        '<path d="M7 13L2.5 16L7 19Z" fill="#f3d3a3"/><path d="M4 15L2.5 16L4 17Z" fill="#3d4650"/>'
+        '<path d="M2.5 16L7 13H25M2.5 16L7 19H25M25 13H27.4A.6 .6 0 0 1 28 13.6V18.4A.6 .6 0 0 1 27.4 19H25" '
+        'stroke="#8a5a12" stroke-width=".8" stroke-linejoin="round"/></g>',
+    ),
+    "lock": (
+        _lg("b", (0, "#ffdc85"), (1, "#dc9d32")) + _lg("s", (0, "#d9dee3"), (1, "#7d8792"), x2=1, y2=0),
+        '<path d="M10.5 14V10A5.5 5.5 0 0 1 21.5 10V14" stroke="#5d6873" stroke-width="3.2"/>'
+        '<path d="M10.5 14V10A5.5 5.5 0 0 1 21.5 10V14" stroke="url(#s)" stroke-width="1.8"/>'
+        '<rect x="6.5" y="13.5" width="19" height="14" rx="1.5" fill="url(#b)" stroke="#a0711a"/>'
+        '<path d="M8 14.5H24" stroke="#fff4cf"/>'
+        '<circle cx="16" cy="19.5" r="2" fill="#6b4a12"/><rect x="15.2" y="20" width="1.6" height="4" fill="#6b4a12"/>',
+    ),
+    "settings": (
+        _lg("a", (0, "#eef1f4"), (1, "#8f99a4")),
+        f'<path d="{_gear(16, 16, 13, 10, 8)}" fill="url(#a)" stroke="#4f5a66" stroke-linejoin="round"/>'
+        '<circle cx="16" cy="16" r="6.5" stroke="#ffffff" opacity=".6"/>'
+        '<circle cx="16" cy="16" r="4" fill="#ffffff" stroke="#4f5a66"/>',
+    ),
+    "clipboard": (
+        _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
+        '<rect x="5.5" y="4.5" width="21" height="25" rx="1.5" fill="url(#w)" stroke="#6b4218"/>'
+        '<rect x="8.5" y="7.5" width="15" height="19" fill="#ffffff" stroke="#a5835c"/>'
+        '<path d="M10.5 12.5L11.8 13.8L14 11.2M10.5 17.5L11.8 18.8L14 16.2" stroke="#4f9d46" stroke-width="1.1"/>'
+        + _lines(15.5, (12, 17), 6) + _lines(10.5, (21.5,), 11)
+        + '<rect x="11.5" y="2.5" width="9" height="5" rx="1" fill="url(#m)" stroke="#4f5a66"/>'
+        '<circle cx="16" cy="4.5" r=".9" fill="#4f5a66"/>',
+    ),
+}
+_DETAIL_ID = re.compile(r'id="(\w+)"|url\(#(\w+)\)')
+
+
+def _detailed(glyph, transform):
+    """(defs, drawing) of a detailed glyph placed by `transform` (from its
+    32 px grid), its ids prefixed so they never meet a badge's mask."""
+    defs, body = DETAILED[glyph]
+
+    def rename(match):
+        return f'id="d{match.group(1)}"' if match.group(1) else f"url(#d{match.group(2)})"
+
+    return (f"<defs>{_DETAIL_ID.sub(rename, defs)}</defs>",
+            f'<g transform="{transform}" fill="none" stroke-linecap="butt" stroke-linejoin="miter" '
+            f'stroke-width="1">{_DETAIL_ID.sub(rename, body)}</g>')
+
+
+def _badge_mask(center, radius, size):
+    return (f'<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="{size}" height="{size}">'
+            f'<rect width="{size}" height="{size}" fill="#fff"/>'
+            f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="#000"/></mask></defs>')
+
+
+def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode):
+    """render_icon_color_px for a detailed glyph: fixed colours (nothing
+    in the ink layer), badges as usual."""
+    px = size / 24
+    open_ = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+             f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>')
+    if layer == "ink":
+        return open_ + "</svg>"
+    if badge:
+        badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
+        transform = f"translate({_num(0.2 * px)} {_num(0.2 * px)}) scale({_num(badged * size / 32)})"
+    else:
+        transform = f"scale({_num(size / 32)})"
+    defs, body = _detailed(glyph, transform)
+    parts = [open_, defs]
+    if not badge:
+        parts += [body, "</svg>"]
+        return "".join(parts)
+    center, radius = _snap_circle(BADGE_CENTER * px, BADGE_RADIUS * px)
+    gap = max(1, round(BADGE_GAP * px))
+    parts += [_badge_mask(center, radius + gap, size), f'<g mask="url(#b)">{body}</g>']
+    drawn = _num(width + STROKE_EXTRA)
+    if badge in BADGE_MARKS:
+        offset = 0.5 if width % 2 else 0.0
+        middle = math.floor(BADGE_CENTER * px - offset + 0.5) + offset
+        mark = BADGE_MARKS[badge]
+        arm = max(2, round(MARK_ARM * px))
+        cap = "round" if mark == "check" else "square"
+        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
+                     f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
+    elif layer == "all":
+        fill = danger if badge == "x" else accent
+        parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 # How the paths of COLOR_GLYPHS are named for _glyph_paths.
 COLOR_PREFIX = "color:"
 # Colourful lines: round ends (they end inside the shapes they meet), sharp
@@ -2182,8 +2457,12 @@ def _on_fill(segments, line, areas, mode, material):
 
 def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     """The Colourful version of render_icon (same glyph placement and
-    badges) for a `mode` theme: ink parts in colors["icon"]."""
+    badges) for a `mode` theme: ink parts in colors["icon"]. Detailed
+    glyphs are drawn detailed: this SVG serves the large sizes without a
+    pre-rendered PNG."""
     glyph, _, badge = spec.partition("+")
+    if glyph in DETAILED:
+        return _detailed_px(glyph, badge, 24, 1, "all", colors["accent"], colors["danger"], mode)
     if badge:
         scale, transform = BADGED_SCALE, f"translate(0.2 0.2) scale({BADGED_SCALE})"
     else:
@@ -2230,6 +2509,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
+    if glyph in DETAILED and size >= DETAIL_MIN:
+        return _detailed_px(glyph, badge, size, width, layer, accent, danger, mode)
     if badge:
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
         unit = badged * px

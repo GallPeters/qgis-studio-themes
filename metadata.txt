@@ -22,6 +22,10 @@ changelog=
           - Object edges and details are a pixel thinner on scaled screens (1 px at 125 to 175 percent scaling, 2 px at 200), while action icons, signs and badges keep their weight.
           - Fills are softly shaded from top to bottom, deepening into their own colour instead of a flat tone.
           - Details keep to their object's colour: a globe's meridians and a map's folds are deep blue and deep green rather than black, and the lines on pages, clipboards and calculators a calm grey.
+          - Colourful: detailed, hand-drawn icons for the objects seen most (folder, document, save, database, table, layers, map, globe, raster, printer, toolbox, pin, edit, lock, settings, clipboard) at 32 px and larger: shaded volumes, highlights, texture details and soft shadows. Smaller sizes keep the crisp pixel-snapped drawings.
+          - Colourful: vertex tools show red vertices on a blue curve (Simplify, Reshape, vertex and shape tools), model diagrams a yellow input, blue algorithms and green outputs (Model Designer, Models), Split Features a grey blade and Split Parts green and blue arrows.
+          - The extent button of extent fields (Processing and others) shows an extent frame instead of the info sign.
+          - GeoPackage is a brown box, like QGIS's own.
 
      ** v1.3 (04.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.
