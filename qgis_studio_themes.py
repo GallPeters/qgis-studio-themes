@@ -949,6 +949,9 @@ class IconSwapper(QObject):
         # picker text fields (see _hook_picker).
         self._page_lists = {}
         self._pickers = {}
+        # Main panel trees given the icon size setting's size (_panel_tree),
+        # with their own: {id: (view, QSize)}.
+        self._trees = {}
         # Trees whose row-wide focus frame is turned off (see _row_focus),
         # and dialogs kept large enough for their contents, with QGIS's own
         # minimum size (see _hold_room).
@@ -1055,6 +1058,7 @@ class IconSwapper(QObject):
             QTimer.singleShot(0, self._drain)
         self._filter(main_window, self._CHILD_POLISHED)
         QGuiApplication.instance().focusWindowChanged.connect(self._on_focus_window)
+        self._keep_tree_sizes()
 
     def _retheme(self, theme, icons_dir):
         """Switch from one Studio theme to another in place: every swapped
@@ -1081,6 +1085,14 @@ class IconSwapper(QObject):
             for window in windows:
                 if not sip.isdeleted(window):
                     window.setUpdatesEnabled(True)
+        self._keep_tree_sizes()
+
+    def _keep_tree_sizes(self):
+        """The panel trees' size again after a theme is applied: its
+        stylesheet's own panel size (PANEL_ICON_RULES) is set again whenever
+        Qt polishes them, now or once the events of the switch are done."""
+        self._refresh_trees()
+        QTimer.singleShot(0, self._refresh_trees)
 
     def _retheme_icons(self, theme):
         for action in self._watched:
@@ -1119,6 +1131,7 @@ class IconSwapper(QObject):
         not stretched pixels) until the missing masks are drawn."""
         if self._theme is None:
             return
+        self._refresh_trees()
         self._extra_sizes = self._current_extra_sizes()
         if self._pngs_usable() != self._png:
             self._retheme(self._theme, self._icons_dir)
@@ -1137,10 +1150,11 @@ class IconSwapper(QObject):
         return self._scale
 
     def _current_extra_sizes(self):
-        """QGIS's toolbar icon size and dialog page list size, as now set."""
+        """QGIS's toolbar icon size, dialog page list size and the main panel
+        trees' size (see _tree_size), as now set."""
         window = self._main_window
         toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
-        return toolbar, self._list_size()
+        return toolbar, self._list_size(), self._tree_size()
 
     # Dialog page lists (Layer Properties, Data Source Manager...): 20 px
     # icons instead of QGIS's toolbar size plus 4 (28 px at the default 24),
@@ -1155,6 +1169,38 @@ class IconSwapper(QObject):
     def _list_size(cls):
         """Icon size of dialog page lists, as set by _page_list."""
         return QgsApplication.scaleIconSize(cls.PAGE_LIST_ICON)
+
+    # The main panel trees (Browser, Layers, Processing Toolbox): their
+    # icons follow QGIS's toolbar icon size, which QGIS applies to toolbars
+    # only, from the theme's own size for them (PANEL_ICON_RULES: 20 px,
+    # QGIS's 16 on compact screens), a step larger per larger setting.
+    PANEL_TREES = ("QgsBrowserTreeView", "QgsLayerTreeView", "QgsProcessingToolboxTreeView")
+    TREE_STEPS = ((24, 0), (32, 4), (48, 8))  # (toolbar size up to, extra px); above: 16
+
+    def _tree_size(self):
+        """Icon size of the main panel trees for QGIS's toolbar icon size."""
+        window = self._main_window
+        toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
+        base = 16 if self._scale == studio_icons.COMPACT_SCALE else DOCK_ICON_SIZE
+        extra = next((px for limit, px in self.TREE_STEPS if toolbar <= limit), 16)
+        return base + extra
+
+    def _panel_tree(self, view):
+        """Give a main panel tree the icon size of QGIS's icon size setting
+        (see _tree_size); its own size is restored with the theme."""
+        if not any(view.inherits(name) for name in self.PANEL_TREES):
+            return
+        size = self._tree_size()
+        if id(view) not in self._trees:
+            self._trees[id(view)] = (view, view.iconSize())
+        if view.iconSize() != QSize(size, size):
+            view.setIconSize(QSize(size, size))
+
+    def _refresh_trees(self):
+        """QGIS's icon size changed: the panel trees follow."""
+        for view, _size in list(self._trees.values()):
+            if not sip.isdeleted(view):
+                self._panel_tree(view)
 
     def _page_list(self, widget):
         """Give a dialog page list its icon size (see PAGE_LISTS)."""
@@ -1202,7 +1248,7 @@ class IconSwapper(QObject):
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
         for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
-                      self._row_focus, self._rooms, self._relaxed):
+                      self._row_focus, self._rooms, self._relaxed, self._trees):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1921,6 +1967,7 @@ class IconSwapper(QObject):
         elif isinstance(widget, QAbstractItemView):
             if isinstance(widget, QTreeView):
                 self._hide_row_focus(widget)
+                self._panel_tree(widget)
             if widget.inherits("QgsProcessingToolboxTreeView"):
                 self._delegate_view(widget)
                 # Every row has the same height (theme rule): let Qt measure
@@ -2258,6 +2305,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(widget):
                 widget.setIconSize(size)
         self._page_lists = {}
+        for view, size in self._trees.values():
+            if not sip.isdeleted(view):
+                view.setIconSize(size)
+        self._trees = {}
         for (tree,) in self._row_focus.values():
             if not sip.isdeleted(tree):
                 tree.setAllColumnsShowFocus(True)
