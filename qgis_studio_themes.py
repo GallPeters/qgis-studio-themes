@@ -25,11 +25,11 @@ from qgis.gui import QgsCollapsibleGroupBoxBasic, QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
     QAbstractProxyModel, QBuffer, QByteArray, QDataStream, QEvent, QFile, QIODevice, QModelIndex, QObject,
-    QPersistentModelIndex, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, qVersion,
+    QPersistentModelIndex, QPointF, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, qVersion,
 )
 from qgis.PyQt.QtGui import (
-    QAction, QBrush, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QImage, QPainter, QPalette,
-    QPixmap, QPixmapCache, QRegion, QStandardItemModel,
+    QAction, QBrush, QColor, QFont, QFontDatabase, QGuiApplication, QIcon, QIconEngine, QImage, QPainter,
+    QPalette, QPixmap, QPixmapCache, QRegion, QStandardItemModel,
 )
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
@@ -382,6 +382,116 @@ def render_masks(folder, size, width, scale, stop):
         buffer.close()
         write_atomic(mask_path(folder, size, width, scale, layer), bytes(data))
     return True
+
+
+def render_one(spec, size, width, scale):
+    """The mask layers of one drawing at one exact pixel size, drawn as
+    render_masks draws an atlas cell (same layers and formats as
+    load_masks): for sizes no atlas covers, so they are never resampled."""
+    cell = QRectF(0, 0, size, size)
+    images = {}
+    for layer in MASK_LAYERS:
+        image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(Qt.GlobalColor.transparent)
+        images[layer] = image
+
+    def draw(layer, svg):
+        painter = QPainter(images[layer])
+        QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painter, cell)
+        painter.end()
+
+    for layer in ("glyph", badge_layer(spec)):
+        if layer is not None:
+            draw(layer, studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width))
+    for mode in studio_icons.COLOR_MODES:
+        draw(f"color-{mode}", studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode))
+    draw("ink", studio_icons.render_icon_color_px(spec, size, scale, width, "ink"))
+    return {
+        layer: image if layer.startswith("color") else image.convertToFormat(QImage.Format.Format_Alpha8)
+        for layer, image in images.items()
+    }
+
+
+@functools.lru_cache(maxsize=1)
+def scaled_size_is_logical():
+    """Whether this Qt hands QIconEngine.scaledPixmap the logical size
+    (Qt 6.8 and later) or the size already multiplied by the scale."""
+    seen = []
+
+    class Probe(QIconEngine):
+        def scaledPixmap(self, size, mode, state, scale):  # pylint: disable=invalid-name,unused-argument
+            seen.append(size.width())
+            return QPixmap()
+
+        def pixmap(self, size, mode, state):  # pylint: disable=unused-argument
+            seen.append(size.width())
+            return QPixmap()
+
+        def clone(self):
+            return Probe()
+
+    QIcon(Probe()).pixmap(QSize(10, 10), 2.0)
+    return not seen or seen[0] == 10
+
+
+class SharpIconEngine(QIconEngine):
+    """One of our icons, always shown 1:1 in device pixels: the
+    pre-rendered pixmap when one exists for the exact size asked for, else
+    that size drawn once on the pixel grid (render_one) and kept. A plain
+    pixmap icon holds only the pre-rendered sizes and has Qt resample the
+    nearest for any other (QGIS's font-scaled icon sizes, large toolbar
+    settings, dialog icons, other screens), which blurs it."""
+
+    STATES = {
+        QIcon.Mode.Normal: "normal", QIcon.Mode.Active: "normal",
+        QIcon.Mode.Disabled: "disabled", QIcon.Mode.Selected: "selected",
+    }
+
+    def __init__(self, swapper, name):
+        super().__init__()
+        self._swapper = swapper
+        self._name = name
+
+    def _get(self, size, mode, scale):
+        side = min(size.width(), size.height())
+        if side <= 0:
+            return QPixmap()
+        ratio = round(scale, 2) if scale and scale > 0 else 1.0
+        pixmap = self._swapper.exact_pixmap(self._name, max(1, round(side * ratio)), self.STATES.get(mode, "normal"),
+                                            ratio)
+        return QPixmap() if pixmap is None else pixmap
+
+    def pixmap(self, size, mode, state):  # pylint: disable=unused-argument
+        return self._get(size, mode, 1.0)
+
+    def scaledPixmap(self, size, mode, state, scale):  # pylint: disable=invalid-name,unused-argument
+        if not scaled_size_is_logical() and scale > 0:
+            size = QSize(round(size.width() / scale), round(size.height() / scale))
+        return self._get(size, mode, scale)
+
+    def paint(self, painter, rect, mode, state):  # pylint: disable=unused-argument
+        device = painter.device()
+        pixmap = self._get(rect.size(), mode, device.devicePixelRatioF() if device is not None else 1.0)
+        if pixmap.isNull():
+            return
+        side = pixmap.width() / pixmap.devicePixelRatio()
+        # Centred on whole device pixels, so it is drawn 1:1.
+        x = rect.x() + (rect.width() - side) / 2
+        y = rect.y() + (rect.height() - side) / 2
+        painter.drawPixmap(QPointF(round(x), round(y)), pixmap)
+
+    def actualSize(self, size, mode, state):  # pylint: disable=invalid-name,unused-argument
+        side = min(size.width(), size.height())
+        return QSize(side, side)
+
+    def availableSizes(self, mode=QIcon.Mode.Normal, state=QIcon.State.Off):  # pylint: disable=invalid-name,unused-argument
+        return [QSize(size, size) for size in self._swapper.png_sizes()]
+
+    def clone(self):
+        return SharpIconEngine(self._swapper, self._name)
+
+    def key(self):
+        return "studio-sharp"
 
 
 def load_masks(folder, size, width, scale):
@@ -851,6 +961,10 @@ class IconSwapper(QObject):
         # (screen ratios, logical sizes) while the pre-rendered icons are
         # used, else None (see _pngs_usable).
         self._png = None
+        # Masks of single icons drawn for sizes no atlas covers, per (spec,
+        # pixel size, line width, scale), shared by every theme (see
+        # exact_pixmap).
+        self._one_masks = {}
         # Icons cut from the atlases per (spec, pixel size, state, ratio),
         # shared by every icon name with the same drawing, the active
         # theme's atlases per (pixel size, line width, state) (None if
@@ -1468,22 +1582,12 @@ class IconSwapper(QObject):
         if name not in self._icons:
             ours = None
             if self._png:
-                # Pixmaps tagged with their screen's ratio, so Qt picks each
-                # at exactly the device size and never stretches one.
+                # Every pre-rendered size readable: an icon shown 1:1 at any
+                # size (SharpIconEngine), never one Qt resamples.
                 ratios, sizes = self._png
-                ours = QIcon()
-                for ratio in sorted(ratios):
-                    for size in sizes:
-                        for state, mode in ICON_STATES:
-                            pixmap = self._pixmap(name, round(size * ratio), state, ratio)
-                            if pixmap is None:
-                                ours = None
-                                break
-                            ours.addPixmap(pixmap, mode)
-                        if ours is None:
-                            break
-                    if ours is None:
-                        break
+                if all(self._pixmap(name, round(size * ratio), state, ratio) is not None
+                       for ratio in ratios for size in sizes for state, _mode in ICON_STATES):
+                    ours = QIcon(SharpIconEngine(self, name))
             if ours is None:
                 # The SVGs (before the PNGs are drawn, or if an atlas cannot
                 # be read): sharp at any size.
@@ -1495,6 +1599,36 @@ class IconSwapper(QObject):
             self._names[ours.cacheKey()] = None
             self._ours[ours.cacheKey()] = name
         return self._icons[name]
+
+    def png_sizes(self):
+        """The logical sizes pre-rendered now (none while the SVGs are used)."""
+        return self._png[1] if self._png else ()
+
+    def exact_pixmap(self, name, size, state, ratio):
+        """Icon `name` at exactly `size` device pixels for a screen at
+        `ratio` (see SharpIconEngine): cut from its atlas when one covers the
+        size, else drawn for it once and kept. None without a theme."""
+        if self._theme is None or self._colors is None or name not in studio_icons.ICON_MAP:
+            return None
+        if self._png:
+            ratios, sizes = self._png
+            if ratio in ratios and any(round(logical * ratio) == size for logical in sizes):
+                return self._pixmap(name, size, state, ratio)
+        spec = studio_icons.ICON_MAP[name]
+        key = (spec, size, state, ratio)
+        pixmap = self._pixmaps.get(key)
+        if pixmap is None:
+            width = studio_icons.screen_stroke_px(ratio)
+            mask_key = (spec, size, width, self._scale)
+            masks = self._one_masks.get(mask_key)
+            if masks is None:
+                masks = render_one(spec, size, width, self._scale)
+                self._one_masks[mask_key] = masks
+            colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
+            pixmap = compose_atlas(masks, colors, self._style == "color", state == "disabled")
+            pixmap.setDevicePixelRatio(ratio)
+            self._pixmaps[key] = pixmap
+        return pixmap
 
     def _pixmap(self, name, size, state, ratio):
         """One icon cut from its atlas (None if the atlas is unreadable)."""
