@@ -1143,6 +1143,36 @@ def _shading(body):
     return f"<defs>{stops}</defs>"
 
 
+# Outlines and shadow, as if lit from the top-left: coloured edges are
+# deepened towards black on every theme (a deep shade of each object's own
+# colour, so shapes stay crisp on light and dark windows alike, more on
+# dark ones), and a soft shadow falls a pixel to the bottom-right.
+# Highlights (light lines), the theme's icon colour and badge marks keep
+# their colours.
+OUTLINE_DEEPEN = {"light": 0.32, "dark": 0.5}
+SHADOW_OPACITY = {"light": 0.2, "dark": 0.55}
+_EDGE = re.compile(r'stroke="(#[0-9a-fA-F]{6})"')
+_PAINT = re.compile(r'(fill|stroke|stop-color)="(#[0-9a-fA-F]{6}|url\(#\w+\))"')
+
+
+def _deepen(body, mode):
+    """`body` (SVG) with its coloured edges deepened (OUTLINE_DEEPEN)."""
+    def edge(match):
+        color = match.group(1).lower()
+        if _luminance(color) > 0.55:
+            return match.group(0)
+        return f'stroke="{_mix(color, "#000000", OUTLINE_DEEPEN[mode])}"'
+    return _EDGE.sub(edge, body)
+
+
+def _shadow(body, mode, offset):
+    """The shadow of `body` (SVG): its silhouette in black, `offset` to
+    the bottom-right, faint."""
+    silhouette = _PAINT.sub(lambda match: f'{match.group(1)}="#000000"', body)
+    return (f'<g transform="translate({_num(offset)} {_num(offset)})" opacity="{SHADOW_OPACITY[mode]}">'
+            f"{silhouette}</g>")
+
+
 def color_stroke_px(width):
     """Width in device pixels of the coloured edges and details of
     Colourful icons on a screen whose lines are `width`: a pixel finer
@@ -2238,6 +2268,7 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode):
     else:
         transform = f"scale({_num(size / 32)})"
     defs, body = _detailed(glyph, transform)
+    body = _shadow(body, mode, max(1, round(size / 32))) + _deepen(body, mode)
     parts = [open_, defs]
     if not badge:
         parts += [body, "</svg>"]
@@ -2486,9 +2517,12 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
         mask = ' mask="url(#b)"'
     # Coloured edges and details finer than ink lines (see color_stroke_px).
     fine = stroke if glyph in SIGNS else round(stroke * 2 / 3, 3)
-    body = f'<g stroke-width="{fine}">{"".join(colored)}</g>{"".join(inked)}'
+    coloured = f'<g stroke-width="{fine}">{"".join(colored)}</g>'
+    body = _deepen(coloured, mode) + "".join(inked)
     parts.append(_shading(body))
-    parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
+    # The shadow a pixel down-right at 32 px (0.75 of a unit).
+    shadow = _shadow(coloured + "".join(inked), mode, round(0.75 / scale, 3))
+    parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{shadow}{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
         parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
@@ -2538,13 +2572,20 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     snap_thin = snapper(thin)
     # The coloured parts are drawn finer than the ink ones, each on the
     # grid of its own width so both stay sharp.
-    colored = inked = []
+    colored = []
     if layer != "ink":
         colored = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0]
-    if layer != "color":
-        inked = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1]
+    # The ink parts are needed for the shadow in the colour layer too.
+    inked = "".join(_color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1])
     drawn = _num(width + STROKE_EXTRA)
-    body = f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{"".join(colored)}</g>{"".join(inked)}'
+    fine = f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{"".join(colored)}</g>'
+    if layer == "ink":
+        body = inked
+    else:
+        # The shadow is a fixed colour: it goes with the coloured parts,
+        # under the ink ones the theme tints.
+        body = (_shadow(fine + inked, mode, max(1, round(size / 32))) + _deepen(fine, mode)
+                + (inked if layer == "all" else ""))
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>',
