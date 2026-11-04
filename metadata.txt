@@ -28,6 +28,7 @@ changelog=
           - GeoPackage is a brown box, like QGIS's own.
           - Colourful: lines in the theme's colour (action and line-only icons such as Vector, SpatiaLite, SQL, SHP, History) and badge marks are 1 px up to 175 percent scaling, like the coloured outlines beside them, and 2 px at 200 percent. Signs keep their bold marks.
           - The expand arrows of trees are finer.
+          - Colourful: the close, clear and cancel X (message bar, tabs, tasks) is in the theme's icon colour, clearly seen on dark themes, and coloured lines standing on the window (arrows, routes, curves, links) keep their full colour instead of being deepened like the edges of filled objects.
           - Icons are sharp at every size on every screen: sizes without a pre-rendered image (QGIS's font-scaled icon sizes, 32 to 64 px toolbars, large dialog icons, other screens' scaling) are drawn for that exact size instead of stretched from the nearest one.
           - The detailed icons are drawn on the screen's pixel grid at every size, so they stay sharp in the ribbon and toolbars at 125, 150 and 200 percent scaling (they were blurred when scaled to 42 px).
           - Colourful icons are lit from above: their 1 px outlines are a deep shade of each object's own colour (not near-black) on light and dark themes alike, so shapes stay crisp yet fine, and a soft shadow falls just below each object. Highlights, badge marks and lines in the theme's icon colour are unchanged.

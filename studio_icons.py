@@ -1156,14 +1156,23 @@ _EDGE = re.compile(r'stroke="(#[0-9a-fA-F]{6})"')
 _PAINT = re.compile(r'(fill|stroke|stop-color)="(#[0-9a-fA-F]{6}|url\(#\w+\))"')
 
 
+_TAG = re.compile(r"<\w+\b[^>]*>")
+
+
 def _deepen(body, mode):
-    """`body` (SVG) with its coloured edges deepened (OUTLINE_DEEPEN)."""
+    """`body` (SVG) with its coloured edges deepened (OUTLINE_DEEPEN).
+    Lines standing on the window (class "bg") keep their colour: deepened,
+    a red X sank into a dark message bar."""
     def edge(match):
         color = match.group(1).lower()
         if _luminance(color) > 0.55:
             return match.group(0)
         return f'stroke="{_mix(color, "#000000", OUTLINE_DEEPEN[mode])}"'
-    return _EDGE.sub(edge, body)
+
+    def element(match):
+        tag = match.group(0)
+        return tag if 'class="bg"' in tag else _EDGE.sub(edge, tag)
+    return _TAG.sub(element, body)
 
 
 def _shadow(body, mode, offset):
@@ -1869,7 +1878,9 @@ COLOR_RECIPES = {
     "help-circle": ("blueS", "white/", "white/"), "alert-triangle": ("dark/", "yellowS", "dark/"),
     "circle-check": ("greenS", "white/"), "shield-check": ("blue", "greenS/"),
     "square-check": ("paper", "greenS/"),
-    "x": ("red/",), "plus": ("green/",), "minus": ("red/",),
+    # Close, clear and cancel: the theme's icon colour, which reads on any
+    # bar or tab (a red line was barely seen on dark message bars).
+    "x": ("ink",), "plus": ("green/",), "minus": ("red/",),
     "trash": ("grayS/", "grayS/", "grayS/", "gray!", "grayS/"),
     "bug": ("greenS", "greenS", "ink"), "logout": ("gray!", "redS/", "redS/"),
     # Places, people and things.
@@ -2563,8 +2574,20 @@ def _color_body(glyph, mode, ink, draw):
             for shape, closed in _subpaths(segments):
                 if closed or whole:
                     fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="url(#g{fill[1:]})" stroke="none"/>'))
-        lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"/>')
+        # A coloured line standing on the window, not the edge of a fill nor
+        # a detail on one (a route, an arrow, a curve): marked so that
+        # _deepen leaves its colour, which reads on light and dark windows.
+        free = ' class="bg"' if line and fill is None and not _covered(segments, areas) else ""
+        lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"{free}/>')
     return [path for _, _, path in sorted(fills)] + colored, inked
+
+
+def _covered(segments, areas):
+    """Whether a part lies within one of the fills `areas` (as _on_fill
+    finds the fill under a detail)."""
+    left, top, right, bottom = _extent(segments)
+    return any(left >= area[0] - 0.5 and top >= area[1] - 0.5 and right <= area[2] + 0.5 and bottom <= area[3] + 0.5
+               for area, _fill in areas)
 
 
 def _on_fill(segments, line, areas, mode, material):
