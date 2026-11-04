@@ -1143,17 +1143,14 @@ def _shading(body):
     return f"<defs>{stops}</defs>"
 
 
-# Outlines and shadow, as if lit from above: coloured edges are deepened
-# a little towards black on every theme (a deep shade of each object's own
-# colour, not near-black, so 1 px edges stay crisp but read fine on light
-# and dark windows alike, more on dark ones), and a soft shadow falls a
-# pixel below the object; none to the side, which made vertical edges read
-# as 2 px. Highlights (light lines), the theme's icon colour and badge
-# marks keep their colours.
+# Outlines: coloured edges are deepened a little towards black on every
+# theme (a deep shade of each object's own colour, not near-black, so 1 px
+# edges stay crisp but read fine on light and dark windows alike, more on
+# dark ones). No shadow is cast outside the icons: they sit flat on their
+# toolbars, as Fluent's and ArcGIS Pro's do. Highlights (light lines), the
+# theme's icon colour and badge marks keep their colours.
 OUTLINE_DEEPEN = {"light": 0.15, "dark": 0.3}
-SHADOW_OPACITY = {"light": 0.2, "dark": 0.55}
 _EDGE = re.compile(r'stroke="(#[0-9a-fA-F]{6})"')
-_PAINT = re.compile(r'(fill|stroke|stop-color)="(#[0-9a-fA-F]{6}|url\(#\w+\))"')
 
 
 _TAG = re.compile(r"<\w+\b[^>]*>")
@@ -1173,14 +1170,6 @@ def _deepen(body, mode):
         tag = match.group(0)
         return tag if 'class="bg"' in tag else _EDGE.sub(edge, tag)
     return _TAG.sub(element, body)
-
-
-def _shadow(body, mode, offset):
-    """The shadow of `body` (SVG): its silhouette in black, `offset`
-    below it, faint."""
-    silhouette = _PAINT.sub(lambda match: f'{match.group(1)}="#000000"', body)
-    return (f'<g transform="translate(0 {_num(offset)})" opacity="{SHADOW_OPACITY[mode]}">'
-            f"{silhouette}</g>")
 
 
 def color_ink_px(width):
@@ -2077,11 +2066,24 @@ COLOR_RECIPES.update({name: materials for name, (_body, materials) in _COLOR_DRA
 # The objects seen most are drawn by hand on a 32 px grid, in the manner of
 # ArcGIS Pro's large icons: 1 px edges, shaded volumes (a cylinder, a lit
 # globe), highlights, texture details and soft shadows. They are used from
-# DETAIL_MIN device pixels up (toolbars on scaled screens, large panels);
-# smaller icons keep the pixel-snapped drawings, as such detail turns soft
-# when scaled below its grid (real sets draw small sizes separately).
-DETAIL_MIN = 32
+# DETAIL_SMALL device pixels up (panel toolbars, the ribbon, toolbars), a
+# few only from DETAIL_MIN (_detailed_at); menus and trees (16 to 20 px)
+# keep the simpler pixel-snapped drawings, as such detail turns soft that
+# small (real sets draw small sizes separately).
+DETAIL_MIN = 28
+# Drawn on the pixel grid (_snap_detailed), most stay clean down to 24 px
+# (panel toolbars at 100 percent); the edit pencil, map and raster turn
+# faint or fuzzy there and keep the simpler drawings below DETAIL_MIN.
+DETAIL_SMALL = 24
+DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
 _TEXT = "#97a1ab"
+
+
+def _detailed_at(glyph, size):
+    """Whether `glyph` is drawn detailed at `size` device pixels."""
+    if glyph not in DETAILED:
+        return False
+    return size >= (DETAIL_MIN if glyph in DETAIL_ONLY_LARGE else DETAIL_SMALL)
 
 
 def _lg(id_, *stops, x2=0, y2=1):
@@ -2210,7 +2212,6 @@ DETAILED = {
     ),
     "map-pin": (
         _lg("a", (0, "#f08a7f"), (1, "#b2362d")),
-        '<ellipse cx="16" cy="29" rx="5" ry="1.3" fill="#000000" opacity=".2"/>'
         '<path d="M16 28.5C16 28.5 25.5 19 25.5 12.5A9.5 9.5 0 0 0 6.5 12.5C6.5 19 16 28.5 16 28.5Z" '
         'fill="url(#a)" stroke="#86271f"/>'
         '<circle cx="16" cy="12.5" r="3.7" fill="#ffffff" stroke="#86271f"/>'
@@ -2242,6 +2243,16 @@ DETAILED = {
         f'<path d="{_gear(16, 16, 13, 10, 8)}" fill="url(#a)" stroke="#4f5a66" stroke-linejoin="round"/>'
         '<circle cx="16" cy="16" r="6.5" stroke="#ffffff" opacity=".6"/>'
         '<circle cx="16" cy="16" r="4" fill="#ffffff" stroke="#4f5a66"/>',
+    ),
+    # A steel funnel: its open top lit, a glint down its side, a narrow stem.
+    "filter": (
+        _lg("a", (0, "#e4ebf3"), (1, "#8ea4bd")) + _lg("t", (0, "#ffffff"), (1, "#d5dfea"))
+        + _lg("s", (0, "#a9bacd"), (1, "#6f86a1"), x2=1, y2=0),
+        '<path d="M3.5 5.5H28.5L18.5 17.5V25.5L13.5 28.5V17.5Z" fill="url(#a)" stroke="#4a6585" stroke-linejoin="round"/>'
+        '<path d="M3.5 5.5H28.5L26 8.5H6Z" fill="url(#t)" stroke="#4a6585" stroke-linejoin="round"/>'
+        '<path d="M13.5 17.5H18.5V25.5L13.5 28.5Z" fill="url(#s)"/>'
+        '<path d="M13.5 17.5H18.5V25.5L13.5 28.5Z" stroke="#4a6585" stroke-linejoin="round"/>'
+        '<path d="M8 10L14.5 17.5" stroke="#ffffff" opacity=".7"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -2392,7 +2403,7 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
     else:
         transform = f"translate({_num(offset)} {_num(offset)}) scale({_num(factor)})"
         defs, body = _detailed(glyph, transform)
-    body = _shadow(body, mode, max(1, round(size / 32))) + _deepen(body, mode)
+    body = _deepen(body, mode)
     parts = [open_, defs]
     if not badge:
         parts += [body, "</svg>"]
@@ -2657,9 +2668,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     coloured = f'<g stroke-width="{fine}">{"".join(colored)}</g>'
     body = _deepen(coloured, mode) + "".join(inked)
     parts.append(_shading(body))
-    # The shadow a pixel below at 32 px (0.75 of a unit).
-    shadow = _shadow(coloured + "".join(inked), mode, round(0.75 / scale, 3))
-    parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{shadow}{body}</g></g>')
+    parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in BADGE_MARKS:
         mark = BADGE_MARKS[badge]
         parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
@@ -2680,7 +2689,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     glyph, _, badge = spec.partition("+")
     px = size / 24
     width = stroke_px(size) if width is None else width
-    if glyph in DETAILED and size >= DETAIL_MIN:
+    if _detailed_at(glyph, size):
         return _detailed_px(glyph, badge, size, color_ink_px(width), layer, accent, danger, mode)
     if badge:
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
@@ -2711,20 +2720,15 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     snap_thin = snapper(thin)
     # The coloured parts are drawn finer than the ink ones, each on the
     # grid of its own width so both stay sharp.
-    colored = []
+    colored = inked = ""
     if layer != "ink":
-        colored = _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0]
-    # The ink parts are needed for the shadow in the colour layer too.
-    inked = "".join(_color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1])
+        colored = "".join(
+            _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0])
+    if layer != "color":
+        inked = "".join(_color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1])
     drawn = _num(ink_width + STROKE_EXTRA)
-    fine = f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{"".join(colored)}</g>'
-    if layer == "ink":
-        body = inked
-    else:
-        # The shadow is a fixed colour: it goes with the coloured parts,
-        # under the ink ones the theme tints.
-        body = (_shadow(fine + inked, mode, max(1, round(size / 32))) + _deepen(fine, mode)
-                + (inked if layer == "all" else ""))
+    fine = _deepen(f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{colored}</g>', mode) if colored else ""
+    body = fine + inked
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}" fill="none" {COLOR_STROKE}>',

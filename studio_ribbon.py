@@ -57,8 +57,10 @@ HIDDEN_SETTING = "studio_themes/ribbonHiddenToolbars"
 # Qt's "no maximum" widget size.
 QWIDGETSIZE_MAX = (1 << 24) - 1
 
-# Sizes (logical px): icons (pre-rendered sizes, see qgis_studio_themes
-# PNG_SIZES), the rows of small buttons and the groups' room.
+# Sizes (logical px): icons, the rows of small buttons and the groups'
+# room. They follow QGIS's toolbar icon size (Settings > Options > General
+# > Icon size), as the toolbars the ribbon stands for would: set by
+# set_sizes, these values are those of its default, 24.
 LARGE_ICON = 28
 SMALL_ICON = 20
 ROW_HEIGHT = 24
@@ -66,6 +68,29 @@ ROWS = 3
 SPACING = 2
 BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
 LARGE_MIN_WIDTH = 52
+
+
+def ribbon_sizes(toolbar):
+    """(small icon, large icon, row height, large button minimum width) for
+    QGIS's toolbar icon size `toolbar`: small buttons a sixth smaller than
+    a toolbar's (on a 4 px step, never below 16), large ones 8 px larger,
+    rows 4 px taller than their icons. 24 gives 20, 28 and 24; 32 gives 28,
+    36 and 32."""
+    small = max(16, round(toolbar * 5 / 6 / 4) * 4)
+    large = small + 8
+    return small, large, small + 4, large + 24
+
+
+def set_sizes(toolbar):
+    """Use the sizes for QGIS's toolbar icon size `toolbar` (see
+    ribbon_sizes); True when they changed."""
+    global SMALL_ICON, LARGE_ICON, ROW_HEIGHT, BODY, LARGE_MIN_WIDTH  # pylint: disable=global-statement
+    sizes = ribbon_sizes(toolbar)
+    if sizes == (SMALL_ICON, LARGE_ICON, ROW_HEIGHT, LARGE_MIN_WIDTH):
+        return False
+    SMALL_ICON, LARGE_ICON, ROW_HEIGHT, LARGE_MIN_WIDTH = sizes
+    BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
+    return True
 # The current tab's top margin in style.qss (studioRibbonTabs::tab:top:selected).
 TAB_TOP = 4
 GROUP_MARGINS = (6, 8, 6, 6)
@@ -781,6 +806,17 @@ class StudioRibbon(QObject):
             for index in range(self._ribbon.tabs.count()):
                 self._ribbon.invalidate(index)
 
+    def _icon_size_changed(self, *_args):
+        """QGIS's toolbar icon size changed: the buttons and rows follow
+        (set_sizes) and every page is built again in the new sizes."""
+        window = self._window
+        if self._ribbon is None or window is None or sip.isdeleted(window):
+            return
+        if set_sizes(window.iconSize().width()):
+            self._ribbon.page_height = page_height(self._caption_font)
+            for index in range(self._ribbon.tabs.count()):
+                self._ribbon.invalidate(index)
+
     # ---- Showing and hiding -----------------------------------------------
 
     def activate(self):
@@ -788,6 +824,9 @@ class StudioRibbon(QObject):
             return
         window = self._iface.mainWindow()
         self._window = window
+        # Buttons in the sizes of QGIS's toolbar icon size, followed live.
+        set_sizes(window.iconSize().width())
+        window.iconSizeChanged.connect(self._icon_size_changed)
         self._hidden = []
         hidden_before = QgsSettings().value(HIDDEN_SETTING, [], type=list) or []
         for toolbar in self._toolbars():
@@ -862,6 +901,10 @@ class StudioRibbon(QObject):
         window = self._window
         self._give_back()
         if not sip.isdeleted(window):
+            try:
+                window.iconSizeChanged.disconnect(self._icon_size_changed)
+            except (TypeError, RuntimeError):
+                pass
             self._hub.unwatch(window, self)
             if window.menuBar() is not None:
                 self._hub.unwatch(window.menuBar(), self)
