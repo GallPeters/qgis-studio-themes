@@ -1020,10 +1020,12 @@ STROKE = 1.5
 STROKE_EXTRA = 0.25
 SCALE = 1.15
 COMPACT_SCALE = 1.15
-# Glyphs with a badge are shrunk towards the top-left instead; less so in
-# icons of 20 px and below, where 0.9 left a glyph of about 9 px.
-BADGED_SCALE = 0.9
-BADGED_SCALE_SMALL = 1.0
+# Glyphs with a badge are placed from the top-left instead, almost as large
+# as the others (at 0.9, badged buttons looked shrunk beside their plain
+# neighbours once those were enlarged), a little larger in icons of 20 px
+# and below; the badge is smaller and tighter in its corner to make room.
+BADGED_SCALE = 1.05
+BADGED_SCALE_SMALL = 1.1
 # Badges sit bottom-right with a transparent ring cut out of the glyph
 # around them, so they read cleanly on any button background, hovered or
 # checked (needs Qt >= 6.7 for SVG masks; older Qt draws them touching).
@@ -1031,12 +1033,12 @@ BADGED_SCALE_SMALL = 1.0
 # colour and line weight), which keeps toolbars calm; delete keeps a red
 # dot so destructive buttons stand out, and "dot" (an active-layer or
 # update variant) an accent dot.
-BADGE_CENTER = 18.7
-BADGE_RADIUS = 3.05
-BADGE_GAP = 2.3
+BADGE_CENTER = 19.3
+BADGE_RADIUS = 2.75
+BADGE_GAP = 1.8
 BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check"}
 # Half the width of a mark, in units.
-MARK_ARM = 3.0
+MARK_ARM = 2.7
 
 # ---- Colourful icons --------------------------------------------------------
 # The Colourful style (Plugins > QGIS Studio Themes > Settings > Icons), in
@@ -2016,8 +2018,11 @@ _COLOR_DRAWINGS = {
     # no outline: its diagonal 1 px edges blurred over most of its width at
     # 16 to 24 px. (A grey wrench read as one dark mass.) Drawn 14 percent
     # smaller around the centre than first: at 19 units wide it filled its
-    # square and its head met the label of a ribbon button.
-    "tool": ('<path d="M6.19 19.95L14.76 11.36L12.64 9.24L4.05 17.81A1.5 1.5 0 0 0 6.19 19.95z"/>'
+    # square and its head met the label of a ribbon button. Its handle is
+    # 2.4 units longer, towards the bottom-left: the head (reaching 8.45
+    # units right of the centre) still sets its size and its room before a
+    # label, and the handle's end (9.6 now) stays inside that.
+    "tool": ('<path d="M4.49 21.65L14.76 11.36L12.64 9.24L2.35 19.51A1.5 1.5 0 0 0 4.49 21.65z"/>'
              '<path d="M20.45 11.1L17.29 14.25L11.81 8.78L10.42 6.05L12.24 4.23L14.98 5.62z"/>',
              ("woodS~", "steel")),
     # About: a square sign with the i of the round info sign.
