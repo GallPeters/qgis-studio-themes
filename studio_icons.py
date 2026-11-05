@@ -2014,9 +2014,11 @@ _COLOR_DRAWINGS = {
     # units wide) with a round end going into a mid-grey steel head with a
     # flat striking face and a tapered peen, at 45 degrees. The handle has
     # no outline: its diagonal 1 px edges blurred over most of its width at
-    # 16 to 24 px. (A grey wrench read as one dark mass.)
-    "tool": ('<path d="M5.24 21.24L15.21 11.26L12.74 8.79L2.76 18.76A1.75 1.75 0 0 0 5.24 21.24z"/>'
-             '<path d="M21.82 10.95L18.15 14.62L11.78 8.26L10.16 5.08L12.28 2.96L15.46 4.58z"/>',
+    # 16 to 24 px. (A grey wrench read as one dark mass.) Drawn 14 percent
+    # smaller around the centre than first: at 19 units wide it filled its
+    # square and its head met the label of a ribbon button.
+    "tool": ('<path d="M6.19 19.95L14.76 11.36L12.64 9.24L4.05 17.81A1.5 1.5 0 0 0 6.19 19.95z"/>'
+             '<path d="M20.45 11.1L17.29 14.25L11.81 8.78L10.42 6.05L12.24 4.23L14.98 5.62z"/>',
              ("woodS~", "steel")),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
@@ -2092,6 +2094,9 @@ DETAIL_GROW = 1.15
 # faint or fuzzy there and keep the simpler drawings below DETAIL_MIN.
 DETAIL_SMALL = 24
 DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
+# Drawings simple enough to stay clean at every size: detailed down to
+# 16 px (menus and trees too), so they look the same everywhere.
+DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code"))
 _TEXT = "#97a1ab"
 
 
@@ -2099,6 +2104,8 @@ def _detailed_at(glyph, size):
     """Whether `glyph` is drawn detailed at `size` device pixels."""
     if glyph not in DETAILED:
         return False
+    if glyph in DETAIL_EVERYWHERE:
+        return True
     return size >= (DETAIL_MIN if glyph in DETAIL_ONLY_LARGE else DETAIL_SMALL)
 
 
@@ -2108,13 +2115,50 @@ def _lg(id_, *stops, x2=0, y2=1):
     return f'<linearGradient id="{id_}" x1="0" y1="0" x2="{x2}" y2="{y2}">{st}</linearGradient>'
 
 
-def _gear(cx, cy, r_out, r_in, teeth):
-    points = []
-    for i in range(teeth * 4):
-        a = 2 * math.pi * i / (teeth * 4) - math.pi / 2
-        r = r_out if i % 4 in (0, 1) else r_in
-        points.append(f"{cx + r * math.cos(a):.2f} {cy + r * math.sin(a):.2f}")
-    return "M" + "L".join(points) + "Z"
+def _gear(cx, cy, tip, root, teeth, tip_share=0.42, base_share=0.62):
+    """A gear's outline: `teeth` tapered teeth (base wider than tip, as
+    shares of the pitch), tips and roots arcs of their circles."""
+    f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")  # noqa: E731
+    pitch = 2 * math.pi / teeth
+    base, top = base_share * pitch / 2, tip_share * pitch / 2
+    out = []
+    for i in range(teeth):
+        a = i * pitch - math.pi / 2
+        corners = [(cx + r * math.cos(t), cy + r * math.sin(t))
+                   for r, t in ((root, a - base), (tip, a - top), (tip, a + top), (root, a + base))]
+        if i == 0:
+            out.append(f"M{f(corners[0][0])} {f(corners[0][1])}")
+        else:
+            out.append(f"A{f(root)} {f(root)} 0 0 1 {f(corners[0][0])} {f(corners[0][1])}")
+        out.append(f"L{f(corners[1][0])} {f(corners[1][1])}")
+        out.append(f"A{f(tip)} {f(tip)} 0 0 1 {f(corners[2][0])} {f(corners[2][1])}")
+        out.append(f"L{f(corners[3][0])} {f(corners[3][1])}")
+    start = -math.pi / 2 - base
+    out.append(f"A{f(root)} {f(root)} 0 0 1 {f(cx + root * math.cos(start))} {f(cy + root * math.sin(start))}Z")
+    return "".join(out)
+
+
+def _circle(cx, cy, r):
+    """A circle as a sub-path of two half arcs (an even-odd hole)."""
+    return f"M{cx - r} {cy}A{r} {r} 0 1 1 {cx + r} {cy}A{r} {r} 0 1 1 {cx - r} {cy}Z"
+
+
+def _funnel(k=1.0, dx=0.0, dy=0.0):
+    """The steel funnel's parts, scaled by `k` and moved by (dx, dy)."""
+    f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")  # noqa: E731
+    x = lambda v: f(dx + v * k)  # noqa: E731
+    y = lambda v: f(dy + v * k)  # noqa: E731
+    stem = f"M{x(13.5)} {y(17.5)}H{x(18.5)}V{y(25.5)}L{x(13.5)} {y(28.5)}Z"
+    return (f'<path d="M{x(3.5)} {y(5.5)}H{x(28.5)}L{x(18.5)} {y(17.5)}V{y(25.5)}L{x(13.5)} {y(28.5)}V{y(17.5)}Z" '
+            'fill="url(#a)" stroke="#4a6585" stroke-linejoin="round"/>'
+            f'<path d="M{x(3.5)} {y(5.5)}H{x(28.5)}L{x(26)} {y(8.5)}H{x(6)}Z" fill="url(#t)" stroke="#4a6585" '
+            'stroke-linejoin="round"/>'
+            f'<path d="{stem}" fill="url(#s)"/><path d="{stem}" stroke="#4a6585" stroke-linejoin="round"/>'
+            f'<path d="M{x(8)} {y(10)}L{x(14.5)} {y(17.5)}" stroke="#ffffff" opacity=".7"/>')
+
+
+_FUNNEL_DEFS = (_lg("a", (0, "#e4ebf3"), (1, "#8ea4bd")) + _lg("t", (0, "#ffffff"), (1, "#d5dfea"))
+                + _lg("s", (0, "#a9bacd"), (1, "#6f86a1"), x2=1, y2=0))
 
 
 def _lines(x, ys, w, h=1, color=_TEXT):
@@ -2254,21 +2298,24 @@ DETAILED = {
         '<path d="M8 14.5H24" stroke="#fff4cf"/>'
         '<circle cx="16" cy="19.5" r="2" fill="#6b4a12"/><rect x="15.2" y="20" width="1.6" height="4" fill="#6b4a12"/>',
     ),
+    # An industrial gear, as in Fluent and ArcGIS Pro: eight tapered teeth
+    # on softly shaded steel and a hub hole the background shows through
+    # (the hole's edges on half units, so they meet pixel centres).
     "settings": (
-        _lg("a", (0, "#eef1f4"), (1, "#8f99a4")),
-        f'<path d="{_gear(16, 16, 13, 10, 8)}" fill="url(#a)" stroke="#4f5a66" stroke-linejoin="round"/>'
-        '<circle cx="16" cy="16" r="6.5" stroke="#ffffff" opacity=".6"/>'
-        '<circle cx="16" cy="16" r="4" fill="#ffffff" stroke="#4f5a66"/>',
+        _lg("a", (0, "#eef1f4"), (1, "#9ea8b3")),
+        f'<path d="{_gear(16, 16, 13.5, 10.2, 8)}{_circle(16, 16, 4.5)}" fill="url(#a)" fill-rule="evenodd" '
+        'stroke="#4f5a66" stroke-linejoin="round"/>',
     ),
     # A steel funnel: its open top lit, a glint down its side, a narrow stem.
-    "filter": (
-        _lg("a", (0, "#e4ebf3"), (1, "#8ea4bd")) + _lg("t", (0, "#ffffff"), (1, "#d5dfea"))
-        + _lg("s", (0, "#a9bacd"), (1, "#6f86a1"), x2=1, y2=0),
-        '<path d="M3.5 5.5H28.5L18.5 17.5V25.5L13.5 28.5V17.5Z" fill="url(#a)" stroke="#4a6585" stroke-linejoin="round"/>'
-        '<path d="M3.5 5.5H28.5L26 8.5H6Z" fill="url(#t)" stroke="#4a6585" stroke-linejoin="round"/>'
-        '<path d="M13.5 17.5H18.5V25.5L13.5 28.5Z" fill="url(#s)"/>'
-        '<path d="M13.5 17.5H18.5V25.5L13.5 28.5Z" stroke="#4a6585" stroke-linejoin="round"/>'
-        '<path d="M8 10L14.5 17.5" stroke="#ffffff" opacity=".7"/>',
+    "filter": (_FUNNEL_DEFS, _funnel()),
+    # Filter by expression: the funnel, smaller, with a blue < > for the
+    # expression, standing on the window (class "bg": kept bright, not
+    # deepened like an edge).
+    "filter-code": (
+        _FUNNEL_DEFS,
+        _funnel(0.78, 0.0, 0.0)
+        + '<path d="M22 18.5L18 23.5L22 28.5M26 18.5L30 23.5L26 28.5" stroke="#3a86d8" '
+          'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bg"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -2330,6 +2377,9 @@ def _snap_detailed(markup, factor, offset):
     def path(d):
         tokens = _TOKEN.findall(d)
         out, i = [], 0
+        # The current point, as drawn (32 px grid) and as snapped, and the
+        # sub-path's start (for Z).
+        here = snapped = start = snapped_start = (0.0, 0.0)
         while i < len(tokens):
             command = tokens[i]
             i += 1
@@ -2337,13 +2387,34 @@ def _snap_detailed(markup, factor, offset):
             while True:
                 args = [float(v) for v in tokens[i:i + count]]
                 i += count
-                if command in "MLCS":
-                    args = [place(v) for v in args]
-                elif command in "HV":
+                if command == "Z":
+                    end, snapped_end = start, snapped_start
+                elif command == "H":
+                    end = (args[0], here[1])
                     args = [place(args[0])]
+                    snapped_end = (args[0], snapped[1])
+                elif command == "V":
+                    end = (here[0], args[0])
+                    args = [place(args[0])]
+                    snapped_end = (snapped[0], args[0])
                 elif command == "A":
-                    args = [args[0] * factor, args[1] * factor, *args[2:5], place(args[5]), place(args[6])]
+                    end = (args[5], args[6])
+                    snapped_end = (place(args[5]), place(args[6]))
+                    rx, ry = args[0] * factor, args[1] * factor
+                    # A half circle keeps meeting its snapped ends: a radius
+                    # only scaled, when the ends snapped a pixel closer,
+                    # bent a flatter arc between them (an oval hub hole).
+                    if args[0] == args[1] and abs(math.dist(here, end) - 2 * args[0]) < 1e-3:
+                        rx = ry = math.dist(snapped, snapped_end) / 2
+                    args = [rx, ry, *args[2:5], *snapped_end]
+                else:  # M, L, C, S
+                    end = (args[-2], args[-1])
+                    args = [place(v) for v in args]
+                    snapped_end = (args[-2], args[-1])
                 out.append(command + " ".join(_num(v) for v in args))
+                here, snapped = end, snapped_end
+                if command == "M":
+                    start, snapped_start = here, snapped
                 # Implicit repeats of the command (none in the drawings, but
                 # keep to the SVG grammar).
                 if count == 0 or i >= len(tokens) or tokens[i].isalpha():
