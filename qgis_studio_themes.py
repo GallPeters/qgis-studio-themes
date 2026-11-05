@@ -1160,19 +1160,27 @@ class IconSwapper(QObject):
         toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
         return toolbar, self._list_size(), self._tree_size()
 
-    # Dialog page lists (Layer Properties, Data Source Manager...): 20 px
-    # icons instead of QGIS's toolbar size plus 4 (28 px at the default 24),
-    # so rows are 32 px and a 760 px Layer Properties dialog shows all its
-    # pages. The Layer Styling and Dev Tools rails share the list's name and
-    # keep their own size.
+    # Dialog page lists (Layer Properties, Data Source Manager...): 24 px
+    # icons instead of QGIS's toolbar size plus 4 (28 px at the default 24).
+    # (20 px let a 760 px Layer Properties dialog show all its pages without
+    # scrolling, but read small; the lists scroll.) The Layer Styling and
+    # Dev Tools rails share the list's name and keep their own size. Larger
+    # icon size settings make them a step larger, as the panel trees
+    # (TREE_STEPS).
     PAGE_LISTS = frozenset({"mOptionsListWidget", "mOptListWidget"})
-    PAGE_LIST_ICON = 20
+    PAGE_LIST_ICON = 24
     RAILS = ("QgsLayerStylingWidget", "QgsDevToolsPanelWidget")
 
-    @classmethod
-    def _list_size(cls):
+    def _list_size(self):
         """Icon size of dialog page lists, as set by _page_list."""
-        return QgsApplication.scaleIconSize(cls.PAGE_LIST_ICON)
+        return QgsApplication.scaleIconSize(self.PAGE_LIST_ICON) + self._size_step()
+
+    def _size_step(self):
+        """How much larger than at the default the lists and trees are for
+        QGIS's toolbar icon size (TREE_STEPS)."""
+        window = self._main_window
+        toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
+        return next((px for limit, px in self.TREE_STEPS if toolbar <= limit), 16)
 
     # The main panel trees (Browser, Layers, Processing Toolbox): their
     # icons follow QGIS's toolbar icon size, which QGIS applies to toolbars
@@ -1183,11 +1191,8 @@ class IconSwapper(QObject):
 
     def _tree_size(self):
         """Icon size of the main panel trees for QGIS's toolbar icon size."""
-        window = self._main_window
-        toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
         base = 16 if self._compact_screens else DOCK_ICON_SIZE
-        extra = next((px for limit, px in self.TREE_STEPS if toolbar <= limit), 16)
-        return base + extra
+        return base + self._size_step()
 
     def _panel_tree(self, view):
         """Give a main panel tree the icon size of QGIS's icon size setting
@@ -1201,10 +1206,15 @@ class IconSwapper(QObject):
             view.setIconSize(QSize(size, size))
 
     def _refresh_trees(self):
-        """QGIS's icon size changed: the panel trees follow."""
+        """QGIS's icon size changed: the panel trees and the open dialogs'
+        page lists follow."""
         for view, _size in list(self._trees.values()):
             if not sip.isdeleted(view):
                 self._panel_tree(view)
+        size = self._list_size()
+        for widget, _size in list(self._page_lists.values()):
+            if not sip.isdeleted(widget) and widget.iconSize() != QSize(size, size):
+                widget.setIconSize(QSize(size, size))
 
     def _page_list(self, widget):
         """Give a dialog page list its icon size (see PAGE_LISTS)."""

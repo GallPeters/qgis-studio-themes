@@ -1068,6 +1068,9 @@ COLOR_HUES = {  # (light body, medium body, edge)
     "green": ("#a9d09e", "#66a466", "#417a43"),
     "red": ("#eaada7", "#ca6961", "#9e4a44"),
     "amber": ("#eccc78", "#d7a648", "#9e7827"),
+    # Folders: the detailed folder's light gold and edge, so a folder keeps
+    # its colour when its size changes drawing (the amber read dark).
+    "gold": ("#ffe08f", "#f4c25a", "#a5731c"),
     "orange": ("#edb98f", "#d58d53", "#a2642e"),
     "purple": ("#c1b3e3", "#8f7ac8", "#65509f"),
     "teal": ("#9accc6", "#4b9e94", "#30746d"),
@@ -1098,7 +1101,7 @@ THEME_INK = {"light": "#3a3d42", "dark": "#d4d6d8"}
 # The hue of each material.
 MATERIAL_HUES = {
     "paper": "paper", "gray": "neutral", "grayS": "neutral", "white": "white", "dark": "dark",
-    "folder": "amber", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
+    "folder": "gold", "yellow": "amber", "yellowS": "amber", "brown": "amber", "brownS": "amber",
     "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
@@ -2526,6 +2529,11 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
 
 # How the paths of COLOR_GLYPHS are named for _glyph_paths.
 COLOR_PREFIX = "color:"
+# Drawings lying wholly at 45 degrees (the hammer) are not snapped to the
+# pixel grid: moving each corner onto it bent their edges (a pale near-
+# vertical column down the hammer head's side); exact diagonals are
+# smoothed evenly instead.
+UNSNAPPED = frozenset(("tool",))
 # Colourful lines: round ends (they end inside the shapes they meet), sharp
 # joins, with acute ones cut flat rather than spiking.
 COLOR_STROKE = 'stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="2"'
@@ -2812,6 +2820,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         # Lines of odd width sit on pixel centres, even ones on pixel edges.
         offset = 0.5 if line % 2 else 0.0
         low, high = line / 2, size - line / 2
+        if glyph in UNSNAPPED:
+            return lambda value: min(max(value, low), high)
         return lambda value: min(max(math.floor(value - offset + 0.5) + offset, low), high)
 
     # Ink lines and badge marks (color_ink_px), on their own grid.
