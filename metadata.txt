@@ -29,7 +29,7 @@ changelog=
           - Colourful: lines in the theme's colour (action and line-only icons such as Vector, SpatiaLite, SQL, SHP, History) and badge marks are 1 px up to 175 percent scaling, like the coloured outlines beside them, and 2 px at 200 percent. Signs keep their bold marks.
           - The expand arrows of trees are finer.
           - Icons are drawn about 15 percent larger in the same buttons, rows and ribbon: on low-density screens (such as 100 percent desktop monitors) as on high-density ones, and the detailed icons on all screens. Their lines stay 1 px fine.
-          - Colourful: Processing's tool is a hammer, as in ArcGIS Pro: a light wooden handle and a dark steel head, clearly seen at every size (the grey wrench read as one dark mass).
+          - Colourful: Processing's tool is a hammer, as in ArcGIS Pro: a wooden handle without an outline and a mid-grey steel head, as fine as the icons around it at every size (the grey wrench read as one dark mass).
           - Colourful: the database is a regular database icon: an evenly shaded cylinder with plain deep band lines, without the bright rings and glint.
           - The ribbon follows QGIS's icon size (Settings > Options > General > Icon size), at once when it is changed: its large and small buttons and their rows grow and shrink together, keeping their layout (at the default 24 px, as before).
           - The Browser, Layers and Processing Toolbox trees follow QGIS's icon size too (QGIS applies it to toolbars only): their icons and rows grow a step with each larger setting (at the default 24 px, as before).

@@ -1056,8 +1056,10 @@ MARK_ARM = 3.0
 # body (strong names, ending in S, and folders: its medium body) and draws
 # its line in the hue's edge; "name!" fills its open lines too (closed by
 # a straight line, as SVG does: a cylinder's band, a hill under the sky);
-# "name/" draws the line only; "ink" draws only the line, in the theme's
-# icon colour.
+# "name/" draws the line only; "name~" fills like "name" and draws its
+# line in the fill's own colour, so the shape has no visible outline (a
+# narrow diagonal part, whose 1 px edges would blur over most of it);
+# "ink" draws only the line, in the theme's icon colour.
 COLOR_HUES = {  # (light body, medium body, edge)
     # 90% of the hues' full saturation, every hue alike.
     "blue": ("#a0c0e2", "#6193c9", "#396da0"),
@@ -2008,13 +2010,14 @@ _COLOR_DRAWINGS = {
              ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
-    # Processing's tool, a hammer as in ArcGIS Pro: a light wooden handle
-    # (3.5 units wide) with a round end going into a dark steel head with a
-    # flat striking face and a tapered peen, at 45 degrees. (A grey wrench
-    # read as one dark mass.)
+    # Processing's tool, a hammer as in ArcGIS Pro: a wooden handle (3.5
+    # units wide) with a round end going into a mid-grey steel head with a
+    # flat striking face and a tapered peen, at 45 degrees. The handle has
+    # no outline: its diagonal 1 px edges blurred over most of its width at
+    # 16 to 24 px. (A grey wrench read as one dark mass.)
     "tool": ('<path d="M5.24 21.24L15.21 11.26L12.74 8.79L2.76 18.76A1.75 1.75 0 0 0 5.24 21.24z"/>'
              '<path d="M21.82 10.95L18.15 14.62L11.78 8.26L10.16 5.08L12.28 2.96L15.46 4.58z"/>',
-             ("wood", "steelS")),
+             ("woodS~", "steel")),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
                             ("blueS", "white/", "white/")),
@@ -2498,6 +2501,10 @@ def _material(name, mode, sign):
     or "dark") theme, in a sign or not."""
     if name == "ink":
         return None, None, False
+    if name.endswith("~"):
+        # Filled, its line in the fill's colour: no outline.
+        fill, _line, whole = _material(name[:-1], mode, sign)
+        return fill, fill, whole
     base = name.rstrip("/!")
     whole = name.endswith("!")
     line_only = name.endswith("/")
@@ -2603,7 +2610,8 @@ def _color_body(glyph, mode, ink, draw):
         # A coloured line standing on the window, not the edge of a fill nor
         # a detail on one (a route, an arrow, a curve): marked so that
         # _deepen leaves its colour, which reads on light and dark windows.
-        free = ' class="bg"' if line and fill is None and not _covered(segments, areas) else ""
+        # Likewise a line in its fill's own colour ("name~"): no outline.
+        free = ' class="bg"' if line and ((fill is None and not _covered(segments, areas)) or line == fill) else ""
         lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"{free}/>')
     return [path for _, _, path in sorted(fills)] + colored, inked
 
