@@ -2019,11 +2019,14 @@ _COLOR_DRAWINGS = {
     # 16 to 24 px. (A grey wrench read as one dark mass.) Drawn 14 percent
     # smaller around the centre than first: at 19 units wide it filled its
     # square and its head met the label of a ribbon button. Its handle is
-    # 2.4 units longer, towards the bottom-left: the head (reaching 8.45
-    # units right of the centre) still sets its size and its room before a
-    # label, and the handle's end (9.6 now) stays inside that.
-    "tool": ('<path d="M4.49 21.65L14.76 11.36L12.64 9.24L2.35 19.51A1.5 1.5 0 0 0 4.49 21.65z"/>'
-             '<path d="M20.45 11.1L17.29 14.25L11.81 8.78L10.42 6.05L12.24 4.23L14.98 5.62z"/>',
+    # longer against the head (by 1.2 units), and the whole hammer is moved
+    # a little up-right and drawn 8 percent smaller: measured in pixels, it
+    # keeps at least 1 px of room on every side at 16 to 42 px (a longer
+    # handle alone touched the square's edge, and a highlighted button's
+    # background). Its round end's radius is a little over half its width,
+    # so rounding the ends never flips the arc.
+    "tool": ('<path d="M6.28 19.67L14.95 11L13 9.05L4.33 17.72A1.43 1.43 0 0 0 6.28 19.67z"/>'
+             '<path d="M20.19 10.76L17.28 13.66L12.24 8.62L10.96 6.11L12.63 4.44L15.16 5.72z"/>',
              ("woodS~", "steel")),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',

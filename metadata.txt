@@ -29,7 +29,7 @@ changelog=
           - Colourful: lines in the theme's colour (action and line-only icons such as Vector, SpatiaLite, SQL, SHP, History) and badge marks are 1 px up to 175 percent scaling, like the coloured outlines beside them, and 2 px at 200 percent. Signs keep their bold marks.
           - The expand arrows of trees are finer.
           - Icons are drawn about 15 percent larger in the same buttons, rows and ribbon: on low-density screens (such as 100 percent desktop monitors) as on high-density ones, and the detailed icons on all screens. Their lines stay 1 px fine.
-          - Colourful: Processing's tool is a hammer, as in ArcGIS Pro: a wooden handle without an outline and a mid-grey steel head, as fine as the icons around it at every size (the grey wrench read as one dark mass), leaving room before the labels of ribbon buttons; its handle is longer.
+          - Colourful: Processing's tool is a hammer, as in ArcGIS Pro: a wooden handle without an outline and a mid-grey steel head, as fine as the icons around it at every size (the grey wrench read as one dark mass), with a longer handle, keeping room on every side of its square (so it never touches a button's edge or label).
           - Icons with a +, x, check or dot badge are drawn almost as large as the others (the drawing was shrunk to 90 percent beside its badge); the badge is a little smaller and tighter in its corner.
           - Colourful: the settings gear is an industrial gear with tapered teeth and a see-through hub, and every filter (Browser, layer indicators, attribute table, ribbon) a detailed steel funnel, filter by expression with a blue < >, at every size.
           - Round holes and caps of the detailed icons stay round at every size.
