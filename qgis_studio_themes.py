@@ -923,6 +923,8 @@ class IconSwapper(QObject):
         self._mask_folders = mask_folders(profile_masks) if profile_masks is not None else ()
         self._scale = studio_icons.SCALE
         self._colors = None
+        # Low-density screens (the plugin's compact sizes), as last applied.
+        self._compact_screens = False
         # The icon style (ICON_STYLES): "classic" swaps only icons QGIS
         # looked up by name, for its built-in ones (see _replacement), the
         # swapper still doing its other work (checkboxes, page lists).
@@ -1018,11 +1020,13 @@ class IconSwapper(QObject):
         self._theme = None
         self._icons_dir = None
 
-    def apply(self, theme, icons_dir, main_window, colors=None, scale=studio_icons.SCALE):
+    def apply(self, theme, icons_dir, main_window, colors=None, scale=studio_icons.SCALE, compact=False):
         """Show `theme`'s icons: the SVGs in `icons_dir`, or the icons
         composed from the masks in the theme's `colors` (normal, disabled
-        and selected state, see icon_colors) at glyph `scale`."""
+        and selected state, see icon_colors) at glyph `scale`, on `compact`
+        (low-density) screens or not."""
         self._colors = colors
+        self._compact_screens = compact
         if scale != self._scale:
             self._scale = scale
             self._masks = {}
@@ -1181,7 +1185,7 @@ class IconSwapper(QObject):
         """Icon size of the main panel trees for QGIS's toolbar icon size."""
         window = self._main_window
         toolbar = window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
-        base = 16 if self._scale == studio_icons.COMPACT_SCALE else DOCK_ICON_SIZE
+        base = 16 if self._compact_screens else DOCK_ICON_SIZE
         extra = next((px for limit, px in self.TREE_STEPS if toolbar <= limit), 16)
         return base + extra
 
@@ -2947,7 +2951,7 @@ class QgisStudioThemesPlugin:
         )
         if self._icons.style != self.icon_style():
             self._icons.set_style(self.icon_style())
-        self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale)
+        self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale, compact=self._compact)
         self._style_message_bar()
         QTimer.singleShot(0, self._recolor_status_message)
         self._apply_labels()

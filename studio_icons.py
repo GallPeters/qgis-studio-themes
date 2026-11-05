@@ -1010,14 +1010,16 @@ EXTERNAL = {
 # glyph is enlarged around the centre: Tabler glyphs leave a ~3 unit margin,
 # so 1.15 makes icons read bigger without changing any widget's icon size.
 # Compact sizes (low-density screens, where every pixel is physically
-# larger) keep Tabler's own size, which matches the footprint of QGIS's
-# native toolbar icons there.
+# larger) are enlarged alike since 1.4: at Tabler's own size icons read
+# small at QGIS's default icon size, and growing the icon size instead made
+# the ribbon and toolbars much taller. (Line widths stay whole device
+# pixels, so larger glyphs keep their fine lines.)
 STROKE = 1.5
 # Extra width (device pixels) of pixel-snapped lines, beyond their whole
 # pixels (see render_icon_px).
 STROKE_EXTRA = 0.25
 SCALE = 1.15
-COMPACT_SCALE = 1.0
+COMPACT_SCALE = 1.15
 # Glyphs with a badge are shrunk towards the top-left instead; less so in
 # icons of 20 px and below, where 0.9 left a glyph of about 9 px.
 BADGED_SCALE = 0.9
@@ -1070,6 +1072,8 @@ COLOR_HUES = {  # (light body, medium body, edge)
     "wood": ("#d8b48e", "#b88352", "#7d5429"),
     # The toolbox's red (ArcGIS's red toolboxes).
     "toolred": ("#ca6961", "#bd4d45", "#8a3630"),
+    # Steel: a hammer's head, darker than the neutral greys.
+    "steel": ("#8a939d", "#5f6873", "#3a414a"),
 }
 # Paper (fill, edge) on light and dark themes.
 COLOR_MODES = ("light", "dark")
@@ -1094,7 +1098,7 @@ MATERIAL_HUES = {
     "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
-    "toolredS": "toolred",
+    "toolredS": "toolred", "steel": "steel", "steelS": "steel",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
 COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653"})
@@ -2004,12 +2008,13 @@ _COLOR_DRAWINGS = {
              ("paper", "redS", "grayS")),
     "chart-bar": ('<path d="M3 21h18"/><path d="M5 12h4v9h-4z"/><path d="M10 6h4v15h-4z"/><path d="M15 9h4v12h-4z"/>',
                   ("ink", "blueS", "greenS", "yellowS")),
-    # A wrench: a sturdy handle (4 units, about 40 percent of the head, as
-    # real open-end wrenches; a 2.4 unit one nearly vanished at 16 px) with
-    # a round end, an open-end head of radius 4.7 and a straight jaw, its
-    # curves arcs (a polygon's many corners bend when fitted to pixels).
-    "tool": ('<path d="M6.41 20.41L14.71 12.12A4.7 4.7 0 0 0 20.53 5.66L17.64 8.55L15.45 6.36L18.34 3.47'
-             'A4.7 4.7 0 0 0 11.88 9.29L3.59 17.59A2 2 0 0 0 6.41 20.41z"/>', ("grayS",)),
+    # Processing's tool, a hammer as in ArcGIS Pro: a light wooden handle
+    # (3.5 units wide) with a round end going into a dark steel head with a
+    # flat striking face and a tapered peen, at 45 degrees. (A grey wrench
+    # read as one dark mass.)
+    "tool": ('<path d="M5.24 21.24L15.21 11.26L12.74 8.79L2.76 18.76A1.75 1.75 0 0 0 5.24 21.24z"/>'
+             '<path d="M21.82 10.95L18.15 14.62L11.78 8.26L10.16 5.08L12.28 2.96L15.46 4.58z"/>',
+             ("wood", "steelS")),
     # About: a square sign with the i of the round info sign.
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
                             ("blueS", "white/", "white/")),
@@ -2075,6 +2080,10 @@ COLOR_RECIPES.update({name: materials for name, (_body, materials) in _COLOR_DRA
 # keep the simpler pixel-snapped drawings, as such detail turns soft that
 # small (real sets draw small sizes separately).
 DETAIL_MIN = 28
+# The detailed drawings' contents span about 26.5 of their 32 units: they
+# are drawn 15 percent larger around the centre (of up to 21 percent
+# room), leaving a pixel or so between neighbouring icons.
+DETAIL_GROW = 1.15
 # Drawn on the pixel grid (_snap_detailed), most stay clean down to 24 px
 # (panel toolbars at 100 percent); the edit pencil, map and raster turn
 # faint or fuzzy there and keep the simpler drawings below DETAIL_MIN.
@@ -2400,7 +2409,9 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
         badged = BADGED_SCALE_SMALL if size <= 20 else BADGED_SCALE
         factor, offset = badged * size / 32, 0.2 * px
     else:
-        factor, offset = size / 32, 0.0
+        # Enlarged around the centre (DETAIL_GROW), as the other glyphs are.
+        factor = size / 32 * DETAIL_GROW
+        offset = (size - 32 * factor) / 2
     if hairline:
         # Device pixels, every coordinate on the pixel grid, 1 px edges.
         defs, body = _detailed(glyph, "translate(0 0)", 1, snap=(factor, offset))
