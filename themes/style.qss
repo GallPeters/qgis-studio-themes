@@ -364,6 +364,22 @@ QAbstractItemView::indicator:disabled {
     background-color: @bg_window;
     border-color: @divider_strong;
 }
+/* The Layers panel's visibility boxes: quiet outlined boxes with a tick
+ * in the text colour, so a long list of layers reads calmly (the accent
+ * fill stays for checkboxes elsewhere). */
+QgsLayerTreeView::indicator:checked {
+    background-color: @bg_base;
+    border-color: @field_border_hover;
+    image: url(@theme_path/icons/studio/checkbox-check-ink.svg);
+}
+QgsLayerTreeView::indicator:indeterminate {
+    background-color: @bg_base;
+    border-color: @field_border_hover;
+    image: url(@theme_path/icons/studio/checkbox-indeterminate-ink.svg);
+}
+QgsLayerTreeView::indicator:hover {
+    border-color: @accent;
+}
 QAbstractItemView::indicator:checked:disabled {
     background-color: @accent_disabled;
     border-color: @accent_disabled;
@@ -468,7 +484,7 @@ QTabBar#studioRibbonTabs::tab:top {
     border: none;
     border-radius: 5px;
     background: transparent;
-    color: @text_dim;
+    color: @text;
 }
 QTabBar#studioRibbonTabs::tab:top:hover:!selected {
     background-color: @ribbon_tab_hover;
@@ -486,13 +502,16 @@ QTabBar#studioRibbonTabs::tab:top:selected {
     background-color: @ribbon_page;
     color: @text_bright;
 }
-/* Project, the first tab: a coloured button like a dialog's default one,
- * the same size and weight in every state, a shade darker when current. */
+/* Project, the first tab: a coloured block standing on the page, as tall
+ * as the current tab, the same size and weight in every state, a shade
+ * darker when current. */
 QTabBar#studioRibbonTabs::tab:top:first {
-    margin: 7px 8px 3px 4px;
-    padding: 3px 14px;
+    margin: 4px 8px 0 4px;
+    padding: 6px 16px 6px 16px;
     border: none;
-    border-radius: 5px;
+    border-radius: 0;
+    border-top-left-radius: @radius_sm;
+    border-top-right-radius: @radius_sm;
     background-color: @accent;
     color: @on_accent;
     font-weight: 600;
@@ -502,10 +521,12 @@ QTabBar#studioRibbonTabs::tab:top:first:hover {
     color: @on_accent;
 }
 QTabBar#studioRibbonTabs::tab:top:first:selected {
-    margin: 7px 8px 3px 4px;
-    padding: 3px 14px;
+    margin: 4px 8px 0 4px;
+    padding: 6px 16px 6px 16px;
     border: none;
-    border-radius: 5px;
+    border-radius: 0;
+    border-top-left-radius: @radius_sm;
+    border-top-right-radius: @radius_sm;
     background-color: @accent_pressed;
     color: @on_accent;
 }
@@ -521,10 +542,14 @@ QWidget#studioRibbonContent {
     background: transparent;
     border: none;
 }
+/* Groups are set apart by a line that stops short of the page's top and
+ * bottom edges (a gradient border: transparent at both ends). */
 QFrame#studioRibbonGroup {
     background: transparent;
     border: none;
-    border-right: 1px solid @divider;
+    border-right: 1px solid qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 transparent, stop: 0.07 transparent, stop: 0.071 @line,
+        stop: 0.929 @line, stop: 0.93 transparent, stop: 1 transparent);
 }
 QLabel#studioRibbonCaption {
     color: @text_dim;

@@ -39,7 +39,7 @@ changelog=
           - Colourful: tools drawn only in the icon colour get colour accents (refresh, history, expressions, selections, charts, forms, move, pins and more); arrows, chevrons and text styles keep the icon colour.
           - Colourful: delete and remove buttons (Remove Layer...) show a red cross instead of a red dot, and Add Group a folder with a plus.
           - Expand All and Collapse All are drawn with exact diagonals, and Add Layer with the clear layer stack at every size.
-          - The ribbon's Project tab is a coloured button, like a dialog's default button.
+          - The ribbon's Project tab is a coloured block standing on the page, as tall as the current tab.
           - Tabbed panels (Browser, Layers, Processing Toolbox...) have flat tabs along their edge, the current one marked with an accent line.
           - The status bar's values (coordinates, scale, rotation, magnifier) sit in rounded chips.
           - The Browser, Layers and Processing Toolbox trees follow QGIS's icon size too (QGIS applies it to toolbars only): their icons and rows grow a step with each larger setting (at the default 24 px, as before).
@@ -49,6 +49,8 @@ changelog=
           - Panels are one clean surface: the title, bold, sits on the panel's own colour with no band or line under it, and panel toolbars share that colour.
           - Panel search fields (Processing Toolbox, Browser, Layer Styling...) are white rounded fields with a magnifier at their start.
           - Rows of the Browser, Layers and Processing Toolbox trees are roomier (about 28 px).
+          - The ribbon's page is a clean white band in the light themes, its tab names are in the text colour, and the lines between its groups stop short of the page's edges.
+          - The Layers panel's visibility boxes are quiet outlined boxes with a tick in the text colour (checkboxes elsewhere keep the accent fill).
           - The Layers panel has a search field (QGIS's layer name filter) and a 'List by' row of large buttons for QGIS's own legend filters: drawing order (all layers), visible in map, by expression, broken layers only and private layers, with a caption naming the filters on. They combine as in QGIS; the Filter Legend and expression buttons move from the panel's toolbar into the row, and everything returns to QGIS's own look with the theme.
           - Folders keep the same light gold at every size (smaller ones were a darker amber than the detailed folder).
           - Colourful: the close, clear and cancel X (message bar, tabs, tasks) is in the theme's icon colour, clearly seen on dark themes, and coloured lines standing on the window (arrows, routes, curves, links) keep their full colour instead of being deepened like the edges of filled objects.
