@@ -319,7 +319,10 @@ def compose_atlas(masks, colors, color=False, faded=False):
     else:
         atlas = tinted(masks["glyph"], colors["icon"])
         painter = QPainter(atlas)
-    for layer in ("accent", "danger"):
+    # Colourful icons draw delete's red cross in their colour layer
+    # (studio_icons.COLOR_BADGE_MARKS): the danger layer's red dot is only
+    # for single-colour icons.
+    for layer in ("accent",) if color else ("accent", "danger"):
         painter.drawImage(0, 0, tinted(masks[layer], colors[layer]))
     painter.end()
     return QPixmap.fromImage(atlas)

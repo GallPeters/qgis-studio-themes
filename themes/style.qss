@@ -97,8 +97,9 @@ QStatusBar {
     min-height: 30px;
     padding: 2px 6px;
 }
-/* Labels are dimmed and values sit in borderless chips of one height, their
- * border shown on hover (they stay recognisably editable) and focus. */
+/* Labels are dimmed and values (scale, coordinates, rotation, magnifier)
+ * sit in rounded chips of one height with a light border, darker on hover
+ * (they stay recognisably editable), the accent on focus. */
 QStatusBar::item {
     border: none;
 }
@@ -108,11 +109,11 @@ QStatusBar QLabel {
 QStatusBar QLineEdit,
 QStatusBar QComboBox,
 QStatusBar QAbstractSpinBox {
-    background-color: @control_bg;
-    border-color: transparent;
-    border-radius: 5px;
+    background-color: @bg_base;
+    border: 1px solid @divider;
+    border-radius: 10px;
     min-height: 0;
-    padding: 1px 6px;
+    padding: 1px 8px;
 }
 QStatusBar QAbstractSpinBox {
     padding-right: 20px;
@@ -129,7 +130,7 @@ QStatusBar QAbstractSpinBox:focus {
     background-color: @bg_base;
     border-width: 1px;
     border-color: @accent;
-    padding: 1px 6px;
+    padding: 1px 8px;
 }
 QStatusBar QAbstractSpinBox:focus {
     padding-right: 20px;
@@ -478,6 +479,29 @@ QTabBar#studioRibbonTabs::tab:top:selected {
     border-bottom-right-radius: 0;
     background-color: @ribbon_page;
     color: @text_bright;
+}
+/* Project, the first tab: a coloured button like a dialog's default one,
+ * the same size and weight in every state, a shade darker when current. */
+QTabBar#studioRibbonTabs::tab:top:first {
+    margin: 7px 8px 3px 4px;
+    padding: 3px 14px;
+    border: none;
+    border-radius: 5px;
+    background-color: @accent;
+    color: @on_accent;
+    font-weight: 600;
+}
+QTabBar#studioRibbonTabs::tab:top:first:hover {
+    background-color: @accent_hover;
+    color: @on_accent;
+}
+QTabBar#studioRibbonTabs::tab:top:first:selected {
+    margin: 7px 8px 3px 4px;
+    padding: 3px 14px;
+    border: none;
+    border-radius: 5px;
+    background-color: @accent_pressed;
+    color: @on_accent;
 }
 QTabBar#studioRibbonTabs[collapsed="true"]::tab:top:selected {
     margin: 7px 4px 3px 3px;
@@ -1025,22 +1049,29 @@ QTabWidget#mOptionsTab > QTabBar::tab:top:!last {
     background-position: right center;
     background-repeat: no-repeat;
 }
-/* Tabbed panels (Browser, Layers, Processing... sharing one place): a
- * segmented control, the current panel a raised segment on a filled track,
- * instead of loose text tabs. The bar is the main window's own child. */
+/* Tabbed panels (Browser, Layers, Processing... sharing one place): flat
+ * pane tabs along the panels' edge, the current one on the panel's surface
+ * with an accent line on the side facing the panel (a 2 px line in every
+ * state, transparent unless current, so nothing shifts). The bar is the
+ * main window's own child. */
 QMainWindow > QTabBar {
-    background-color: @control_bg;
-    border-radius: 7px;
+    background-color: transparent;
     qproperty-expanding: 1;
 }
 QMainWindow > QTabBar::tab:top,
 QMainWindow > QTabBar::tab:bottom {
     background: transparent;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    margin: 2px 1px;
-    padding: 4px 12px;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    padding: 5px 12px;
     color: @text_dim;
+}
+QMainWindow > QTabBar::tab:bottom {
+    border-top: 2px solid transparent;
+}
+QMainWindow > QTabBar::tab:top {
+    border-bottom: 2px solid transparent;
 }
 QMainWindow > QTabBar::tab:top:hover,
 QMainWindow > QTabBar::tab:bottom:hover {
@@ -1049,8 +1080,13 @@ QMainWindow > QTabBar::tab:bottom:hover {
 QMainWindow > QTabBar::tab:top:selected,
 QMainWindow > QTabBar::tab:bottom:selected {
     background-color: @bg_base;
-    border-color: @divider;
     color: @text_bright;
+}
+QMainWindow > QTabBar::tab:bottom:selected {
+    border-top-color: @accent;
+}
+QMainWindow > QTabBar::tab:top:selected {
+    border-bottom-color: @accent;
 }
 QTabBar::close-button {
     image: url(@theme_path/icons/studio/close.svg);

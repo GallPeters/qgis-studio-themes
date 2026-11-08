@@ -82,7 +82,7 @@ ICON_MAP = {
     "mActionNewMeshLayer.svg": "triangle-square-circle+star",
     "mActionNewVirtualLayer.svg": "sql-raised+star",
     # ---- Layers panel -----------------------------------------------------
-    "mActionAddGroup.svg": "box-multiple+plus",
+    "mActionAddGroup.svg": "folder+plus",
     "mActionRemoveLayer.svg": "stack-2+x",
     "mActionDuplicateLayer.svg": "copy",
     "mActionShowAllLayers.svg": "eye",
@@ -1037,6 +1037,9 @@ BADGE_CENTER = 19.3
 BADGE_RADIUS = 2.75
 BADGE_GAP = 1.8
 BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check"}
+# Colourful icons mark delete ("x") with a red cross like the other marks,
+# instead of a red dot (which said little at toolbar sizes).
+COLOR_BADGE_MARKS = {**BADGE_MARKS, "x": "x"}
 # Half the width of a mark, in units.
 MARK_ARM = 2.7
 
@@ -1108,7 +1111,7 @@ MATERIAL_HUES = {
     "toolredS": "toolred", "steel": "steel", "steelS": "steel",
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653"})
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42"})
 # Fills are flat since 1.4, as ArcGIS Pro's icons (_color_body, _lg). The
 # shading below (lit towards white at the top, deepened towards the hue's
 # edge at the bottom) is still defined for any fill that refers to it.
@@ -1209,6 +1212,11 @@ def _mark_path(mark, c, arm):
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}M{_num(c)} {_num(c - arm)}V{_num(c + arm)}"
     if mark == "minus":
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}"
+    if mark == "x":
+        # A cross, a little smaller than a plus so it fills the same room.
+        d = arm * 0.8
+        return (f"M{_num(c - d)} {_num(c - d)}L{_num(c + d)} {_num(c + d)}"
+                f"M{_num(c + d)} {_num(c - d)}L{_num(c - d)} {_num(c + d)}")
     # A check mark: short stroke down to the right, long stroke up.
     return (f"M{_num(c - arm)} {_num(c + arm * 0.05)}L{_num(c - arm * 0.3)} {_num(c + arm * 0.7)}"
             f"L{_num(c + arm)} {_num(c - arm * 0.65)}")
@@ -1772,7 +1780,7 @@ def render_icon_px(spec, colors, size, scale=SCALE, width=None):
         mark = BADGE_MARKS[badge]
         middle = snap(BADGE_CENTER * px)
         arm = max(2, round(MARK_ARM * px))
-        cap = "round" if mark == "check" else "square"
+        cap = "round" if mark in ("check", "x") else "square"
         parts.append(
             f'<path d="{_mark_path(mark, middle, arm)}" stroke="{icon}" stroke-width="{drawn}" '
             f'stroke-linecap="{cap}"/>'
@@ -1954,6 +1962,33 @@ COLOR_RECIPES.update({
     "slice": ("grayS!",),
     "arrows-split": ("greenS/", "blueS/", "ink"),
 })
+# Tools that were drawn only in the theme's colour get flat accents of
+# their own (interface glyphs: arrows, chevrons, alignment, text styles,
+# keep the theme's colour): blue for refresh, history, expressions and
+# movement, yellow for selections, coloured data in charts.
+COLOR_RECIPES.update({
+    "refresh": ("blueS/", "greenS/"),
+    "history": ("ink", "blueS/"),
+    "math-function": ("blueS/", "blueS/", "orangeS/", "orangeS/"),
+    "sum": ("blueS/",),
+    "variable": ("blueS/", "orangeS/"),
+    "brackets": ("blueS/", "blueS/"),
+    "deselect": ("yellowS/", "yellowS/") + ("ink",) * 14 + ("redS/",),
+    "select-all": ("yellow",) + ("ink",) * 16,
+    "forms": ("blueS/", "blueS/", "paper!", "paper!", "ink", "ink"),
+    "chart-histogram": ("ink", "blueS/", "blueS/", "blueS/", "blueS/", "orangeS/"),
+    "chart-scatter": ("ink", "blueS/", "redS/", "greenS/", "orangeS/", "purpleS/"),
+    "buildings": ("gray!", "ink", "ink") + ("blueS/",) * 8,  # the low building is open: outline only
+    "arrows-move": ("blueS/",),
+    "html": ("orangeS/",),
+    "pin": ("redS!", "ink", "redS/"),
+    "crop": ("blueS/", "ink"),
+    "adjustments": ("blueS", "ink", "ink", "blueS", "ink", "ink", "blueS", "ink", "ink"),
+    "sql": ("blueS/",),
+    "radar": ("greenS/", "greenS/", "greenS/"),
+    "list-check": ("greenS/", "greenS/", "greenS/", "ink", "ink", "ink"),
+    "repeat": ("blueS/", "blueS/"),
+})
 _COLOR_DRAWINGS = {
     # Save: a floppy with a metal shutter and its slot, a label with lines.
     "device-floppy": ('<path d="M4 3h13l4 4v14h-17z"/><path d="M8 3h8v6h-8z"/><path d="M13 4.5v3"/>'
@@ -2111,7 +2146,7 @@ DETAIL_SMALL = 24
 DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
 # Drawings simple enough to stay clean at every size: detailed down to
 # 16 px (menus and trees too), so they look the same everywhere.
-DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code"))
+DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code", "stack-2"))
 _TEXT = "#97a1ab"
 
 
@@ -2518,12 +2553,12 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
     gap = max(1, round(BADGE_GAP * px))
     parts += [_badge_mask(center, radius + gap, size), f'<g mask="url(#b)">{body}</g>']
     drawn = _num(width + STROKE_EXTRA)
-    if badge in BADGE_MARKS:
+    if badge in COLOR_BADGE_MARKS:
         offset = 0.5 if width % 2 else 0.0
         middle = math.floor(BADGE_CENTER * px - offset + 0.5) + offset
-        mark = BADGE_MARKS[badge]
+        mark = COLOR_BADGE_MARKS[badge]
         arm = max(2, round(MARK_ARM * px))
-        cap = "round" if mark == "check" else "square"
+        cap = "round" if mark in ("check", "x") else "square"
         parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
                      f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
     elif layer == "all":
@@ -2539,7 +2574,7 @@ COLOR_PREFIX = "color:"
 # pixel grid: moving each corner onto it bent their edges (a pale near-
 # vertical column down the hammer head's side); exact diagonals are
 # smoothed evenly instead.
-UNSNAPPED = frozenset(("tool",))
+UNSNAPPED = frozenset(("tool", "chevrons-down", "chevrons-up"))
 # Colourful lines: round ends (they end inside the shapes they meet), sharp
 # joins, with acute ones cut flat rather than spiking.
 COLOR_STROKE = 'stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="2"'
@@ -2787,8 +2822,8 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     body = _deepen(coloured, mode) + "".join(inked)
     parts.append(_shading(body))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
-    if badge in BADGE_MARKS:
-        mark = BADGE_MARKS[badge]
+    if badge in COLOR_BADGE_MARKS:
+        mark = COLOR_BADGE_MARKS[badge]
         parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
                      f'stroke="{COLOR_MARKS[mode][mark]}" stroke-width="{STROKE}"/>')
     elif badge:
@@ -2866,14 +2901,14 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         )
         mask = ' mask="url(#b)"'
     parts.append(f'<g{mask} stroke-width="{drawn}">{body}</g>')
-    if badge in BADGE_MARKS and layer in ("color", "all"):
-        mark = BADGE_MARKS[badge]
+    if badge in COLOR_BADGE_MARKS and layer in ("color", "all"):
+        mark = COLOR_BADGE_MARKS[badge]
         middle = snap(BADGE_CENTER * px)
         arm = max(2, round(MARK_ARM * px))
-        cap = "round" if mark == "check" else "square"
+        cap = "round" if mark in ("check", "x") else "square"
         parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
                      f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
-    elif badge and badge not in BADGE_MARKS and layer == "all":
+    elif badge and badge not in COLOR_BADGE_MARKS and layer == "all":
         fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
     parts.append("</svg>")

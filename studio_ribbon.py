@@ -533,7 +533,9 @@ class _Tabs(QTabBar):
     def paintEvent(self, event):  # pylint: disable=invalid-name
         super().paintEvent(event)
         index = self.currentIndex()
-        if index < 0:
+        # The first tab (Project) is a coloured button (style.qss): no
+        # underline on it.
+        if index <= 0:
             return
         tab = self.tabRect(index)
         width = self.fontMetrics().horizontalAdvance(self.tabText(index)) + 4
