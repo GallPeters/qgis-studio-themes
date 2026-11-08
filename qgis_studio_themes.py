@@ -43,6 +43,7 @@ from qgis.PyQt.QtWidgets import (
 
 from . import studio_icons, studio_toolbars
 from .studio_events import EventHub
+from .studio_layers import LayersListBy
 from .studio_ribbon import StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
@@ -963,6 +964,8 @@ class IconSwapper(QObject):
         # their own: {id: (widget, QSize)}.
         self._trees = {}
         self._panel_bars = {}
+        # Panel search fields given a magnifier (_panel_search): {id: (field,)}.
+        self._searches = {}
         # Trees whose row-wide focus frame is turned off (see _row_focus),
         # and dialogs kept large enough for their contents, with QGIS's own
         # minimum size (see _hold_room).
@@ -1233,6 +1236,20 @@ class IconSwapper(QObject):
         if toolbar.iconSize().width() < size:
             toolbar.setIconSize(QSize(size, size))
 
+    def _panel_search(self, field):
+        """A panel's search field (Processing Toolbox, Browser filter...)
+        shows QGIS's magnifier at its start, the field reading as a search
+        at a glance; QGIS's own setting comes back with the theme."""
+        if id(field) in self._searches or field.property("showSearchIcon") is not False:
+            return
+        parent = field.parentWidget()
+        while parent is not None and not isinstance(parent, QDockWidget):
+            parent = parent.parentWidget()
+        if parent is None:
+            return
+        self._searches[id(field)] = (field,)
+        field.setProperty("showSearchIcon", True)
+
     def _refresh_trees(self):
         """QGIS's icon size changed: the panel trees, panel toolbars and the
         open dialogs' page lists follow."""
@@ -1293,7 +1310,8 @@ class IconSwapper(QObject):
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
         for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
-                      self._row_focus, self._rooms, self._relaxed, self._trees, self._panel_bars):
+                      self._row_focus, self._rooms, self._relaxed, self._trees, self._panel_bars,
+                      self._searches):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -2002,6 +2020,7 @@ class IconSwapper(QObject):
             # Embedded actions (clear, search). Spin boxes' editors are
             # skipped: big dialogs hold hundreds of them.
             if not isinstance(widget.parent(), QAbstractSpinBox):
+                self._panel_search(widget)
                 for action in widget.actions():
                     self._swap(action, None, None, deferred)
                 self._hook_picker(widget)
@@ -2361,6 +2380,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(toolbar):
                 toolbar.setIconSize(size)
         self._panel_bars = {}
+        for (field,) in self._searches.values():
+            if not sip.isdeleted(field):
+                field.setProperty("showSearchIcon", False)
+        self._searches = {}
         for (tree,) in self._row_focus.values():
             if not sip.isdeleted(tree):
                 tree.setAllColumnsShowFocus(True)
@@ -2625,6 +2648,8 @@ class QgisStudioThemesPlugin:
         self._size_hooks = []
         self._labels = ToolbarLabels(self._hub)
         self._ribbon = StudioRibbon(iface, self._hub, self._icons)
+        # The Layers panel's search field and 'List by' row.
+        self._layers = LayersListBy(iface, self._hub, self._icons)
         # QGIS has finished starting (every toolbar, plugins' too, is in
         # place): the ribbon is only built then.
         self._ready = False
@@ -2999,6 +3024,7 @@ class QgisStudioThemesPlugin:
         if self._icons.style != self.icon_style():
             self._icons.set_style(self.icon_style())
         self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale, compact=self._compact)
+        self._layers.attach()
         self._style_message_bar()
         QTimer.singleShot(0, self._recolor_status_message)
         self._apply_labels()
@@ -3255,6 +3281,7 @@ class QgisStudioThemesPlugin:
         if self._active is None:
             return
         self._icons.refresh_sizes()
+        self._layers.resize()
         self._prerender()
 
     def _deactivate(self):
@@ -3263,6 +3290,7 @@ class QgisStudioThemesPlugin:
         self._active = None
         self._prepared = None
         self._ribbon.deactivate()
+        self._layers.detach()
         self._labels.detach()
         self._icons.restore()
         set_popup_shadows(True)

@@ -54,25 +54,31 @@ QDockWidget {
     titlebar-close-icon: url(@theme_path/icons/studio/dock-close.svg);
     titlebar-normal-icon: url(@theme_path/icons/studio/dock-float.svg);
 }
-/* Panel titles: one point larger (compact sizes: same size) and semibold,
+/* Panel titles: one point larger (compact sizes: same size) and bold,
  * so panels are easy to find and tell apart. The (title-less) font goes on the dock, the contents get
  * the normal UI font back (sizes filled in by the plugin). */
 QMainWindow > QDockWidget {
     font-size: @panel_title_font_size;
-    font-weight: 600;
+    font-weight: 700;
 }
 QMainWindow > QDockWidget > QWidget {
     font-size: @ui_font_size;
     font-weight: normal;
 }
+/* A panel is one surface: its title, toolbar and contents share the
+ * panel's colour, with no band or line between them; the title has room
+ * above it and sits close to what it names. */
 QDockWidget > QWidget {
     background-color: @bg_dock;
-    border-top: 1px solid @dock_seam;
 }
 QDockWidget::title {
-    background-color: @bg_window;
-    padding: 8px 10px 7px 10px;
+    background-color: @bg_dock;
+    padding: 10px 12px 6px 12px;
     text-align: left;
+}
+QDockWidget QToolBar {
+    background-color: @bg_dock;
+    padding: 2px 6px;
 }
 QDockWidget::close-button,
 QDockWidget::float-button {
@@ -256,8 +262,8 @@ QgsProcessingToolboxTreeView {
 QgsBrowserTreeView::item,
 QgsLayerTreeView::item,
 QgsProcessingToolboxTreeView::item {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 4px;
+    padding-bottom: 4px;
     margin-right: 6px;
     border-radius: @radius;
     border-top-left-radius: 0;
@@ -1354,16 +1360,17 @@ QgsDockWidget QListView {
     border-radius: 0;
 }
 
-/* Search fields in panels (Processing Toolbox, Browser filter, Layer
- * Styling, Dev Tools filters...): a filled pill with the fields' resting
- * edge, so it reads as a field on the panel (fill alone almost vanished
- * in the light themes), stronger on hover and focus. The selector ends in
- * QgsFilterLineEdit, so Qt checks the ancestor only for those fields. */
+/* Search fields in panels (Processing Toolbox, Browser filter, Layers,
+ * Layer Styling, Dev Tools filters...): a rounded field on the base
+ * surface with the fields' resting edge and QGIS's magnifier at its start
+ * (turned on by the plugin), stronger on hover and focus. The selector
+ * ends in QgsFilterLineEdit, so Qt checks the ancestor only for those
+ * fields. */
 QDockWidget QgsFilterLineEdit {
-    background-color: @control_bg;
+    background-color: @bg_base;
     border-color: @field_border;
     border-radius: @search_radius;
-    padding-left: 10px;
+    padding-left: 4px;
     padding-right: 10px;
 }
 QDockWidget QgsFilterLineEdit:hover {
@@ -1371,6 +1378,26 @@ QDockWidget QgsFilterLineEdit:hover {
 }
 QDockWidget QgsFilterLineEdit:focus {
     background-color: @field_focus;
+}
+/* Layers: the 'List by' row under the search field (studio_layers): large
+ * icon buttons for QGIS's legend filters, the ones on in the checked
+ * colour, and a caption naming them in small capitals. */
+QToolButton#studioListByButton {
+    padding: 3px;
+    border-radius: @radius;
+}
+QToolButton#studioListByButton[popupMode="1"] {
+    padding-right: 14px;
+}
+QToolButton#studioListByButton:checked {
+    background-color: @tool_checked;
+}
+QToolButton#studioListByButton:checked:hover {
+    background-color: @tool_checked_hover;
+}
+QLabel#studioListByCaption {
+    color: @text_dim;
+    font-weight: 700;
 }
 
 QgsColorButton,

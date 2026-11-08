@@ -80,8 +80,6 @@
  * dark outline or lit top edge); hovered rows take the selection tint. */
 @menu_edge:              mix(@bg_menu, @text, 0.13);
 @menu_hover:             mix(@bg_menu, @accent, 0.22);
-/* Panels share the window's surface: no line under their titles. */
-@dock_seam:              @bg_dock;
 /* Fields sit in the recessed surface with a quieter edge. */
 @field_border:           mix(@bg_base, @text, 0.15);
 @field_border_hover:     mix(@bg_base, @text, 0.30);

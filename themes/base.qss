@@ -34,9 +34,6 @@
 @field_border_hover:     mix(@bg_base, @text, 0.34);
 /* A focused field: a 1 px accent edge on this barely lifted fill. */
 @field_focus:            mix(@bg_base, @text, 0.03);
-/* The line between a panel's title and its contents: none where a theme
- * gives both one surface (set it to @bg_dock). */
-@dock_seam:              @divider;
 
 /* ---- Controls ----------------------------------------------------------- */
 @control_bg:             mix(@bg_window, @text, 0.07);

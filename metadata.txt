@@ -46,6 +46,10 @@ changelog=
           - Dialog page lists (Plugins, Layer Properties, Project Properties, Data Source Manager...) have 24 px icons (were 20 px), as does the Options dialog's page tree (was QGIS's 16 px), and follow QGIS's icon size too, a step larger with each larger setting.
           - Panel toolbars (Layers, Browser, Processing Toolbox, Identify Results...) have 20 px icons on every screen (low-density screens kept QGIS's 16 px) and grow a step with each larger icon size setting.
           - The hammer is drawn with exact diagonals: fitting its corners to pixels bent its edges into a pale vertical line.
+          - Panels are one clean surface: the title, bold, sits on the panel's own colour with no band or line under it, and panel toolbars share that colour.
+          - Panel search fields (Processing Toolbox, Browser, Layer Styling...) are white rounded fields with a magnifier at their start.
+          - Rows of the Browser, Layers and Processing Toolbox trees are roomier (about 28 px).
+          - The Layers panel has a search field (QGIS's layer name filter) and a 'List by' row of large buttons for QGIS's own legend filters: drawing order (all layers), visible in map, by expression, broken layers only and private layers, with a caption naming the filters on. They combine as in QGIS; the Filter Legend and expression buttons move from the panel's toolbar into the row, and everything returns to QGIS's own look with the theme.
           - Folders keep the same light gold at every size (smaller ones were a darker amber than the detailed folder).
           - Colourful: the close, clear and cancel X (message bar, tabs, tasks) is in the theme's icon colour, clearly seen on dark themes, and coloured lines standing on the window (arrows, routes, curves, links) keep their full colour instead of being deepened like the edges of filled objects.
           - Icons are sharp at every size on every screen: sizes without a pre-rendered image (QGIS's font-scaled icon sizes, 32 to 64 px toolbars, large dialog icons, other screens' scaling) are drawn for that exact size instead of stretched from the nearest one.
