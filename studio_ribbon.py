@@ -61,24 +61,27 @@ QWIDGETSIZE_MAX = (1 << 24) - 1
 # room. They follow QGIS's toolbar icon size (Settings > Options > General
 # > Icon size), as the toolbars the ribbon stands for would: set by
 # set_sizes, these values are those of its default, 24.
-LARGE_ICON = 28
+LARGE_ICON = 32
 SMALL_ICON = 20
 ROW_HEIGHT = 24
 ROWS = 3
 SPACING = 2
 BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
-LARGE_MIN_WIDTH = 52
+LARGE_MIN_WIDTH = 56
 
 
 def ribbon_sizes(toolbar):
     """(small icon, large icon, row height, large button minimum width) for
     QGIS's toolbar icon size `toolbar`: small buttons a sixth smaller than
-    a toolbar's (on a 4 px step, never below 16), large ones 8 px larger,
-    rows 4 px taller than their icons. 24 gives 20, 28 and 24; 32 gives 28,
-    36 and 32."""
+    a toolbar's (on a 4 px step, never below 16), large ones 12 px larger
+    (ArcGIS Pro's 32 px at the default), rows 4 px taller than their icons.
+    A large button's icon leaves room for a two-line label in the three
+    rows' height. 24 gives 20, 32 and 24; 32 gives 28, 40 and 32."""
     small = max(16, round(toolbar * 5 / 6 / 4) * 4)
-    large = small + 8
-    return small, large, small + 4, large + 24
+    row = small + 4
+    body = ROWS * row + (ROWS - 1) * SPACING
+    large = min(small + 12, body - 37)
+    return small, large, row, large + 24
 
 
 def set_sizes(toolbar):

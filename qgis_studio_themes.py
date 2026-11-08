@@ -141,11 +141,13 @@ def icon_file(name):
 
 
 # Icon sizes (logical px) that get pixel-snapped PNGs: menus and trees (16),
-# panel toolbars (20), toolbars (24) and dialog page lists (28: the toolbar
-# size plus 4). QGIS's configured toolbar size and its dialog page list
-# size are added at runtime (see IconSwapper._extra_sizes), so the larger
-# toolbar sizes QGIS offers are only rendered when chosen.
-PNG_SIZES = (16, 20, 24, 28)
+# panel toolbars and the ribbon's small buttons (20), toolbars and dialog
+# page lists (24), QGIS's own dialog page list size (28) and the ribbon's
+# large buttons (32). QGIS's configured toolbar size and the lists' and
+# trees' sizes for it are added at runtime (see IconSwapper._extra_sizes),
+# so the larger sizes are only rendered when chosen; any other size is drawn
+# on demand (SharpIconEngine).
+PNG_SIZES = (16, 20, 24, 28, 32)
 # On scaled screens every PNG is loaded up front (see IconSwapper._icon).
 SCALED_PNG_SIZES = PNG_SIZES
 

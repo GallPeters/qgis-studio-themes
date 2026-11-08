@@ -1109,9 +1109,9 @@ MATERIAL_HUES = {
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
 COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653"})
-# Fills are shaded from top to bottom, as in Fluent and ArcGIS Pro, rather
-# than flat: lit towards white at the top, deepened towards the hue's own
-# edge at the bottom (a richer colour than darkening towards black).
+# Fills are flat since 1.4, as ArcGIS Pro's icons (_color_body, _lg). The
+# shading below (lit towards white at the top, deepened towards the hue's
+# edge at the bottom) is still defined for any fill that refers to it.
 SHADE_TOP = 0.25
 SHADE_BOTTOM = 0.18
 _SHADE = re.compile(r'fill="url\(#g([0-9a-f]{6})\)"')
@@ -1989,12 +1989,16 @@ _COLOR_DRAWINGS = {
                 '<path d="M3 17.5l5 -2.5l4 2l4 -2l5 2.5l-9 4.5z"/>', ("yellowS", "greenS", "blueS")),
     "table": ('<path d="M3 4h18v16h-18z"/><path d="M3 4h18v4h-18z"/><path d="M3 12h18M3 16h18M9 8v12M15 8v12"/>',
               ("paper", "blueS", "grayS/")),
-    # Magnifiers: light glass with a glint, a solid handle.
-    "search": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
-               '<path d="M6.5 9a3.5 3.5 0 0 1 3 -2.5"/>', ("glass", "grayS", "white/")),
-    "zoom-in": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
+    # Magnifiers: flat light glass in a ring, a solid handle at 45 degrees
+    # starting just outside the ring (radius 7.5 from the lens's centre; it
+    # began inside the glass, crossing into it).
+    "search": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
+               '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>', ("glass", "grayS")),
+    "zoom-in": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
+                '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
                 '<path d="M7 10h6M10 7v6"/>', ("glass", "grayS", "dark/")),
-    "zoom-out": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M15 14l7 7l-1.5 1.5l-7 -7z"/>'
+    "zoom-out": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
+                 '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
                  '<path d="M7 10h6"/>', ("glass", "grayS", "dark/")),
     # Objects.
     "package": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 7.5v9.5l9 4.5v-9.5z"/>'
@@ -2120,10 +2124,14 @@ def _detailed_at(glyph, size):
     return size >= (DETAIL_MIN if glyph in DETAIL_ONLY_LARGE else DETAIL_SMALL)
 
 
-def _lg(id_, *stops, x2=0, y2=1):
-    """A linear gradient (top to bottom unless x2/y2 say otherwise)."""
-    st = "".join(f'<stop offset="{o}" stop-color="{c}"/>' for o, c in stops)
-    return f'<linearGradient id="{id_}" x1="0" y1="0" x2="{x2}" y2="{y2}">{st}</linearGradient>'
+def _lg(id_, *stops, x2=0, y2=1):  # pylint: disable=unused-argument
+    """A part's paint: flat since 1.4, as ArcGIS Pro's icons (no gradients,
+    glints or 3D): one colour, the mean of the shading's `stops`, kept as a
+    one-colour gradient so the drawings refer to it unchanged."""
+    rgb = [[int(c[i:i + 2], 16) for i in (1, 3, 5)] for _o, c in stops]
+    mean = "#" + "".join(f"{round(sum(v[k] for v in rgb) / len(rgb)):02x}" for k in range(3))
+    return (f'<linearGradient id="{id_}"><stop offset="0" stop-color="{mean}"/>'
+            f'<stop offset="1" stop-color="{mean}"/></linearGradient>')
 
 
 def _gear(cx, cy, tip, root, teeth, tip_share=0.42, base_share=0.62):
@@ -2164,8 +2172,7 @@ def _funnel(k=1.0, dx=0.0, dy=0.0):
             'fill="url(#a)" stroke="#4a6585" stroke-linejoin="round"/>'
             f'<path d="M{x(3.5)} {y(5.5)}H{x(28.5)}L{x(26)} {y(8.5)}H{x(6)}Z" fill="url(#t)" stroke="#4a6585" '
             'stroke-linejoin="round"/>'
-            f'<path d="{stem}" fill="url(#s)"/><path d="{stem}" stroke="#4a6585" stroke-linejoin="round"/>'
-            f'<path d="M{x(8)} {y(10)}L{x(14.5)} {y(17.5)}" stroke="#ffffff" opacity=".7"/>')
+            f'<path d="{stem}" fill="url(#s)"/><path d="{stem}" stroke="#4a6585" stroke-linejoin="round"/>')
 
 
 _FUNNEL_DEFS = (_lg("a", (0, "#e4ebf3"), (1, "#8ea4bd")) + _lg("t", (0, "#ffffff"), (1, "#d5dfea"))
@@ -2182,7 +2189,7 @@ DETAILED = {
         _lg("a", (0, "#e9b552"), (1, "#d4952c")) + _lg("b", (0, "#ffe08f"), (1, "#f2b74a")),
         '<path d="M3.5 6.5H12.5L15 9H28.5V26.5H3.5Z" fill="url(#a)" stroke="#a5731c"/>'
         '<path d="M3.5 12.5H28.5V26.5H3.5Z" fill="url(#b)" stroke="#a5731c"/>'
-        '<path d="M4.5 13.5H27.5" stroke="#fff4d2"/><path d="M4.5 7.5H12L14.5 10" stroke="#f6d27e"/>',
+        '',
     ),
     "file": (
         _lg("a", (0, "#ffffff"), (1, "#eceff3")) + _lg("b", (0, "#f3f5f7"), (1, "#cfd5dc")),
@@ -2194,7 +2201,7 @@ DETAILED = {
     "device-floppy": (
         _lg("a", (0, "#6aa9e6"), (1, "#2c66ab")) + _lg("b", (0, "#f1f3f5"), (1, "#b3bcc6")),
         '<path d="M4.5 4.5H24L27.5 8V27.5H4.5Z" fill="url(#a)" stroke="#1f4c80"/>'
-        '<path d="M5.5 5.5V26.5" stroke="#9cc8f2" opacity=".7"/>'
+        ''
         '<rect x="9.5" y="4.5" width="13" height="8" fill="url(#b)" stroke="#4f5a66"/>'
         '<rect x="17.5" y="6" width="2.5" height="5" fill="#3d4650"/>'
         '<rect x="7.5" y="16.5" width="17" height="11" fill="#ffffff" stroke="#1f4c80"/>'
@@ -2215,7 +2222,7 @@ DETAILED = {
         '<rect x="4" y="11" width="7" height="15" fill="#eef3f9"/>'
         '<path d="M11.5 11V26M19.5 11V26M4 15.5H28M4 20.5H28" stroke="#b4bdc7"/>'
         '<rect x="3.5" y="5.5" width="25" height="5" fill="url(#a)" stroke="#24548c"/>'
-        '<path d="M4.5 6.5H27.5" stroke="#b8d8f6"/><path d="M11.5 6V10M19.5 6V10" stroke="#24548c" opacity=".6"/>'
+        '<path d="M11.5 6V10M19.5 6V10" stroke="#24548c" opacity=".6"/>'
         '<rect x="3.5" y="5.5" width="25" height="21" stroke="#5d6873"/>',
     ),
     "stack-2": (
@@ -2224,7 +2231,7 @@ DETAILED = {
         '<path d="M3.5 21L16 27.5L28.5 21L16 14.5Z" fill="url(#b)" stroke="#204f86" stroke-linejoin="round"/>'
         '<path d="M3.5 16L16 22.5L28.5 16L16 9.5Z" fill="url(#g)" stroke="#36752f" stroke-linejoin="round"/>'
         '<path d="M3.5 11L16 17.5L28.5 11L16 4.5Z" fill="url(#y)" stroke="#a0711a" stroke-linejoin="round"/>'
-        '<path d="M6 11L16 5.8L26 11" stroke="#fff4cf" opacity=".9" stroke-linejoin="round"/>',
+        '',
     ),
     "map": (
         _lg("l", (0, "#c9e8b8"), (1, "#9fd08a")) + _lg("m", (0, "#a9d695"), (1, "#7cb867")),
@@ -2236,8 +2243,7 @@ DETAILED = {
         '<circle cx="24" cy="12.5" r="1.6" fill="#c9443a" stroke="#ffffff" stroke-width=".7"/>',
     ),
     "world": (
-        '<radialGradient id="o" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#a9d4f7"/>'
-        '<stop offset=".6" stop-color="#4d8fd6"/><stop offset="1" stop-color="#25599a"/></radialGradient>'
+        _lg("o", (0, "#4d8fd6"))
         + _lg("c", (0, "#8fd07a"), (1, "#3f8a3a")) + '<clipPath id="k"><circle cx="16" cy="16" r="12.5"/></clipPath>',
         '<circle cx="16" cy="16" r="12.5" fill="url(#o)"/><g clip-path="url(#k)">'
         '<path d="M8.5 6C12 5 14.5 7.5 13.5 10S9 12.5 10 15.5S13.5 18.5 12.5 22S9.5 26 8 24S6.5 18 5 15.5S5.5 8 8.5 6Z" '
@@ -2246,7 +2252,7 @@ DETAILED = {
         'fill="url(#c)" stroke="#2f6e2b" stroke-width=".75"/>'
         '<ellipse cx="16" cy="16" rx="5.5" ry="12.5" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/>'
         '<path d="M3.5 16H28.5M5 10H27M5 22H27" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/></g>'
-        '<ellipse cx="11.5" cy="9.5" rx="5" ry="3" fill="#ffffff" opacity=".28"/>'
+        ''
         '<circle cx="16" cy="16" r="12.5" stroke="#1d4677"/>',
     ),
     "photo": (
@@ -2264,7 +2270,7 @@ DETAILED = {
         _lg("a", (0, "#e7eaee"), (1, "#98a2ad")),
         '<rect x="9.5" y="3.5" width="13" height="9" fill="#ffffff" stroke="#7d8792"/>' + _lines(11.5, (6,), 9)
         + '<rect x="4.5" y="11.5" width="23" height="11" rx="1.5" fill="url(#a)" stroke="#5d6873"/>'
-        '<path d="M6 12.5H26" stroke="#ffffff" opacity=".9"/>'
+        ''
         '<rect x="7.5" y="18.5" width="17" height="2.5" fill="#3d4650"/>'
         '<circle cx="24" cy="15" r="1.1" fill="#56c25a" stroke="#2f7a33" stroke-width=".5"/>'
         '<rect x="9.5" y="20.5" width="13" height="8" fill="#ffffff" stroke="#7d8792"/>'
@@ -2286,7 +2292,7 @@ DETAILED = {
         '<path d="M16 28.5C16 28.5 25.5 19 25.5 12.5A9.5 9.5 0 0 0 6.5 12.5C6.5 19 16 28.5 16 28.5Z" '
         'fill="url(#a)" stroke="#86271f"/>'
         '<circle cx="16" cy="12.5" r="3.7" fill="#ffffff" stroke="#86271f"/>'
-        '<path d="M9.5 10A7 7 0 0 1 13.5 5.8" stroke="#f9c4be" stroke-width="1.2"/>',
+        '',
     ),
     "pencil": (
         _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -2306,7 +2312,7 @@ DETAILED = {
         '<path d="M10.5 14V10A5.5 5.5 0 0 1 21.5 10V14" stroke="#5d6873" stroke-width="3.2"/>'
         '<path d="M10.5 14V10A5.5 5.5 0 0 1 21.5 10V14" stroke="url(#s)" stroke-width="1.8"/>'
         '<rect x="6.5" y="13.5" width="19" height="14" rx="1.5" fill="url(#b)" stroke="#a0711a"/>'
-        '<path d="M8 14.5H24" stroke="#fff4cf"/>'
+        ''
         '<circle cx="16" cy="19.5" r="2" fill="#6b4a12"/><rect x="15.2" y="20" width="1.6" height="4" fill="#6b4a12"/>',
     ),
     # An industrial gear, as in Fluent and ArcGIS Pro: eight tapered teeth
@@ -2693,7 +2699,9 @@ def _color_body(glyph, mode, ink, draw):
         if fill:
             for shape, closed in _subpaths(segments):
                 if closed or whole:
-                    fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="url(#g{fill[1:]})" stroke="none"/>'))
+                    # Flat, as ArcGIS Pro's icons (no top-to-bottom shading
+                    # since 1.4; _shading then has nothing to define).
+                    fills.append((-_area(shape), i, f'<path d="{draw(shape)}" fill="{fill}" stroke="none"/>'))
         # A coloured line standing on the window, not the edge of a fill nor
         # a detail on one (a route, an arrow, a curve): marked so that
         # _deepen leaves its colour, which reads on light and dark windows.

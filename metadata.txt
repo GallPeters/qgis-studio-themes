@@ -20,9 +20,9 @@ changelog=
      ** v1.4 (04.11.2026):
           - Colourful icons are finer and more professional, in the manner of ArcGIS Pro and Fluent.
           - Object edges and details are fine 1 px hairlines on every screen, 200 percent scaling included, while action icons, signs and badges keep their weight.
-          - Fills are softly shaded from top to bottom, deepening into their own colour instead of a flat tone.
+          - Colourful icons are flat, as ArcGIS Pro's: one even colour per part, without gradients, glints, highlights or a 3D look; outlines and details stay crisp.
           - Details keep to their object's colour: a globe's meridians and a map's folds are deep blue and deep green rather than black, and the lines on pages, clipboards and calculators a calm grey.
-          - Colourful: detailed, hand-drawn icons for the objects seen most (folder, document, save, database, table, layers, map, globe, raster, printer, toolbox, pin, edit, lock, settings, filter, clipboard) at 24 px and larger (the edit pencil, map and raster from 28 px): shaded volumes, highlights and texture details, in toolbars, panel toolbars and the ribbon at every scaling. Menus and trees keep the crisp simpler drawings.
+          - Colourful: detailed, hand-drawn icons for the objects seen most (folder, document, save, database, table, layers, map, globe, raster, printer, toolbox, pin, edit, lock, settings, filter, clipboard) at 24 px and larger (the edit pencil, map and raster from 28 px): real shapes and texture details, in toolbars, panel toolbars and the ribbon at every scaling. Menus and trees keep the crisp simpler drawings.
           - Colourful: vertex tools show red vertices on a blue curve (Simplify, Reshape, vertex and shape tools), model diagrams a yellow input, blue algorithms and green outputs (Model Designer, Models), Split Features a grey blade and Split Parts green and blue arrows.
           - The extent button of extent fields (Processing and others) shows an extent frame instead of the info sign.
           - GeoPackage is a brown box, like QGIS's own.
@@ -33,8 +33,9 @@ changelog=
           - Icons with a +, x, check or dot badge are drawn almost as large as the others (the drawing was shrunk to 90 percent beside its badge); the badge is a little smaller and tighter in its corner.
           - Colourful: the settings gear is an industrial gear with tapered teeth and a see-through hub, and every filter (Browser, layer indicators, attribute table, ribbon) a detailed steel funnel, filter by expression with a blue < >, at every size.
           - Round holes and caps of the detailed icons stay round at every size.
-          - Colourful: the database is a regular database icon: an evenly shaded cylinder with plain deep band lines, without the bright rings and glint.
-          - The ribbon follows QGIS's icon size (Settings > Options > General > Icon size), at once when it is changed: its large and small buttons and their rows grow and shrink together, keeping their layout (at the default 24 px, as before).
+          - Colourful: the database is a regular database icon: an even cylinder with plain deep band lines, without the bright rings and glint.
+          - The ribbon follows QGIS's icon size (Settings > Options > General > Icon size), at once when it is changed: its large and small buttons and their rows grow and shrink together, keeping their layout. Large buttons have 32 px icons at the default size, as ArcGIS Pro's (were 28 px).
+          - The zoom and search magnifiers' handles start outside the lens instead of crossing into the glass.
           - The Browser, Layers and Processing Toolbox trees follow QGIS's icon size too (QGIS applies it to toolbars only): their icons and rows grow a step with each larger setting (at the default 24 px, as before).
           - Dialog page lists (Plugins, Layer Properties, Project Properties, Data Source Manager...) have 24 px icons (were 20 px), as does the Options dialog's page tree (was QGIS's 16 px), and follow QGIS's icon size too, a step larger with each larger setting.
           - Panel toolbars (Layers, Browser, Processing Toolbox, Identify Results...) have 20 px icons on every screen (low-density screens kept QGIS's 16 px) and grow a step with each larger icon size setting.
