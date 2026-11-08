@@ -81,7 +81,8 @@
 @bg_window:              #F2F2F2;
 @bg_base:                #FFFFFF;
 @bg_alt:                 #FAFAFA;
-@bg_dock:                #EBEBEB;
+/* Panels share the window's light grey: one calm surface. */
+@bg_dock:                #F2F2F2;
 @bg_statusbar:           #E0E0E0;
 @bg_menu:                #E8E8E8;
 @bg_disabled:            #E4E4E4;

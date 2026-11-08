@@ -18,7 +18,7 @@ QGIS's Filter Legend menu button and expression button in the panel's
 toolbar are hidden while the row shows them, and come back with QGIS's
 own look. Filters combine as in QGIS; the caption names those on.
 """
-from qgis.core import QgsApplication
+from qgis.core import QgsApplication, QgsLayerTreeNode
 from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QCoreApplication, QEvent, QSize, Qt
@@ -76,6 +76,9 @@ class LayersListBy:
         self._sources = {}
         self._hidden = []
         self._connections = []
+        # The layer tree model and QGIS's own font for layer names.
+        self._model = None
+        self._layer_font = None
 
     # ---- QGIS's controls ----------------------------------------------------
 
@@ -215,6 +218,23 @@ class LayersListBy:
         self._theme_icons()
         self.resize()
         self._update()
+        self._regular_names(view)
+
+    def _regular_names(self, view):
+        """Layer names in the regular weight (QGIS draws them bold), so a
+        long list reads calmly; groups keep QGIS's bold."""
+        model = view.layerTreeModel() if hasattr(view, "layerTreeModel") else None
+        if model is None:
+            return
+        kind = QgsLayerTreeNode.NodeType.NodeLayer
+        font = model.layerTreeNodeFont(kind)
+        if not font.bold():
+            return
+        self._model, self._layer_font = model, QFont(font)
+        font = QFont(font)
+        font.setBold(False)
+        model.setLayerTreeNodeFont(kind, font)
+        view.viewport().update()
 
     def _theme_icons(self):
         for key, name, _tip, _caption in BUTTONS:
@@ -292,6 +312,10 @@ class LayersListBy:
             if not sip.isdeleted(action):
                 action.setVisible(True)
         self._hidden = []
+        if self._model is not None and not sip.isdeleted(self._model) and self._layer_font is not None:
+            self._model.setLayerTreeNodeFont(QgsLayerTreeNode.NodeType.NodeLayer, self._layer_font)
+        self._model = None
+        self._layer_font = None
         if self._search is not None and not sip.isdeleted(self._search):
             # QGIS shows no layer search: its filter goes with the field.
             self._search.clear()

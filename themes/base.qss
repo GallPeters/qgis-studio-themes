@@ -41,8 +41,10 @@
 @control_pressed:        mix(@bg_window, @text, 0.04);
 @tool_hover:             mix(@bg_window, @text, 0.09);
 @tool_pressed:           mix(@bg_window, @text, 0.05);
-@tool_checked:           mix(@bg_window, @accent, 0.22);
-@tool_checked_hover:     mix(@bg_window, @accent, 0.30);
+/* A pressed tool (Pan, the Layer Styling button...): a light tint, calm
+ * beside the icons (dark themes set their own). */
+@tool_checked:           mix(@bg_window, @accent, 0.13);
+@tool_checked_hover:     mix(@bg_window, @accent, 0.20);
 /* The ribbon's page and current tab: the base surface, a clean white
  * band in the light themes under the window-coloured tab row (dark themes
  * lift it towards the text instead). */

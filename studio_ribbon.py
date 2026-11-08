@@ -102,6 +102,9 @@ GROUP_MARGINS = (6, 8, 6, 6)
 # groups) large labelled buttons for up to AUTO_LARGE actions, else icons.
 LABELS, ICONS, AUTO = "labels", "icons", "auto"
 AUTO_LARGE = 3
+# The most used commands of icon-only groups: labelled small buttons, in
+# their own column(s) before the group's other (icon-only) buttons.
+LABELLED_SMALL = frozenset(("mActionZoomIn", "mActionZoomOut", "mActionZoomFullExtent"))
 # A group: (title, sources, large, layout[, rows]). Sources are (toolbar
 # objectName, action objectNames, or None for those of the toolbar no
 # group names); ("@", objectNames) for actions of the main window not on
@@ -346,6 +349,7 @@ LABELS_BY_NAME = {
     "mActionNewPrintLayout": "New Layout", "mActionShowLayoutManager": "Layouts",
     "mActionStyleManager": "Style Manager",
     "ActionSelect": "Select",
+    "mActionZoomIn": "Zoom In", "mActionZoomOut": "Zoom Out", "mActionZoomFullExtent": "Full Extent",
     "mActionIdentify": "Identify", "ActionOpenTable": "Attribute Table", "mActionOpenFieldCalc": "Field Calculator",
     "mActionStatisticalSummary": "Statistics", "mActionShowProcessingToolbox": "Toolbox",
     "ActionMeasure": "Measure", "mActionMapTips": "Map Tips", "ActionFeatureAction": "Actions",
@@ -1176,20 +1180,24 @@ class StudioRibbon(QObject):
         body.setSpacing(SPACING)
         body.setContentsMargins(0, 0, 0, 0)
         small = []
+        labelled = []
         for action, toolbar in entries:
             large = large_all or _key(action) in large_names
+            first = layout_kind != LABELS and _key(action) in LABELLED_SMALL
             widget = self._widget(group, action, toolbar, "large" if large else (
-                "small" if layout_kind == LABELS else "icon"))
+                "small" if layout_kind == LABELS or first else "icon"))
             if widget is None:
                 continue
             if large:
                 body.addWidget(widget, 0, Qt.AlignmentFlag.AlignTop)
+            elif first:
+                labelled.append(widget)
             else:
                 small.append((_key(action), widget))
-        if small:
+        if small or labelled:
             grid = QGridLayout()
             grid.setContentsMargins(0, 0, 0, 0)
-            grid.setHorizontalSpacing(SPACING if layout_kind == ICONS else 4)
+            grid.setHorizontalSpacing(SPACING if layout_kind == ICONS and not labelled else 4)
             grid.setVerticalSpacing(SPACING)
             placed = set()
             if rows:
@@ -1204,6 +1212,12 @@ class StudioRibbon(QObject):
                             placed.add(id(widget))
             rest = [w for _n, w in small if id(w) not in placed]
             start = grid.columnCount() if placed else 0
+            # The labelled most used commands first, then the icons from a
+            # column of their own.
+            for i, widget in enumerate(labelled):
+                grid.addWidget(widget, i % ROWS, start + i // ROWS, Qt.AlignmentFlag.AlignLeft)
+            if labelled:
+                start += -(-len(labelled) // ROWS)
             for i, widget in enumerate(rest):
                 grid.addWidget(widget, i % ROWS, start + i // ROWS, Qt.AlignmentFlag.AlignLeft)
             for row in range(ROWS):
