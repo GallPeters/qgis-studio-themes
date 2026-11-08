@@ -232,7 +232,7 @@ ICON_STYLES = ("mono", "color", "classic")
 ICON_STYLE_SETTING = "studio_themes/iconStyle"
 # A disabled Colourful icon: its colours faded, its ink in the theme's
 # disabled icon colour.
-DISABLED_COLOR_OPACITY = 0.35
+DISABLED_COLOR_OPACITY = 0.5
 
 
 def atlas_specs():

@@ -68,7 +68,7 @@
 @ribbon_page:            mix(@bg_window, @text, 0.035);
 @tool_checked:           mix(@bg_window, @accent, 0.36);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.44);
-@icon_disabled:          mix(@bg_window, @icon, 0.26);
+@icon_disabled:          mix(@bg_window, @icon, 0.34);
 /* Popups on a dark window: a near-black edge lifts them off the window;
  * hovered rows take a stronger accent tint. */
 @menu_edge:              mix(@bg_menu, #000000, 0.55);

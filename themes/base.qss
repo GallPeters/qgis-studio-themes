@@ -84,10 +84,10 @@
 
 /* ---- Icons (QGIS icon set and widget glyphs) ---------------------------- */
 @icon:                   mix(@text, @bg_window, 0.08);
-/* Disabled icons and arrows, about 2:1 on the window: clearly unavailable,
- * not a thinner version of the icon (dark themes mix less, same contrast).
+/* Disabled icons and arrows, about 2.5:1 on the window: clearly unavailable
+ * yet still legible, not a thinner version of the icon (dark themes mix less, same contrast).
  * Disabled text keeps @text_disabled, which stays readable. */
-@icon_disabled:          mix(@bg_window, @icon, 0.40);
+@icon_disabled:          mix(@bg_window, @icon, 0.50);
 @icon_accent:            @accent;
 /* Icons in selected rows (dialog page lists, Layer Styling, Plugins,
  * Browser, Processing Toolbox): the selected text's colour, like checked

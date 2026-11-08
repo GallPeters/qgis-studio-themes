@@ -21,7 +21,7 @@ own look. Filters combine as in QGIS; the caption names those on.
 from qgis.core import QgsApplication
 from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QCoreApplication, QEvent, QSize
+from qgis.PyQt.QtCore import QCoreApplication, QEvent, QSize, Qt
 from qgis.PyQt.QtGui import QAction, QFont, QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QToolBar, QToolButton, QVBoxLayout, QWidget
 
@@ -44,8 +44,8 @@ BUTTONS = (
     ("order", "mIconLayerTree.svg", "List by drawing order (all layers)", "By drawing order"),
     ("map", "mLayoutItemMap.svg", "Filter Legend by Map Content", "Visible in map"),
     ("expression", "mIconExpressionFilter.svg", "Filter Legend by Expression", "By expression"),
-    ("broken", "mIndicatorBadLayer.svg", "Show Broken Layers Only", "Broken layers only"),
-    ("private", "lockedGray.svg", "Show Private Layers", "With private layers"),
+    ("broken", "mActionUnlink.svg", "Show Broken Layers Only", "Broken layers only"),
+    ("private", "mActionHideAllLayers.svg", "Show Private Layers", "With private layers"),
 )
 # The texts of QGIS's Filter Legend menu entries (English, as in QGIS).
 MENU_TEXTS = {
@@ -53,7 +53,9 @@ MENU_TEXTS = {
     "private": "Show Private Layers",
     "broken": "Show Broken Layers Only",
 }
-ICON_SIZE = 24
+# The row's icons: the size of the panel trees' (20 px at the default
+# icon size, a step larger per larger setting).
+ICON_SIZE = 20
 
 
 class LayersListBy:
@@ -164,11 +166,15 @@ class LayersListBy:
             button.setDefaultAction(action)
             action.triggered.connect(lambda _checked=False, key=key: self._pressed(key))
             if key == "expression":
-                # QGIS's menu of the button too (edit, clear the expression).
+                # QGIS's menu of the button (edit, clear the expression) on
+                # a right-click: no drop-down arrow, so the row stays a row
+                # of equal icons.
                 menu = self._sources[key].menu()
                 if menu is not None:
-                    button.setMenu(menu)
-                    button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+                    action.setToolTip(tr(tip) + " " + tr("(right-click to edit or clear)"))
+                    button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                    button.customContextMenuRequested.connect(
+                        lambda pos, button=button, menu=menu: menu.exec(button.mapToGlobal(pos)))
             line.addWidget(button)
             self._buttons[key] = button
             self._actions[key] = action

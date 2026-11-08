@@ -75,7 +75,7 @@
 @ribbon_page:            mix(@bg_window, @text, 0.035);
 @tool_checked:           mix(@bg_window, @accent, 0.28);
 @tool_checked_hover:     mix(@bg_window, @accent, 0.36);
-@icon_disabled:          mix(@bg_window, @icon, 0.26);
+@icon_disabled:          mix(@bg_window, @icon, 0.34);
 /* Popups float on their lighter surface with one even, neutral edge (no
  * dark outline or lit top edge); hovered rows take the selection tint. */
 @menu_edge:              mix(@bg_menu, @text, 0.13);
