@@ -36,7 +36,8 @@ changelog=
           - Colourful: the database is a regular database icon: an evenly shaded cylinder with plain deep band lines, without the bright rings and glint.
           - The ribbon follows QGIS's icon size (Settings > Options > General > Icon size), at once when it is changed: its large and small buttons and their rows grow and shrink together, keeping their layout (at the default 24 px, as before).
           - The Browser, Layers and Processing Toolbox trees follow QGIS's icon size too (QGIS applies it to toolbars only): their icons and rows grow a step with each larger setting (at the default 24 px, as before).
-          - Dialog page lists (Plugins, Layer Properties, Project Properties, Data Source Manager...) have 24 px icons (were 20 px) and follow QGIS's icon size too, a step larger with each larger setting.
+          - Dialog page lists (Plugins, Layer Properties, Project Properties, Data Source Manager...) have 24 px icons (were 20 px), as does the Options dialog's page tree (was QGIS's 16 px), and follow QGIS's icon size too, a step larger with each larger setting.
+          - Panel toolbars (Layers, Browser, Processing Toolbox, Identify Results...) have 20 px icons on every screen (low-density screens kept QGIS's 16 px) and grow a step with each larger icon size setting.
           - The hammer is drawn with exact diagonals: fitting its corners to pixels bent its edges into a pale vertical line.
           - Folders keep the same light gold at every size (smaller ones were a darker amber than the detailed folder).
           - Colourful: the close, clear and cancel X (message bar, tabs, tasks) is in the theme's icon colour, clearly seen on dark themes, and coloured lines standing on the window (arrows, routes, curves, links) keep their full colour instead of being deepened like the edges of filled objects.

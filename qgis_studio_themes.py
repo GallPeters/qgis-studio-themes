@@ -91,10 +91,12 @@ COMPACT_SETTING = "studio_themes/compactSizes"
 COMPACT_MAX_PPI = 120
 MENU_BAR_EXTRA_PT = 1
 COMPACT_MENU_BAR_EXTRA_PT = 0.5
-# Icon size of toolbars inside panels (QGIS uses 16 px there).
+# Icon size of toolbars inside panels (QGIS uses 16 px there), on every
+# screen, a step larger per larger icon size setting (set in code, see
+# IconSwapper._panel_toolbar: a stylesheet size would undo the steps
+# whenever Qt polishes a panel again).
 DOCK_ICON_SIZE = 20
 PANEL_ICON_RULES = (
-    "QDockWidget QToolBar { qproperty-iconSize: 20px 20px; }\n"
     "QgsBrowserTreeView, QgsLayerTreeView, QgsProcessingToolboxTreeView"
     " { qproperty-iconSize: 20px 20px; }"
 )
@@ -952,8 +954,10 @@ class IconSwapper(QObject):
         self._page_lists = {}
         self._pickers = {}
         # Main panel trees given the icon size setting's size (_panel_tree),
-        # with their own: {id: (view, QSize)}.
+        # and panel toolbars given their larger icons (_panel_toolbar), with
+        # their own: {id: (widget, QSize)}.
         self._trees = {}
+        self._panel_bars = {}
         # Trees whose row-wide focus frame is turned off (see _row_focus),
         # and dialogs kept large enough for their contents, with QGIS's own
         # minimum size (see _hold_room).
@@ -1167,7 +1171,9 @@ class IconSwapper(QObject):
     # Dev Tools rails share the list's name and keep their own size. Larger
     # icon size settings make them a step larger, as the panel trees
     # (TREE_STEPS).
-    PAGE_LISTS = frozenset({"mOptionsListWidget", "mOptListWidget"})
+    # The Options dialog (and others built like it) shows its pages in a
+    # tree, mOptionsTreeView: the same size.
+    PAGE_LISTS = frozenset({"mOptionsListWidget", "mOptListWidget", "mOptionsTreeView"})
     PAGE_LIST_ICON = 24
     RAILS = ("QgsLayerStylingWidget", "QgsDevToolsPanelWidget")
 
@@ -1205,12 +1211,32 @@ class IconSwapper(QObject):
         if view.iconSize() != QSize(size, size):
             view.setIconSize(QSize(size, size))
 
+    def _panel_toolbar(self, toolbar):
+        """A panel's toolbar (Browser, Layers, Identify Results...): icons of
+        at least DOCK_ICON_SIZE, a step larger per larger icon size setting
+        (QGIS gives them 16 px at the default, small beside everything else),
+        on every screen; never smaller than QGIS's own size for them. Its
+        own size is restored with the theme."""
+        parent = toolbar.parentWidget()
+        while parent is not None and not isinstance(parent, QDockWidget):
+            parent = parent.parentWidget()
+        if parent is None:
+            return
+        size = DOCK_ICON_SIZE + self._size_step()
+        if id(toolbar) not in self._panel_bars:
+            self._panel_bars[id(toolbar)] = (toolbar, toolbar.iconSize())
+        if toolbar.iconSize().width() < size:
+            toolbar.setIconSize(QSize(size, size))
+
     def _refresh_trees(self):
-        """QGIS's icon size changed: the panel trees and the open dialogs'
-        page lists follow."""
+        """QGIS's icon size changed: the panel trees, panel toolbars and the
+        open dialogs' page lists follow."""
         for view, _size in list(self._trees.values()):
             if not sip.isdeleted(view):
                 self._panel_tree(view)
+        for toolbar, _size in list(self._panel_bars.values()):
+            if not sip.isdeleted(toolbar):
+                self._panel_toolbar(toolbar)
         size = self._list_size()
         for widget, _size in list(self._page_lists.values()):
             if not sip.isdeleted(widget) and widget.iconSize() != QSize(size, size):
@@ -1262,7 +1288,7 @@ class IconSwapper(QObject):
         self._watched = {action: recheck for action, recheck in self._watched.items() if alive(action)}
         self._pickers = {key: edit for key, edit in self._pickers.items() if alive(edit)}
         for table in (self._stacks, self._menus, self._models, self._delegates, self._collapsibles, self._page_lists,
-                      self._row_focus, self._rooms, self._relaxed, self._trees):
+                      self._row_focus, self._rooms, self._relaxed, self._trees, self._panel_bars):
             for key in [key for key, entry in table.items() if not alive(entry[0])]:
                 del table[key]
         self._names = dict(self._base_names)
@@ -1948,6 +1974,8 @@ class IconSwapper(QObject):
         elif isinstance(widget, QMenu):
             self._hook_menu(widget)
         elif isinstance(widget, (QToolBar, QMenuBar)):
+            if isinstance(widget, QToolBar):
+                self._panel_toolbar(widget)
             for action in widget.actions():
                 self._swap(action, None, None, deferred)
             if id(widget) not in self._bars:
@@ -1982,6 +2010,7 @@ class IconSwapper(QObject):
             if isinstance(widget, QTreeView):
                 self._hide_row_focus(widget)
                 self._panel_tree(widget)
+                self._page_list(widget)
             if widget.inherits("QgsProcessingToolboxTreeView"):
                 self._delegate_view(widget)
                 # Every row has the same height (theme rule): let Qt measure
@@ -2323,6 +2352,10 @@ class IconSwapper(QObject):
             if not sip.isdeleted(view):
                 view.setIconSize(size)
         self._trees = {}
+        for toolbar, size in self._panel_bars.values():
+            if not sip.isdeleted(toolbar):
+                toolbar.setIconSize(size)
+        self._panel_bars = {}
         for (tree,) in self._row_focus.values():
             if not sip.isdeleted(tree):
                 tree.setAllColumnsShowFocus(True)
@@ -2594,7 +2627,6 @@ class QgisStudioThemesPlugin:
         self._settings_dialog = None
         self._compact = False
         self._extra_tokens = {}
-        self._dock_icon_sizes = {}
         # Themes (re)built by this plugin load, i.e. new or updated.
         self._rebuilt = set()
 
@@ -2965,22 +2997,9 @@ class QgisStudioThemesPlugin:
         self._style_message_bar()
         QTimer.singleShot(0, self._recolor_status_message)
         self._apply_labels()
-        # After QGIS's own startup sizing, which would undo it.
-        QTimer.singleShot(0, self._size_dock_toolbars)
+        # Panel toolbars get their larger icons from the icon swapper
+        # (_panel_toolbar), again after QGIS's own startup sizing.
         self._prerender()
-
-    def _size_dock_toolbars(self):
-        """Panel toolbars (Browser, Layers, Processing Toolbox...) get
-        slightly larger icons. The stylesheet rule covers panels polished
-        later; existing ones are resized here and restored on leaving."""
-        if self._active is None or self._compact:
-            return
-        size = QSize(DOCK_ICON_SIZE, DOCK_ICON_SIZE)
-        for dock in self.iface.mainWindow().findChildren(QDockWidget):
-            for toolbar in dock.findChildren(QToolBar):
-                if toolbar.iconSize().width() < DOCK_ICON_SIZE:
-                    self._dock_icon_sizes.setdefault(toolbar, toolbar.iconSize())
-                    toolbar.setIconSize(size)
 
     # ---- Compact sizes ----------------------------------------------------
 
@@ -3240,10 +3259,6 @@ class QgisStudioThemesPlugin:
         self._prepared = None
         self._ribbon.deactivate()
         self._labels.detach()
-        for toolbar, size in self._dock_icon_sizes.items():
-            if not sip.isdeleted(toolbar):
-                toolbar.setIconSize(size)
-        self._dock_icon_sizes = {}
         self._icons.restore()
         set_popup_shadows(True)
         QApplication.setPalette(self._original_palette)
