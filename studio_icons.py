@@ -55,8 +55,8 @@ ICON_MAP = {
     "lockedGray.svg": "lock",
     "mIconClose.svg": "x",
     "mIconSuccess.svg": "circle-check",
-    "mIconCollapse.svg": "chevron-up",
-    "mIconExpand.svg": "chevron-down",
+    "mIconCollapse.svg": "chevron-down",
+    "mIconExpand.svg": "chevron-right",
     # ---- Data sources -----------------------------------------------------
     "mActionDataSourceManager.svg": "database",
     "mActionAddOgrLayer.svg": "vector-triangle+plus",
@@ -82,7 +82,7 @@ ICON_MAP = {
     "mActionNewMeshLayer.svg": "triangle-square-circle+star",
     "mActionNewVirtualLayer.svg": "sql-raised+star",
     # ---- Layers panel -----------------------------------------------------
-    "mActionAddGroup.svg": "folder+plus",
+    "mActionAddGroup.svg": "box-multiple+plus",
     "mActionRemoveLayer.svg": "stack-2+x",
     "mActionDuplicateLayer.svg": "copy",
     "mActionShowAllLayers.svg": "eye",
@@ -90,8 +90,8 @@ ICON_MAP = {
     "mActionShowSelectedLayers.svg": "eye-check",
     "mActionHideSelectedLayers.svg": "eye-x",
     "mActionHideDeselectedLayers.svg": "eye-minus",
-    "mActionExpandTree.svg": "chevrons-down",
-    "mActionCollapseTree.svg": "chevrons-up",
+    "mActionExpandTree.svg": "tree-expand",
+    "mActionCollapseTree.svg": "tree-collapse",
     "mActionFilter2.svg": "filter",
     "mActionPropertiesWidget.svg": "brush",
     "mActionAddAllToOverview.svg": "map+plus",
@@ -115,10 +115,12 @@ ICON_MAP = {
     # (see IconSwapper.GROUP_ICON).
     "processingToolbox.svg": "toolbox",
     "mIconLayerTree.svg": "stack-2",
+    # The plugin's own Layers panel button (studio_layers).
+    "studio/listByDataSource.svg": "layers-source",
     # ---- Layer types (layer tree, browser, combo boxes) -------------------
-    "mIconPointLayer.svg": "point",
-    "mIconLineLayer.svg": "line",
-    "mIconPolygonLayer.svg": "polygon",
+    "mIconPointLayer.svg": "layer-point",
+    "mIconLineLayer.svg": "layer-line",
+    "mIconPolygonLayer.svg": "layer-polygon",
     "mIconTableLayer.svg": "table",
     # A picture, not a pixel grid: a 4x4 grid reads as "#" at 16 px.
     "mIconRaster.svg": "photo",
@@ -820,8 +822,8 @@ ICON_MAP = {
     "mIconCertificate.svg": "shield-check", "mIconCertificateMissing.svg": "alert-triangle",
     "mIconCertificateTrusted.svg": "shield-check", "mIconCertificateUntrusted.svg": "shield-check+x",
     "mIconCesium3dTiles.svg": "cube", "mIconClearItem.svg": "x", "mIconClearTextHover.svg": "backspace",
-    "mIconCloseTab.svg": "x", "mIconCloseTabHover.svg": "x", "mIconCollapseSmall.svg": "chevron-up",
-    "mIconExpandSmall.svg": "chevron-down", "mIconColorBox.svg": "color-swatch", "mIconColorLocked.svg": "lock",
+    "mIconCloseTab.svg": "x", "mIconCloseTabHover.svg": "x", "mIconCollapseSmall.svg": "chevron-down",
+    "mIconExpandSmall.svg": "chevron-right", "mIconColorBox.svg": "color-swatch", "mIconColorLocked.svg": "lock",
     "mIconColorPicker.svg": "droplet", "mIconColorSwatches.svg": "color-swatch", "mIconColorUnlocked.svg": "lock-open",
     "mIconColorWheel.svg": "palette", "mIconConnect.svg": "network", "mIconCritical.svg": "alert-triangle",
     "mIconDataDefine.svg": "variable", "mIconDataDefineOn.svg": "variable+dot",
@@ -839,7 +841,7 @@ ICON_MAP = {
     "mIconJoinedLayerNotEditable.svg": "link-off", "mIconLabelQuadrantCenter.svg": "focus-centered",
     "mIconLabelQuadrantOffset.svg": "arrows-up-right", "mIconLayer.png": "stack-2", "mIconListView.svg": "list",
     "mIconTreeView.svg": "list-tree", "mIconMemory.svg": "cpu", "mIconModelOutput.svg": "arrow-bar-to-right",
-    "mIconModelerCollapse.svg": "chevron-up", "mIconModelerExpand.svg": "chevron-down",
+    "mIconModelerCollapse.svg": "chevron-down", "mIconModelerExpand.svg": "chevron-right",
     "mIconNetworkLogger.svg": "network", "mIconNoPyramid.svg": "pyramid+minus", "mIconPyramid.svg": "pyramid",
     "mIconOws.svg": "world", "mIconProjectionDisabled.svg": "world+x", "mIconQptFile.svg": "template",
     "mIconRasterGroup.svg": "photo", "mIconRasterLink.svg": "photo", "mIconRasterVector.svg": "transform",
@@ -1112,6 +1114,24 @@ MATERIAL_HUES = {
 }
 # The colour of the +, - and check marks of badges (add, remove, accept).
 COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42"})
+# Colourful badges are solid discs in the mark's colour with the mark in
+# white (Add Group, Remove Layer...): read at a glance at any size, where a
+# thin coloured mark looked faint beside the solid icons. Radius and mark
+# arm in the 24 px grid.
+DISC_RADIUS = 4.0
+DISC_ARM = 2.0
+
+
+def _disc_badge(center, radius, mark, mode, arm, width):
+    """A solid disc badge: the mark's colour, a slightly deeper edge and the
+    mark in white."""
+    color = COLOR_MARKS[mode][mark]
+    edge = _mix(color, "#000000", 0.25)
+    cap = "round" if mark in ("check", "x") else "square"
+    c = _num(center)
+    return (f'<circle cx="{c}" cy="{c}" r="{_num(radius - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
+            f'<path d="{_mark_path(mark, center, arm)}" stroke="#ffffff" stroke-width="{_num(width)}" '
+            f'stroke-linecap="{cap}"/>')
 # Fills are flat since 1.4, as ArcGIS Pro's icons (_color_body, _lg). The
 # shading below (lit towards white at the top, deepened towards the hue's
 # edge at the bottom) is still defined for any fill that refers to it.
@@ -1403,6 +1423,29 @@ CUSTOM_GLYPHS = {
         'c-.97 0 -1.847 .367 -2.483 1m-3 13l4 -4l4 -4"/>'
     ),
 }
+
+
+# The Layers panel's own drawings in the single-colour style (the
+# Colourful style draws them detailed, see DETAILED): Expand All arrows
+# pointing apart from a centre line, Collapse All towards it, and List by
+# Data Source a file beside a database.
+CUSTOM_GLYPHS.update({
+    "tree-expand": ('<path d="M12 3v6"/><path d="M9 6l3 -3l3 3"/><path d="M12 21v-6"/><path d="M9 18l3 3l3 -3"/>'
+                    '<path d="M5 12h14"/>'),
+    "tree-collapse": ('<path d="M12 3v6"/><path d="M9 6l3 3l3 -3"/><path d="M12 21v-6"/><path d="M9 18l3 -3l3 3"/>'
+                      '<path d="M5 12h14"/>'),
+    "layers-source": ('<path d="M4 4h6l3 3v13h-9z"/><path d="M7 11h3"/><path d="M7 14h3"/>'
+                      '<path d="M14 9a3 1.5 0 1 0 6 0a3 1.5 0 1 0 -6 0"/><path d="M14 9v9a3 1.5 0 0 0 6 0v-9"/>'
+                      '<path d="M14 13.5a3 1.5 0 0 0 6 0"/>'),
+})
+# QGIS's generic point, line and polygon layer icons (a layer whose
+# symbols are listed under it): the same drawings as the point, line and
+# polygon tools, but with no colour recipe, so the Colourful style draws
+# them in the theme's icon colour, as defaults that never read as the
+# layer's own symbol.
+for _alias, _source in (("layer-point", "point"), ("layer-line", "line"), ("layer-polygon", "polygon")):
+    CUSTOM_GLYPHS[_alias] = _FRAME.sub("", _BODY.search(
+        (GLYPHS_DIR / f"{_source}.svg").read_text(encoding="utf-8")).group(1)).strip()
 
 
 @functools.lru_cache(maxsize=None)
@@ -2146,7 +2189,8 @@ DETAIL_SMALL = 24
 DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
 # Drawings simple enough to stay clean at every size: detailed down to
 # 16 px (menus and trees too), so they look the same everywhere.
-DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code", "stack-2"))
+DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code", "stack-2", "eye", "tree-expand",
+                               "tree-collapse", "layers-source"))
 _TEXT = "#97a1ab"
 
 
@@ -2197,21 +2241,29 @@ def _circle(cx, cy, r):
     return f"M{cx - r} {cy}A{r} {r} 0 1 1 {cx + r} {cy}A{r} {r} 0 1 1 {cx - r} {cy}Z"
 
 
-def _funnel(k=1.0, dx=0.0, dy=0.0):
-    """The steel funnel's parts, scaled by `k` and moved by (dx, dy)."""
-    f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")  # noqa: E731
-    x = lambda v: f(dx + v * k)  # noqa: E731
-    y = lambda v: f(dy + v * k)  # noqa: E731
-    stem = f"M{x(13.5)} {y(17.5)}H{x(18.5)}V{y(25.5)}L{x(13.5)} {y(28.5)}Z"
-    return (f'<path d="M{x(3.5)} {y(5.5)}H{x(28.5)}L{x(18.5)} {y(17.5)}V{y(25.5)}L{x(13.5)} {y(28.5)}V{y(17.5)}Z" '
-            'fill="url(#a)" stroke="#4a6585" stroke-linejoin="round"/>'
-            f'<path d="M{x(3.5)} {y(5.5)}H{x(28.5)}L{x(26)} {y(8.5)}H{x(6)}Z" fill="url(#t)" stroke="#4a6585" '
-            'stroke-linejoin="round"/>'
-            f'<path d="{stem}" fill="url(#s)"/><path d="{stem}" stroke="#4a6585" stroke-linejoin="round"/>')
+# Neutral slate for the Layers panel's tools (filters, expand and
+# collapse, the eye), so its row is not all blue.
+SLATE_FILL, SLATE_EDGE = "#8f9dab", "#3f4b57"
 
 
-_FUNNEL_DEFS = (_lg("a", (0, "#e4ebf3"), (1, "#8ea4bd")) + _lg("t", (0, "#ffffff"), (1, "#d5dfea"))
-                + _lg("s", (0, "#a9bacd"), (1, "#6f86a1"), x2=1, y2=0))
+def _flat_funnel(k=1.0):
+    """A plain funnel: one flat slate colour and one clean outline, scaled
+    by `k` from the top left."""
+    f = lambda v: f"{v * k:.2f}".rstrip("0").rstrip(".")  # noqa: E731
+    return (f'<path d="M{f(3.5)} {f(5.5)}H{f(28.5)}L{f(18.5)} {f(17)}V{f(25.5)}L{f(13.5)} {f(28.5)}V{f(17)}Z" '
+            f'fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>')
+
+
+def _tree_arrows(outward):
+    """Expand All (outward) and Collapse All (inward): a solid arrow up and
+    a solid arrow down about a centre bar."""
+    if outward:
+        up, down = "M16 2.5L23.5 10H19V13H13V10H8.5Z", "M16 29.5L23.5 22H19V19H13V22H8.5Z"
+    else:
+        up, down = "M16 13.5L23.5 6H19V2.5H13V6H8.5Z", "M16 18.5L23.5 26H19V29.5H13V26H8.5Z"
+    return (f'<path d="{up}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>'
+            f'<path d="{down}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>'
+            '<rect x="4.5" y="15" width="23" height="2" rx="1" fill="#6f7a86"/>')
 
 
 def _lines(x, ys, w, h=1, color=_TEXT):
@@ -2358,16 +2410,36 @@ DETAILED = {
         f'<path d="{_gear(16, 16, 13.5, 10.2, 8)}{_circle(16, 16, 4.5)}" fill="url(#a)" fill-rule="evenodd" '
         'stroke="#4f5a66" stroke-linejoin="round"/>',
     ),
-    # A steel funnel: its open top lit, a glint down its side, a narrow stem.
-    "filter": (_FUNNEL_DEFS, _funnel()),
-    # Filter by expression: the funnel, smaller, with a blue < > for the
-    # expression, standing on the window (class "bg": kept bright, not
-    # deepened like an edge).
+    # A plain slate funnel; filter by expression adds a white tag with
+    # < > (class "bg": kept as drawn, not deepened like an edge).
+    "filter": ("", _flat_funnel()),
     "filter-code": (
-        _FUNNEL_DEFS,
-        _funnel(0.78, 0.0, 0.0)
-        + '<path d="M22 18.5L18 23.5L22 28.5M26 18.5L30 23.5L26 28.5" stroke="#3a86d8" '
-          'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="bg"/>',
+        "",
+        _flat_funnel(0.82)
+        + f'<rect x="15.5" y="16.5" width="15" height="12" rx="2" fill="#ffffff" stroke="{SLATE_EDGE}"/>'
+        f'<path d="M21 19.5L18.5 22.5L21 25.5M25 19.5L27.5 22.5L25 25.5" stroke="{SLATE_EDGE}" '
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="bg"/>',
+    ),
+    # An eye: white, a slate iris and a dark pupil with a glint.
+    "eye": (
+        "",
+        '<path d="M2.5 16C7 9.5 11 7.5 16 7.5S25 9.5 29.5 16C25 22.5 21 24.5 16 24.5S7 22.5 2.5 16Z" '
+        'fill="#ffffff" stroke="#4f5a66" stroke-linejoin="round"/>'
+        f'<circle cx="16" cy="16" r="6" fill="#6f8296" stroke="{SLATE_EDGE}"/>'
+        '<circle cx="16" cy="16" r="2.5" fill="#1d2a38"/><circle cx="18" cy="14" r="1.2" fill="#ffffff"/>',
+    ),
+    "tree-expand": ("", _tree_arrows(True)),
+    "tree-collapse": ("", _tree_arrows(False)),
+    # List by Data Source: a file beside a database (the database's colours).
+    "layers-source": (
+        _lg("d", (0, "#3f78b8"), (.45, "#5d95d1"), (1, "#3a6ea8"), x2=1, y2=0)
+        + _lg("t", (0, "#a9cdf2"), (1, "#7fb0e3")),
+        '<path d="M3.5 5.5H12.5L16.5 9.5V26.5H3.5Z" fill="#ffffff" stroke="#7d8792"/>'
+        '<path d="M12.5 5.5V9.5H16.5Z" fill="#dfe4ea" stroke="#7d8792" stroke-linejoin="round"/>'
+        f'<rect x="6" y="13" width="8" height="1.5" fill="{_TEXT}"/><rect x="6" y="17" width="8" height="1.5" fill="{_TEXT}"/>'
+        '<path d="M14.5 11.5V25.5A7 2.5 0 0 0 28.5 25.5V11.5" fill="url(#d)" stroke="#1d4677"/>'
+        '<path d="M14.5 16.5A7 2.5 0 0 0 28.5 16.5M14.5 21A7 2.5 0 0 0 28.5 21" stroke="#1d4677"/>'
+        '<ellipse cx="21.5" cy="11.5" rx="7" ry="2.5" fill="url(#t)" stroke="#1d4677"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -2549,18 +2621,15 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
     if not badge:
         parts += [body, "</svg>"]
         return "".join(parts)
-    center, radius = _snap_circle(BADGE_CENTER * px, BADGE_RADIUS * px)
+    disc = badge in COLOR_BADGE_MARKS
+    center, radius = _snap_circle(BADGE_CENTER * px, (DISC_RADIUS if disc else BADGE_RADIUS) * px)
     gap = max(1, round(BADGE_GAP * px))
     parts += [_badge_mask(center, radius + gap, size), f'<g mask="url(#b)">{body}</g>']
-    drawn = _num(width + STROKE_EXTRA)
-    if badge in COLOR_BADGE_MARKS:
+    if disc:
         offset = 0.5 if width % 2 else 0.0
         middle = math.floor(BADGE_CENTER * px - offset + 0.5) + offset
-        mark = COLOR_BADGE_MARKS[badge]
-        arm = max(2, round(MARK_ARM * px))
-        cap = "round" if mark in ("check", "x") else "square"
-        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
-                     f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
+        arm = max(1.5, round(DISC_ARM * px * 2) / 2)
+        parts.append(_disc_badge(middle, radius, COLOR_BADGE_MARKS[badge], mode, arm, width + STROKE_EXTRA))
     elif layer == "all":
         fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
@@ -2809,10 +2878,11 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
              f'fill="none" {COLOR_STROKE}>']
     mask = ""
     if badge:
+        hole = (DISC_RADIUS if badge in COLOR_BADGE_MARKS else BADGE_RADIUS) + BADGE_GAP
         parts.append(
             '<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">'
             '<rect width="24" height="24" fill="#fff"/>'
-            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS + BADGE_GAP}" fill="#000"/>'
+            f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{hole}" fill="#000"/>'
             '</mask></defs>'
         )
         mask = ' mask="url(#b)"'
@@ -2823,9 +2893,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     parts.append(_shading(body))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in COLOR_BADGE_MARKS:
-        mark = COLOR_BADGE_MARKS[badge]
-        parts.append(f'<path d="{_mark_path(mark, BADGE_CENTER, MARK_ARM)}" '
-                     f'stroke="{COLOR_MARKS[mode][mark]}" stroke-width="{STROKE}"/>')
+        parts.append(_disc_badge(BADGE_CENTER, DISC_RADIUS, COLOR_BADGE_MARKS[badge], mode, DISC_ARM, STROKE))
     elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
         parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>')
@@ -2891,7 +2959,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     ]
     mask = ""
     if badge:
-        center, radius = _snap_circle(BADGE_CENTER * px, BADGE_RADIUS * px)
+        disc = badge in COLOR_BADGE_MARKS
+        center, radius = _snap_circle(BADGE_CENTER * px, (DISC_RADIUS if disc else BADGE_RADIUS) * px)
         gap = max(1, round(BADGE_GAP * px))
         parts.append(
             f'<defs><mask id="b" maskUnits="userSpaceOnUse" x="0" y="0" width="{size}" height="{size}">'
@@ -2902,12 +2971,9 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         mask = ' mask="url(#b)"'
     parts.append(f'<g{mask} stroke-width="{drawn}">{body}</g>')
     if badge in COLOR_BADGE_MARKS and layer in ("color", "all"):
-        mark = COLOR_BADGE_MARKS[badge]
         middle = snap(BADGE_CENTER * px)
-        arm = max(2, round(MARK_ARM * px))
-        cap = "round" if mark in ("check", "x") else "square"
-        parts.append(f'<path d="{_mark_path(mark, middle, arm)}" stroke="{COLOR_MARKS[mode][mark]}" '
-                     f'stroke-width="{drawn}" stroke-linecap="{cap}"/>')
+        arm = max(1.5, round(DISC_ARM * px * 2) / 2)
+        parts.append(_disc_badge(middle, radius, COLOR_BADGE_MARKS[badge], mode, arm, ink_width + STROKE_EXTRA))
     elif badge and badge not in COLOR_BADGE_MARKS and layer == "all":
         fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')

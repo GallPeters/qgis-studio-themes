@@ -255,11 +255,13 @@ QToolBar::handle {
  * indentation) on the left takes the same colour, so the highlight has no
  * gap, and the row's left corners stay square where they meet it. */
 QgsBrowserTreeView,
+QTreeWidget#studioSourceTree,
 QgsLayerTreeView,
 QgsProcessingToolboxTreeView {
     show-decoration-selected: 1;
 }
 QgsBrowserTreeView::item,
+QTreeWidget#studioSourceTree::item,
 QgsLayerTreeView::item,
 QgsProcessingToolboxTreeView::item {
     padding-top: 4px;
@@ -270,26 +272,32 @@ QgsProcessingToolboxTreeView::item {
     border-bottom-left-radius: 0;
 }
 QgsBrowserTreeView::item:hover,
+QTreeWidget#studioSourceTree::item:hover,
 QgsLayerTreeView::item:hover,
 QgsProcessingToolboxTreeView::item:hover,
 QgsBrowserTreeView::branch:hover,
+QTreeWidget#studioSourceTree::branch:hover,
 QgsLayerTreeView::branch:hover,
 QgsProcessingToolboxTreeView::branch:hover {
     background-color: @panel_row_hover;
 }
 QgsBrowserTreeView::item:selected,
+QTreeWidget#studioSourceTree::item:selected,
 QgsLayerTreeView::item:selected,
 QgsProcessingToolboxTreeView::item:selected,
 QgsBrowserTreeView::branch:selected,
+QTreeWidget#studioSourceTree::branch:selected,
 QgsLayerTreeView::branch:selected,
 QgsProcessingToolboxTreeView::branch:selected {
     background-color: @panel_row_selected;
     color: @text_bright;
 }
 QgsBrowserTreeView::item:selected:!active,
+QTreeWidget#studioSourceTree::item:selected:!active,
 QgsLayerTreeView::item:selected:!active,
 QgsProcessingToolboxTreeView::item:selected:!active,
 QgsBrowserTreeView::branch:selected:!active,
+QTreeWidget#studioSourceTree::branch:selected:!active,
 QgsLayerTreeView::branch:selected:!active,
 QgsProcessingToolboxTreeView::branch:selected:!active {
     background-color: @panel_row_selected_inactive;
@@ -303,7 +311,9 @@ QgsProcessingToolboxTreeView::branch:selected:!active {
  * slower stylesheet drawing. */
 QgsBrowserTreeView::branch:has-children:!has-siblings:closed,
 QgsBrowserTreeView::branch:closed:has-children:has-siblings,
+QTreeWidget#studioSourceTree::branch:has-children:!has-siblings:closed,
 QgsLayerTreeView::branch:has-children:!has-siblings:closed,
+QTreeWidget#studioSourceTree::branch:closed:has-children:has-siblings,
 QgsLayerTreeView::branch:closed:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:has-children:!has-siblings:closed,
 QgsProcessingToolboxTreeView::branch:closed:has-children:has-siblings,
@@ -318,7 +328,9 @@ QTreeView#mOptionsTreeView::branch:closed:has-children:has-siblings {
 }
 QgsBrowserTreeView::branch:open:has-children:!has-siblings,
 QgsBrowserTreeView::branch:open:has-children:has-siblings,
+QTreeWidget#studioSourceTree::branch:open:has-children:!has-siblings,
 QgsLayerTreeView::branch:open:has-children:!has-siblings,
+QTreeWidget#studioSourceTree::branch:open:has-children:has-siblings,
 QgsLayerTreeView::branch:open:has-children:has-siblings,
 QgsProcessingToolboxTreeView::branch:open:has-children:!has-siblings,
 QgsProcessingToolboxTreeView::branch:open:has-children:has-siblings,
@@ -367,16 +379,19 @@ QAbstractItemView::indicator:disabled {
 /* The Layers panel's visibility boxes: quiet outlined boxes with a tick
  * in the text colour, so a long list of layers reads calmly (the accent
  * fill stays for checkboxes elsewhere). */
+QTreeWidget#studioSourceTree::indicator:checked,
 QgsLayerTreeView::indicator:checked {
     background-color: @bg_base;
     border-color: @field_border_hover;
     image: url(@theme_path/icons/studio/checkbox-check-ink.svg);
 }
+QTreeWidget#studioSourceTree::indicator:indeterminate,
 QgsLayerTreeView::indicator:indeterminate {
     background-color: @bg_base;
     border-color: @field_border_hover;
     image: url(@theme_path/icons/studio/checkbox-indeterminate-ink.svg);
 }
+QTreeWidget#studioSourceTree::indicator:hover,
 QgsLayerTreeView::indicator:hover {
     border-color: @accent;
 }
@@ -1375,6 +1390,7 @@ QRubberBand {
  * ========================================================================= */
 
 /* Panels inside docks read as one surface: no inner frames. */
+QTreeWidget#studioSourceTree,
 QgsLayerTreeView,
 QgsBrowserTreeView,
 QgsProcessingToolboxTreeView,
@@ -1404,25 +1420,14 @@ QDockWidget QgsFilterLineEdit:hover {
 QDockWidget QgsFilterLineEdit:focus {
     background-color: @field_focus;
 }
-/* Layers: the 'List by' row under the search field (studio_layers): large
- * icon buttons for QGIS's legend filters, the ones on in the checked
- * colour, and a caption naming them in small capitals. */
-QToolButton#studioListByButton {
-    padding: 3px;
-    border-radius: @radius;
+/* Panel toolbars: narrower drop-down arrows (Map Themes, Filter Legend,
+ * Filter by Expression), so the Layers panel's row of QGIS's buttons and
+ * List by Data Source fits a panel of about 320 px. */
+QDockWidget QToolBar QToolButton[popupMode="1"] {
+    padding-right: 11px;
 }
-QToolButton#studioListByButton[popupMode="1"] {
-    padding-right: 14px;
-}
-QToolButton#studioListByButton:checked {
-    background-color: @tool_checked;
-}
-QToolButton#studioListByButton:checked:hover {
-    background-color: @tool_checked_hover;
-}
-QLabel#studioListByCaption {
-    color: @text_dim;
-    font-weight: 700;
+QDockWidget QToolBar QToolButton::menu-button {
+    width: 10px;
 }
 
 QgsColorButton,

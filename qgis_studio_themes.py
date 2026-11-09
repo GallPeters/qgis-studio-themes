@@ -43,7 +43,7 @@ from qgis.PyQt.QtWidgets import (
 
 from . import studio_icons, studio_toolbars
 from .studio_events import EventHub
-from .studio_layers import LayersListBy
+from .studio_layers import LayersPanel
 from .studio_ribbon import StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
@@ -2293,6 +2293,14 @@ class IconSwapper(QObject):
         open (QGIS sets some, New Report's, from its resources)."""
         self._swap(action, None, None, False)
 
+    def themed_icon(self, name):
+        """Our icon for a QGIS icon name (an ICON_MAP name) in the active
+        theme, or None (no theme, QGIS's own icons, or a name we do not
+        draw)."""
+        if self._theme is None or self._style == "classic" or name not in studio_icons.ICON_MAP:
+            return None
+        return self._icon(name)
+
     def adopt(self, action, name):
         """Give an action QGIS gives no icon (a menu-only command on the
         ribbon) our icon `name` (an ICON_MAP name), re-themed like the
@@ -2648,8 +2656,8 @@ class QgisStudioThemesPlugin:
         self._size_hooks = []
         self._labels = ToolbarLabels(self._hub)
         self._ribbon = StudioRibbon(iface, self._hub, self._icons)
-        # The Layers panel's search field and 'List by' row.
-        self._layers = LayersListBy(iface, self._hub, self._icons)
+        # The Layers panel's search field and List by Data Source.
+        self._layers = LayersPanel(iface, self._hub, self._icons)
         # QGIS has finished starting (every toolbar, plugins' too, is in
         # place): the ribbon is only built then.
         self._ready = False

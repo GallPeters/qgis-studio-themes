@@ -1,64 +1,95 @@
-"""The Layers panel's search field and 'List by' row (while a Studio theme
-is shown).
+"""The Layers panel's additions (while a Studio theme is shown).
 
-Above the layer tree: a search field, QGIS's own layer name filter
-(QgsLayerTreeProxyModel.setFilterText), and a row of large buttons for
-QGIS's own legend filters, which the row only presses:
+- A search field at the top of the panel: QGIS's own layer name filter
+  (QgsLayerTreeProxyModel.setFilterText).
+- List by Data Source, a button at the end of QGIS's own toolbar row:
+  while it is on, the layer tree gives way to the project's layers grouped
+  by where their data comes from (a GeoPackage, a shapefile, a PostgreSQL
+  or Oracle database, a web service...). Each layer keeps its checkbox
+  (QGIS's visibility), symbol and legend; clicking a layer makes it the
+  current layer, double-clicking opens its properties and right-clicking
+  shows QGIS's own layer menu. The drawing order is never changed; turning
+  the button off shows QGIS's tree again.
+- Layer names in the regular weight (QGIS draws them bold); groups stay
+  bold.
 
-- Drawing order: the whole tree; lit while none of the next three is on,
-  and turns them off.
-- Visible in map: QGIS's "Filter Legend by Map Content".
-- By expression: QGIS's "Filter legend by expression" button (its dialog
-  and its menu: edit, clear).
-- Broken layers: QGIS's "Show Broken Layers Only".
-- Private layers: QGIS's "Show Private Layers" (adds hidden layers; a
-  toggle of its own, apart from the others).
-
-QGIS's Filter Legend menu button and expression button in the panel's
-toolbar are hidden while the row shows them, and come back with QGIS's
-own look. Filters combine as in QGIS; the caption names those on.
+QGIS's toolbar keeps its own buttons in its own order; everything is
+removed and QGIS's look restored with the theme.
 """
-from qgis.core import QgsApplication, QgsLayerTreeNode
+import os
+from pathlib import Path
+
+from qgis.core import QgsApplication, QgsDataSourceUri, QgsLayerTreeNode, QgsProject, QgsProviderRegistry
 from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QCoreApplication, QEvent, QSize, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt, QTimer
 from qgis.PyQt.QtGui import QAction, QFont, QIcon
-from qgis.PyQt.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QToolBar, QToolButton, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QDockWidget, QToolBar, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
 
 def tr(text):
     return QCoreApplication.translate("QgisStudioThemes", text)
 
 
-def qgis_text(text):
-    """A QGIS app string as the user sees it (translated)."""
-    return QCoreApplication.translate("QgisApp", text)
-
-
-def plain(text):
-    return text.replace("&", "").strip().lower()
-
-
-# (key, ICON_MAP name, tooltip, caption)
-BUTTONS = (
-    ("order", "mIconLayerTree.svg", "List by drawing order (all layers)", "By drawing order"),
-    ("map", "mLayoutItemMap.svg", "Filter Legend by Map Content", "Visible in map"),
-    ("expression", "mIconExpressionFilter.svg", "Filter Legend by Expression", "By expression"),
-    ("broken", "mActionUnlink.svg", "Show Broken Layers Only", "Broken layers only"),
-    ("private", "mActionHideAllLayers.svg", "Show Private Layers", "With private layers"),
-)
-# The texts of QGIS's Filter Legend menu entries (English, as in QGIS).
-MENU_TEXTS = {
-    "map": "Filter Legend by Map Content",
-    "private": "Show Private Layers",
-    "broken": "Show Broken Layers Only",
+# The List by Data Source button's icon (studio_icons.ICON_MAP).
+SOURCE_ICON = "studio/listByDataSource.svg"
+# Files by extension: (kind shown, QGIS icon name).
+FILE_KINDS = {
+    ".gpkg": ("GeoPackage", "mIconGeoPackage.svg"),
+    ".shp": ("Shapefile", "mIconFile.svg"),
+    ".sqlite": ("SpatiaLite", "mIconSpatialite.svg"),
+    ".db": ("SpatiaLite", "mIconSpatialite.svg"),
+    ".geojson": ("GeoJSON", "mIconFile.svg"),
+    ".json": ("GeoJSON", "mIconFile.svg"),
+    ".kml": ("KML", "mIconFile.svg"),
+    ".gdb": ("File Geodatabase", "mIconDbSchema.svg"),
+    ".csv": ("Delimited Text", "mIconDelimitedText.svg"),
+    ".txt": ("Delimited Text", "mIconDelimitedText.svg"),
+    ".tif": ("GeoTIFF", "mIconRaster.svg"),
+    ".tiff": ("GeoTIFF", "mIconRaster.svg"),
 }
-# The row's icons: the size of the panel trees' (20 px at the default
-# icon size, a step larger per larger setting).
-ICON_SIZE = 20
+# Databases by provider key: (kind shown, QGIS icon name).
+DATABASES = {
+    "postgres": ("PostgreSQL", "mIconPostgis.svg"),
+    "oracle": ("Oracle", "mIconOracle.svg"),
+    "mssql": ("SQL Server", "mIconMssql.svg"),
+    "hana": ("SAP HANA", "mIconHana.svg"),
+    "spatialite": ("SpatiaLite", "mIconSpatialite.svg"),
+}
+WEB = {"wms", "wfs", "wcs", "arcgisfeatureserver", "arcgismapserver", "vectortile", "xyzvectortiles",
+       "oapif", "sensorthings", "stac", "WFS", "virtualraster"}
 
 
-class LayersListBy:
+def source_of(layer):
+    """(key, label, QGIS icon name, tooltip) of where `layer` reads from."""
+    provider = layer.providerType()
+    source = layer.source()
+    if provider in DATABASES and provider != "spatialite":
+        kind, icon = DATABASES[provider]
+        uri = QgsDataSourceUri(source)
+        name = uri.database() or uri.service() or ""
+        host = uri.host()
+        label = f"{kind} · {name}" + (f" @ {host}" if host else "")
+        return f"db:{provider}:{host}:{name}", label, icon, label
+    try:
+        parts = QgsProviderRegistry.instance().decodeUri(provider, source) or {}
+    except Exception:  # pylint: disable=broad-except
+        parts = {}
+    path = parts.get("path") or ""
+    if path:
+        suffix = Path(path).suffix.lower()
+        kind, icon = FILE_KINDS.get(suffix, (suffix[1:].upper() if suffix else tr("File"), "mIconFile.svg"))
+        return "file:" + os.path.normcase(os.path.abspath(path)), f"{kind} · {Path(path).name}", icon, path
+    if provider == "memory":
+        return "memory", tr("Temporary Scratch Layers"), "mIconMemory.svg", tr("Layers kept in memory")
+    if provider in WEB or "url=" in source:
+        url = QgsDataSourceUri(source).param("url") or parts.get("url") or ""
+        host = url.split("//", 1)[-1].split("/", 1)[0] if url else provider
+        return f"web:{host}", f"{tr('Web service')} · {host}", "mIconWms.svg", url or source
+    return f"other:{provider}", provider or tr("Other"), "mIconFile.svg", source
+
+
+class LayersPanel:
     """See the module docstring. attach() is safe to repeat (a theme
     switch re-themes the icons); detach() gives QGIS its panel back."""
 
@@ -66,21 +97,23 @@ class LayersListBy:
         self.iface = iface
         self._hub = hub
         self._icons = icons
-        self._panel = None
+        self._view = None
+        self._top = None
         self._search = None
-        self._buttons = {}
-        self._actions = {}
-        self._caption = None
-        # QGIS's own controls: key -> QAction (menu entries) or the
-        # expression QToolButton; and the toolbar actions hidden.
-        self._sources = {}
-        self._hidden = []
-        self._connections = []
-        # The layer tree model and QGIS's own font for layer names.
+        self._tree = None
+        self._toolbar = None
+        self._action = None
         self._model = None
         self._layer_font = None
+        self._connections = []
+        self._collapsed = set()
+        self._building = False
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(60)
+        self._timer.timeout.connect(self._rebuild)
 
-    # ---- QGIS's controls ----------------------------------------------------
+    # ---- Building -----------------------------------------------------------
 
     def _find(self):
         """(view, body layout, toolbar) of the Layers panel, or None."""
@@ -96,129 +129,64 @@ class LayersListBy:
         toolbar = next((bar for bar in body.findChildren(QToolBar) if bar.parentWidget() is body), None)
         return view, body.layout(), toolbar
 
-    def _find_sources(self, toolbar):
-        """QGIS's Filter Legend menu entries and expression button, and the
-        toolbar actions holding them (to hide)."""
-        sources, holders = {}, []
-        if toolbar is None:
-            return sources, holders
-        for action in toolbar.actions():
-            widget = toolbar.widgetForAction(action)
-            if widget is None:
-                continue
-            if widget.inherits("QgsLegendFilterButton"):
-                sources["expression"] = widget
-                holders.append(action)
-                continue
-            menu = widget.menu() if isinstance(widget, QToolButton) else None
-            entries = [entry for entry in menu.actions() if entry.isCheckable()] if menu is not None else []
-            found = {}
-            for key, text in MENU_TEXTS.items():
-                wanted = {plain(text), plain(qgis_text(text))}
-                match = next((entry for entry in entries if plain(entry.text()) in wanted), None)
-                if match is not None:
-                    found[key] = match
-            if "map" in found:
-                sources.update(found)
-                holders.append(action)
-        return sources, holders
-
-    # ---- Building -----------------------------------------------------------
-
     def attach(self):
         found = self._find()
         if found is None:
             return
         view, layout, toolbar = found
-        if self._panel is not None and not sip.isdeleted(self._panel):
+        if self._top is not None and not sip.isdeleted(self._top):
             self._theme_icons()
             return
-        self._sources, holders = self._find_sources(toolbar)
-        panel = QWidget()
-        panel.setObjectName("studioListByPanel")
-        column = QVBoxLayout(panel)
-        column.setContentsMargins(8, 2, 8, 4)
-        column.setSpacing(6)
-        search = QgsFilterLineEdit(panel)
+        self._view = view
+        # The search field, at the very top of the panel.
+        top = QWidget()
+        top.setObjectName("studioLayerSearchPanel")
+        column = QVBoxLayout(top)
+        column.setContentsMargins(8, 4, 8, 2)
+        search = QgsFilterLineEdit(top)
         search.setObjectName("studioLayerSearch")
         search.setShowSearchIcon(True)
         search.setPlaceholderText(tr("Search layers"))
-        proxy = view.proxyModel() if hasattr(view, "proxyModel") else None
-        if proxy is not None:
-            search.textChanged.connect(proxy.setFilterText)
-            column.addWidget(search)
-            self._search = search
-        else:
-            search.deleteLater()
-        row = QWidget(panel)
-        row.setObjectName("studioListBy")
-        line = QHBoxLayout(row)
-        line.setContentsMargins(0, 0, 0, 0)
-        line.setSpacing(2)
-        for key, name, tip, _caption in BUTTONS:
-            if key != "order" and key not in self._sources:
-                continue
-            if key == "private":
-                line.addSpacing(6)
-            action = QAction(row)
-            action.setCheckable(True)
-            action.setToolTip(tr(tip))
-            button = QToolButton(row)
-            button.setObjectName("studioListByButton")
-            button.setAutoRaise(True)
-            button.setDefaultAction(action)
-            action.triggered.connect(lambda _checked=False, key=key: self._pressed(key))
-            if key == "expression":
-                # QGIS's menu of the button (edit, clear the expression) on
-                # a right-click: no drop-down arrow, so the row stays a row
-                # of equal icons.
-                menu = self._sources[key].menu()
-                if menu is not None:
-                    action.setToolTip(tr(tip) + " " + tr("(right-click to edit or clear)"))
-                    button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                    button.customContextMenuRequested.connect(
-                        lambda pos, button=button, menu=menu: menu.exec(button.mapToGlobal(pos)))
-            line.addWidget(button)
-            self._buttons[key] = button
-            self._actions[key] = action
-        caption = QLabel(row)
-        caption.setObjectName("studioListByCaption")
-        # Small capitals a step below the panel's text, like the ribbon's
-        # group names.
-        font = QFont(caption.font())
-        font.setPointSizeF(max(6.0, font.pointSizeF() - 1.5))
-        caption.setFont(font)
-        line.addSpacing(8)
-        line.addWidget(caption, 1)
-        self._caption = caption
-        if self._sources:
-            column.addWidget(row)
-        else:
-            # QGIS's filters not found (another QGIS version): the search
-            # field alone, rather than a row of one button.
-            row.hide()
-            self._buttons, self._actions, holders = {}, {}, []
-        if column.count() == 0:
-            panel.deleteLater()
-            return
-        layout.insertWidget(layout.indexOf(view), panel)
-        self._panel = panel
-        for action in holders:
-            if action.isVisible():
-                action.setVisible(False)
-                self._hidden.append(action)
-        # QGIS's state, whoever changes it (its menu, a project load...).
-        for key, source in self._sources.items():
-            signal = source.toggled
-            signal.connect(self._update)
-            self._connections.append((signal, self._update))
-        expression = self._sources.get("expression")
-        if expression is not None:
-            self._hub.watch(expression, self, (QEvent.Type.EnabledChange,), lambda _obj, _event: self._update())
+        search.textChanged.connect(self._filter)
+        column.addWidget(search)
+        layout.insertWidget(0, top)
+        self._top, self._search = top, search
+        # The layers by data source, in the tree's place while shown.
+        tree = QTreeWidget()
+        tree.setObjectName("studioSourceTree")
+        tree.setHeaderHidden(True)
+        tree.setIconSize(view.iconSize())
+        tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        tree.customContextMenuRequested.connect(self._menu)
+        tree.itemChanged.connect(self._checked)
+        tree.currentItemChanged.connect(self._current)
+        tree.itemDoubleClicked.connect(self._properties)
+        tree.itemExpanded.connect(lambda item: self._collapsed.discard(item.data(0, Qt.ItemDataRole.UserRole)))
+        tree.itemCollapsed.connect(lambda item: self._collapsed.add(item.data(0, Qt.ItemDataRole.UserRole)))
+        tree.hide()
+        layout.insertWidget(layout.indexOf(view) + 1, tree)
+        self._tree = tree
+        # The button, at the end of QGIS's own row.
+        action = QAction(tr("List by Data Source"))
+        action.setCheckable(True)
+        action.setToolTip(tr("List by Data Source: the layers grouped by the file, database or service "
+                             "they come from"))
+        action.toggled.connect(self._toggled)
+        if toolbar is not None:
+            toolbar.addAction(action)
+            self._toolbar = toolbar
+        self._action = action
         self._theme_icons()
-        self.resize()
-        self._update()
         self._regular_names(view)
+
+    def _theme_icons(self):
+        if self._action is None:
+            return
+        self._action.setIcon(QIcon())
+        if self._icons is None or not self._icons.adopt(self._action, SOURCE_ICON):
+            self._action.setIcon(QgsApplication.getThemeIcon("/mIconDbSchema.svg"))
+        if self._tree is not None and self._tree.isVisible():
+            self._rebuild()
 
     def _regular_names(self, view):
         """Layer names in the regular weight (QGIS draws them bold), so a
@@ -236,97 +204,192 @@ class LayersListBy:
         model.setLayerTreeNodeFont(kind, font)
         view.viewport().update()
 
-    def _theme_icons(self):
-        for key, name, _tip, _caption in BUTTONS:
-            action = self._actions.get(key)
-            if action is None:
-                continue
-            action.setIcon(QIcon())
-            if self._icons is None or not self._icons.adopt(action, name):
-                action.setIcon(QgsApplication.getThemeIcon("/" + name))
-
     def resize(self):
-        """Icons a step larger per larger QGIS icon size, like the trees."""
-        if self._panel is None or sip.isdeleted(self._panel):
+        if self._tree is not None and self._view is not None and not sip.isdeleted(self._view):
+            self._tree.setIconSize(self._view.iconSize())
+
+    # ---- Search ---------------------------------------------------------------
+
+    def _filter(self, text=None):
+        text = (self._search.text() if text is None else text) if self._search is not None else ""
+        view = self._view
+        if view is not None and not sip.isdeleted(view) and hasattr(view, "proxyModel"):
+            view.proxyModel().setFilterText(text)
+        if self._tree is None:
             return
-        step = self._icons._size_step() if self._icons is not None else 0  # pylint: disable=protected-access
-        size = QSize(ICON_SIZE + step, ICON_SIZE + step)
-        for button in self._buttons.values():
-            button.setIconSize(size)
+        needle = text.strip().lower()
+        for i in range(self._tree.topLevelItemCount()):
+            group = self._tree.topLevelItem(i)
+            shown = 0
+            for j in range(group.childCount()):
+                child = group.child(j)
+                hide = bool(needle) and needle not in child.text(0).lower()
+                child.setHidden(hide)
+                shown += not hide
+            group.setHidden(shown == 0)
 
-    # ---- State --------------------------------------------------------------
+    # ---- List by data source ------------------------------------------------
 
-    def _on(self, key):
-        source = self._sources.get(key)
-        return source is not None and not sip.isdeleted(source) and source.isChecked()
-
-    def _pressed(self, key):
-        """Press QGIS's control (the row then shows QGIS's state)."""
-        if key == "order":
-            for other in ("map", "expression", "broken"):
-                if self._on(other):
-                    self._toggle(other)
+    def _toggled(self, on):
+        view = self._view
+        if self._tree is None or view is None or sip.isdeleted(view):
+            return
+        root = QgsProject.instance().layerTreeRoot()
+        if on:
+            for signal in (root.addedChildren, root.removedChildren, root.visibilityChanged, root.nameChanged,
+                           QgsProject.instance().layersAdded, QgsProject.instance().layersRemoved,
+                           self.iface.currentLayerChanged):
+                signal.connect(self._later)
+                self._connections.append((signal, self._later))
+            model = self._model or (view.layerTreeModel() if hasattr(view, "layerTreeModel") else None)
+            if model is not None:
+                model.dataChanged.connect(self._later)
+                self._connections.append((model.dataChanged, self._later))
+            self._rebuild()
+            view.hide()
+            self._tree.show()
         else:
-            self._toggle(key)
-        self._update()
+            self._disconnect()
+            self._timer.stop()
+            self._tree.hide()
+            view.show()
 
-    def _toggle(self, key):
-        source = self._sources.get(key)
-        if source is None or sip.isdeleted(source):
-            return
-        if isinstance(source, QAction):
-            source.trigger()
-        else:
-            # The expression button: a click asks for an expression when
-            # it has none (QGIS's behaviour).
-            source.click()
-
-    def _update(self, *_args):
-        if self._caption is None or sip.isdeleted(self._caption):
-            return
-        filters = [key for key in ("map", "expression", "broken") if self._on(key)]
-        for key, action in self._actions.items():
-            action.setChecked(not filters if key == "order" else self._on(key))
-        expression = self._sources.get("expression")
-        if "expression" in self._actions and expression is not None and not sip.isdeleted(expression):
-            self._actions["expression"].setEnabled(expression.isEnabled())
-        captions = dict((key, caption) for key, _name, _tip, caption in BUTTONS)
-        shown = [captions[key] for key in filters] or [captions["order"]]
-        if self._on("private"):
-            shown.append(captions["private"])
-        self._caption.setText(" · ".join(tr(text) for text in shown).upper())
-
-    # ---- Restoring ------------------------------------------------------------
-
-    def detach(self):
+    def _disconnect(self):
         for signal, slot in self._connections:
             try:
                 signal.disconnect(slot)
             except (TypeError, RuntimeError):
                 pass
         self._connections = []
-        expression = self._sources.get("expression")
-        if expression is not None and not sip.isdeleted(expression):
-            self._hub.unwatch(expression, self)
-        for action in self._hidden:
-            if not sip.isdeleted(action):
-                action.setVisible(True)
-        self._hidden = []
+
+    def _later(self, *_args):
+        if not self._building:
+            self._timer.start()
+
+    def _icon(self, name):
+        icon = self._icons.themed_icon(name) if self._icons is not None else None
+        return icon if icon is not None else QgsApplication.getThemeIcon("/" + name)
+
+    def _rebuild(self):
+        tree, view = self._tree, self._view
+        if tree is None or view is None or sip.isdeleted(view):
+            return
+        model = view.layerTreeModel() if hasattr(view, "layerTreeModel") else None
+        root = QgsProject.instance().layerTreeRoot()
+        current = self.iface.activeLayer()
+        self._building = True
+        scroll = tree.verticalScrollBar().value()
+        tree.blockSignals(True)
+        tree.clear()
+        groups = {}
+        bold = QFont(tree.font())
+        bold.setBold(True)
+        selected = None
+        for node in root.findLayers():
+            layer = node.layer()
+            if layer is None:
+                continue
+            key, label, icon, tip = source_of(layer)
+            group = groups.get(key)
+            if group is None:
+                group = QTreeWidgetItem([label])
+                group.setIcon(0, self._icon(icon))
+                group.setToolTip(0, tip)
+                group.setFont(0, bold)
+                group.setData(0, Qt.ItemDataRole.UserRole, key)
+                group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                tree.addTopLevelItem(group)
+                groups[key] = group
+            item = QTreeWidgetItem([node.name()])
+            item.setData(0, Qt.ItemDataRole.UserRole, layer.id())
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(0, Qt.CheckState.Checked if node.itemVisibilityChecked() else Qt.CheckState.Unchecked)
+            item.setToolTip(0, layer.publicSource() if hasattr(layer, "publicSource") else layer.source())
+            if model is not None:
+                index = model.node2index(node)
+                icon = model.data(index, Qt.ItemDataRole.DecorationRole)
+                if isinstance(icon, QIcon):
+                    ours = self._icons.keyed_icon(icon) if self._icons is not None else None
+                    item.setIcon(0, ours or icon)
+                legend = model.layerLegendNodes(node)
+                if len(legend) > 1:
+                    for entry in legend:
+                        child = QTreeWidgetItem([str(entry.data(Qt.ItemDataRole.DisplayRole) or "")])
+                        child.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                        symbol = entry.data(Qt.ItemDataRole.DecorationRole)
+                        if isinstance(symbol, QIcon):
+                            child.setIcon(0, symbol)
+                        item.addChild(child)
+            group.addChild(item)
+            if current is not None and layer.id() == current.id():
+                selected = item
+        for key, group in groups.items():
+            group.setExpanded(key not in self._collapsed)
+        if selected is not None:
+            tree.setCurrentItem(selected)
+        tree.blockSignals(False)
+        tree.verticalScrollBar().setValue(scroll)
+        self._building = False
+        self._filter()
+
+    def _layer(self, item):
+        if item is None or item.parent() is None:
+            return None
+        layer_id = item.data(0, Qt.ItemDataRole.UserRole)
+        return QgsProject.instance().mapLayer(layer_id) if layer_id else None
+
+    def _checked(self, item, _column):
+        layer = self._layer(item)
+        node = QgsProject.instance().layerTreeRoot().findLayer(layer.id()) if layer is not None else None
+        if node is not None:
+            self._building = True
+            node.setItemVisibilityChecked(item.checkState(0) == Qt.CheckState.Checked)
+            self._building = False
+
+    def _current(self, item, _previous):
+        layer = self._layer(item)
+        if layer is not None and layer is not self.iface.activeLayer():
+            self._building = True
+            self.iface.setActiveLayer(layer)
+            self._building = False
+
+    def _properties(self, item, _column):
+        layer = self._layer(item)
+        if layer is not None:
+            self.iface.showLayerProperties(layer)
+
+    def _menu(self, pos):
+        """QGIS's own layer menu, for the layer under the pointer."""
+        layer = self._layer(self._tree.itemAt(pos))
+        view = self._view
+        if layer is None or view is None or sip.isdeleted(view) or view.menuProvider() is None:
+            return
+        view.setCurrentLayer(layer)
+        menu = view.menuProvider().createContextMenu()
+        if menu is not None:
+            menu.exec(self._tree.viewport().mapToGlobal(pos))
+            menu.deleteLater()
+
+    # ---- Restoring ------------------------------------------------------------
+
+    def detach(self):
+        self._timer.stop()
+        self._disconnect()
+        if self._action is not None:
+            if self._toolbar is not None and not sip.isdeleted(self._toolbar):
+                self._toolbar.removeAction(self._action)
+            self._action.deleteLater()
+        if self._view is not None and not sip.isdeleted(self._view):
+            self._view.show()
         if self._model is not None and not sip.isdeleted(self._model) and self._layer_font is not None:
             self._model.setLayerTreeNodeFont(QgsLayerTreeNode.NodeType.NodeLayer, self._layer_font)
-        self._model = None
-        self._layer_font = None
         if self._search is not None and not sip.isdeleted(self._search):
             # QGIS shows no layer search: its filter goes with the field.
             self._search.clear()
-        if self._panel is not None and not sip.isdeleted(self._panel):
-            self._panel.hide()
-            self._panel.setParent(None)
-            self._panel.deleteLater()
-        self._panel = None
-        self._search = None
-        self._caption = None
-        self._buttons = {}
-        self._actions = {}
-        self._sources = {}
-
+        for widget in (self._top, self._tree):
+            if widget is not None and not sip.isdeleted(widget):
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
+        self._view = self._top = self._search = self._tree = self._toolbar = self._action = None
+        self._model = self._layer_font = None
