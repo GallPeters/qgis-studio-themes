@@ -185,6 +185,10 @@ class LayersPanel:
         self._action.setIcon(QIcon())
         if self._icons is None or not self._icons.adopt(self._action, SOURCE_ICON):
             self._action.setIcon(QgsApplication.getThemeIcon("/mIconDbSchema.svg"))
+        # The search field's magnifier (QGIS's own, set by setShowSearchIcon).
+        if self._icons is not None and self._search is not None and not sip.isdeleted(self._search):
+            for action in self._search.actions():
+                self._icons.swap_action(action)
         if self._tree is not None and self._tree.isVisible():
             self._rebuild()
 

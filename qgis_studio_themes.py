@@ -20,7 +20,7 @@ import threading
 import time
 from pathlib import Path
 
-from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsSettings
+from qgis.core import Qgis, QgsApplication, QgsMessageLog, QgsProject, QgsSettings
 from qgis.gui import QgsCollapsibleGroupBoxBasic, QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import (
@@ -946,6 +946,8 @@ class IconSwapper(QObject):
         self._stacks = {}
         self._menus = {}
         self._docks = set()
+        # The status bar's CRS button (see _hook_crs), once hooked.
+        self._crs_button = None
         # Toolbars and menu bars watched for actions added later (a plugin
         # turned on, Processing re-enabled...).
         self._bars = set()
@@ -1367,7 +1369,7 @@ class IconSwapper(QObject):
             # Swap once the code adding the action has finished setting it
             # up (some set the icon after addAction).
             action = event.action()
-            QTimer.singleShot(0, lambda action=action: self._swap(action, None, None, False))
+            QTimer.singleShot(0, lambda action=action, bar=watched: self._action_added(bar, action))
         elif kind == self._SHOW and isinstance(watched, QToolButton):
             # A collapsible group box's collapse button (_hook_collapse).
             entry = self._collapsibles.get(id(watched.parentWidget()))
@@ -1384,6 +1386,43 @@ class IconSwapper(QObject):
             ):
                 self._scan(child, deferred=False)
         return False
+
+    # The status bar's CRS button: QGIS sets its icon again from its own
+    # cached icon whenever the project's CRS changes.
+    CRS_BUTTON = "mOntheFlyProjectionStatusButton"
+
+    def _hook_crs(self, button):
+        if self._crs_button is not None:
+            return
+        self._crs_button = button
+        QgsProject.instance().crsChanged.connect(self._crs_changed)
+
+    def _crs_changed(self):
+        # After QGIS's own slot has set the button's icon again.
+        QTimer.singleShot(0, self._reswap_crs)
+
+    def _reswap_crs(self):
+        button = self._crs_button
+        if self._theme is not None and button is not None and not sip.isdeleted(button):
+            self._swap(button, None, None, False)
+
+    def _action_added(self, bar, action):
+        """An action added to a scanned toolbar or menu bar: its icon, and
+        on a toolbar the widget showing it. A widget added with addWidget()
+        (the Identify Results panel's mode and settings buttons) comes as an
+        action without an icon, its button never visited otherwise."""
+        if self._theme is None or sip.isdeleted(bar) or sip.isdeleted(action):
+            return
+        self._swap(action, None, None, False)
+        if not isinstance(bar, QToolBar):
+            return
+        widget = bar.widgetForAction(action)
+        if widget is None or sip.isdeleted(widget):
+            return
+        types = self.ICON_TYPES
+        for child in [widget, *widget.findChildren(QWidget)]:
+            if isinstance(child, types):
+                self._visit(child, False)
 
     def _on_focus_window(self, _window):
         widget = QApplication.activePopupWidget() or QApplication.activeWindow()
@@ -1973,6 +2012,8 @@ class IconSwapper(QObject):
         widget created in C++ (the Processing Toolbox since QGIS 4.x) can
         reach Python as its Qt base class (QTreeView, QLineEdit)."""
         if isinstance(widget, QToolButton):
+            if widget.objectName() == self.CRS_BUTTON:
+                self._hook_crs(widget)
             action = widget.defaultAction()
             if action is not None:
                 self._swap(action, None, None, deferred)
@@ -2345,6 +2386,12 @@ class IconSwapper(QObject):
             self._hub.unwatch(obj, self)
         self._filtered = []
         self._docks = set()
+        if self._crs_button is not None:
+            try:
+                QgsProject.instance().crsChanged.disconnect(self._crs_changed)
+            except (TypeError, RuntimeError):
+                pass
+            self._crs_button = None
         self._bars = set()
         for stacked, current_changed in self._stacks.values():
             if not sip.isdeleted(stacked):
