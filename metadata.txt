@@ -17,54 +17,16 @@ tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
 
-     ** v1.4 (04.11.2026):
-          - Colourful icons are finer and more professional.
-          - Object edges and details are fine 1 px hairlines on every screen, 200 percent scaling included, while action icons, signs and badges keep their weight.
-          - Colourful icons are flat: one even colour per part, without gradients, glints, highlights or a 3D look; outlines and details stay crisp.
-          - Details keep to their object's colour: a globe's meridians and a map's folds are deep blue and deep green rather than black, and the lines on pages, clipboards and calculators a calm grey.
-          - Colourful: detailed, hand-drawn icons for the objects seen most (folder, document, save, database, table, layers, map, globe, raster, printer, toolbox, pin, edit, lock, settings, filter, clipboard) at 24 px and larger (the edit pencil, map and raster from 28 px): real shapes and texture details, in toolbars, panel toolbars and the ribbon at every scaling. Menus and trees keep the crisp simpler drawings.
-          - Colourful: vertex tools show red vertices on a blue curve (Simplify, Reshape, vertex and shape tools), model diagrams a yellow input, blue algorithms and green outputs (Model Designer, Models), Split Features a grey blade and Split Parts green and blue arrows.
-          - The extent button of extent fields (Processing and others) shows an extent frame instead of the info sign.
-          - GeoPackage is a brown box, like QGIS's own.
-          - Colourful: lines in the theme's colour (action and line-only icons such as Vector, SpatiaLite, SQL, SHP, History) and badge marks are 1 px up to 175 percent scaling, like the coloured outlines beside them, and 2 px at 200 percent. Signs keep their bold marks.
-          - The expand arrows of trees are finer.
-          - Icons are drawn about 15 percent larger in the same buttons, rows and ribbon: on low-density screens (such as 100 percent desktop monitors) as on high-density ones, and the detailed icons on all screens. Their lines stay 1 px fine.
-          - Colourful: Processing's tool is a hammer: a wooden handle without an outline and a mid-grey steel head, as fine as the icons around it at every size (the grey wrench read as one dark mass), with a longer handle, keeping room on every side of its square (so it never touches a button's edge or label).
-          - Icons with a +, x, check or dot badge are drawn almost as large as the others (the drawing was shrunk to 90 percent beside its badge); the badge is a little smaller and tighter in its corner.
-          - Colourful: the settings gear is an industrial gear with tapered teeth and a see-through hub, and every filter (Browser, Layers, layer indicators, attribute table, ribbon) a plain slate funnel with one clean outline, filter by expression with a white < > tag, at every size.
-          - Round holes and caps of the detailed icons stay round at every size.
-          - Colourful: the database is a regular database icon: an even cylinder with plain deep band lines, without the bright rings and glint.
-          - The ribbon follows QGIS's icon size (Settings > Options > General > Icon size), at once when it is changed: its large and small buttons and their rows grow and shrink together, keeping their layout. Large buttons have 32 px icons at the default size (were 28 px).
-          - The zoom and search magnifiers' handles start outside the lens instead of crossing into the glass.
-          - Colourful: tools drawn only in the icon colour get colour accents (refresh, history, expressions, selections, charts, forms, move, pins and more); arrows, chevrons and text styles keep the icon colour.
-          - Colourful: badges are solid discs with a white mark, read at a glance at any size: Remove Layer and other delete buttons a red disc with a white cross, add buttons a green disc with a white plus. Add Group shows the layer group's own icon (two squares) with the green plus.
-          - Expand All and Collapse All are solid slate arrows, pointing apart from a centre line to expand and towards it to collapse; Add Layer shows the clear layer stack at every size.
-          - The ribbon's Project tab is a coloured block standing on the page, as tall as the current tab.
-          - Tabbed panels (Browser, Layers, Processing Toolbox...) have flat tabs along their edge, the current one marked with an accent line.
-          - The status bar's values (coordinates, scale, rotation, magnifier) sit in rounded chips.
-          - The Browser, Layers and Processing Toolbox trees follow QGIS's icon size too (QGIS applies it to toolbars only): their icons and rows grow a step with each larger setting (at the default 24 px, as before).
-          - Dialog page lists (Plugins, Layer Properties, Project Properties, Data Source Manager...) have 24 px icons (were 20 px), as does the Options dialog's page tree (was QGIS's 16 px), and follow QGIS's icon size too, a step larger with each larger setting.
-          - Panel toolbars (Layers, Browser, Processing Toolbox, Identify Results...) have 20 px icons on every screen (low-density screens kept QGIS's 16 px) and grow a step with each larger icon size setting.
-          - The hammer is drawn with exact diagonals: fitting its corners to pixels bent its edges into a pale vertical line.
-          - Panels are one clean surface: the title, bold, sits on the panel's own colour with no band or line under it, and panel toolbars share that colour.
-          - Panel search fields (Processing Toolbox, Browser, Layer Styling...) are white rounded fields with a magnifier at their start.
-          - Rows of the Browser, Layers and Processing Toolbox trees are roomier (about 28 px).
-          - The ribbon's page is a clean white band in the light themes, its tab names are in the text colour, and the lines between its groups stop short of the page's edges.
-          - The Layers panel's visibility boxes are quiet outlined boxes with a tick in the text colour (checkboxes elsewhere keep the accent fill).
-          - The Layers panel has a search field at its top (QGIS's layer name filter) and keeps QGIS's own row of buttons in QGIS's order, with a new List by Data Source button at its end: while it is on, the layers are grouped by the file, database or web service they come from (a GeoPackage, a shapefile, a PostgreSQL or Oracle database...), each keeping its checkbox, symbol and legend; a click makes a layer current, a double-click opens its properties and a right-click shows QGIS's layer menu. The drawing order is never changed.
-          - The Layers panel's tools are in neutral slate rather than all blue: the filters, the expand and collapse arrows and the Map Themes eye (white, with a slate iris).
-          - QGIS's generic point, line and polygon layer icons (shown for a layer whose symbols are listed under it) are drawn in the theme's icon colour, as defaults, so they no longer look like the layer's own symbol (the point was a red dot).
-          - The arrows of collapsible sections (Options, Layer Properties, Layer Styling...) point down when a section is open and right when it is closed, like the arrows of trees.
-          - Unavailable (disabled) icons are greyed but still legible: Colourful icons keep half their colour, and the grey is a step darker (light themes) or lighter (dark themes), so a project without layers no longer looks washed out.
-          - The ribbon's Navigate group shows its most used commands, Zoom In, Zoom Out and Full Extent, as labelled buttons beside Pan; the other navigation commands stay beside them as icons.
-          - A pressed tool (Pan, the Layer Styling button...) is a light tint instead of a strong blue block.
-          - Layer names in the Layers panel are in the regular weight (QGIS draws them bold); groups stay bold.
-          - Pro Light: panels share the window's light grey, one calm surface.
-          - Folders keep the same light gold at every size (smaller ones were a darker amber than the detailed folder).
-          - Colourful: the close, clear and cancel X (message bar, tabs, tasks) is in the theme's icon colour, clearly seen on dark themes, and coloured lines standing on the window (arrows, routes, curves, links) keep their full colour instead of being deepened like the edges of filled objects.
-          - Icons are sharp at every size on every screen: sizes without a pre-rendered image (QGIS's font-scaled icon sizes, 32 to 64 px toolbars, large dialog icons, other screens' scaling) are drawn for that exact size instead of stretched from the nearest one.
-          - The detailed icons are drawn on the screen's pixel grid at every size, so they stay sharp in the ribbon and toolbars at 125, 150 and 200 percent scaling (they were blurred when scaled to 42 px).
-          - Colourful icons have 1 px outlines in a deep shade of each object's own colour (not near-black) on light and dark themes alike, so shapes stay crisp yet fine, and sit flat on their toolbars, without a shadow. Highlights, badge marks and lines in the theme's icon colour are unchanged.
+     ** v1.4 (10.11.2026):
+          - Colourful icons are flat and finer, with 1 px edges; the objects seen most (folder, document, save, database, table, layers, map, globe, printer, toolbox, gear, filter...) are hand-drawn in detail.
+          - Solid badges: a green plus to add, a red cross to delete.
+          - Icons are about 15 percent larger and pixel-sharp at every size and screen scaling.
+          - Buttons QGIS adds later get the new icons too (Identify Results' mode and settings, Layer Styling's undo and redo, the status bar's CRS button).
+          - The ribbon, panel trees, panel toolbars and dialog page lists follow QGIS's icon size setting.
+          - Cleaner panels: bold titles on one surface, flat tabs with an accent line, rounded search fields, roomier rows and rounded status bar chips.
+          - Layers panel: a search field and a new List by Data Source view.
+          - The ribbon's Project tab is an accent button; Navigate shows Zoom In, Zoom Out and Full Extent with labels.
+          - Disabled icons stay legible, and pressed tools are a light tint.
 
      ** v1.3 (04.11.2026):
           - New Icons setting in Plugins > QGIS Studio Themes > Settings, with three icon styles.

@@ -1,129 +1,74 @@
 # QGIS Studio Themes
 
-A QGIS plugin that adds six UI themes with a consistent, modern design:
-a redesigned stylesheet, a unified line-icon set and the Inter typeface.
+Six modern UI themes for QGIS 4: a clean stylesheet, a complete icon set,
+the Inter typeface and an optional ribbon.
 
-## Requirements
+![Studio Pro Light](docs/screenshots/pro-light_icons-color.png)
 
-QGIS 4.0 or later.
+## Install
 
-## Installation
+1. **Plugins → Manage and Install Plugins** → install **QGIS Studio Themes**
+   (or download it from the [plugin repository](https://plugins.qgis.org/plugins/qgis_studio_themes/)).
+2. **Settings → Options → General → UI Theme** → pick a Studio theme.
+3. Restart QGIS.
 
-1. Install **QGIS Studio Themes** from **Plugins → Manage and Install Plugins**,
-   or download it from the [QGIS plugin repository](https://plugins.qgis.org/plugins/qgis_studio_themes/).
-2. Open **Settings → Options → General**.
-3. Select a Studio theme under **UI Theme**.
-4. Restart QGIS.
+Requires QGIS 4.0 or later.
 
 ## Themes
 
-| Theme | Mode | Palette |
-|---|---|---|
-| Studio Premium Dark | Dark | Neutral grey with QGIS green accents |
-| Studio Web Dark | Dark | Navy, based on the qgis.org website |
-| Studio Orange Dark | Dark | Near-black with orange accents |
-| Studio Pro Light | Light | Light grey with blue accents |
-| Studio Orange Light | Light | Warm paper with [Kartoza](https://kartoza.com) brand colours |
-| Studio QGIS Light | Light | Light paper with the [QGIS brand](https://qgis.org/styleguide/) colours |
-
-Each theme sets the Qt colour scheme to match its mode, so native widgets
-stay consistent with the stylesheet regardless of the desktop's light or
-dark setting. The two light themes were checked against WCAG 2.2 AA
-contrast requirements.
-
-## Screenshots
-
-The main window with the ribbon interface:
+| Theme | Look |
+|---|---|
+| Studio Pro Light | Light grey, blue accents |
+| Studio Orange Light | Warm paper, [Kartoza](https://kartoza.com) colours |
+| Studio QGIS Light | Light paper, [QGIS brand](https://qgis.org/styleguide/) colours |
+| Studio Premium Dark | Neutral grey, QGIS green accents |
+| Studio Web Dark | Navy, like qgis.org |
+| Studio Orange Dark | Near-black, orange accents |
 
 | Studio Premium Dark | Studio Web Dark |
 |---|---|
 | ![Studio Premium Dark](docs/screenshots/premium-dark.png) | ![Studio Web Dark](docs/screenshots/web-dark.png) |
-| **Studio Orange Dark** | **Studio Pro Light** |
-| ![Studio Orange Dark](docs/screenshots/orange-dark.png) | ![Studio Pro Light](docs/screenshots/pro-light.png) |
-| **Studio Orange Light** | **Studio QGIS Light** |
-| ![Studio Orange Light](docs/screenshots/orange-light.png) | ![Studio QGIS Light](docs/screenshots/qgis-light.png) |
-
-Layer properties dialog in Studio Premium Dark and Studio Pro Light:
-
-| | |
-|---|---|
-| ![Layer properties, Studio Premium Dark](docs/screenshots/premium-dark_properties.png) | ![Layer properties, Studio Pro Light](docs/screenshots/pro-light_properties.png) |
+| **Studio Orange Dark** | **Studio Orange Light** |
+| ![Studio Orange Dark](docs/screenshots/orange-dark.png) | ![Studio Orange Light](docs/screenshots/orange-light.png) |
+| **Studio QGIS Light** | **Layer Properties (Premium Dark / Pro Light)** |
+| ![Studio QGIS Light](docs/screenshots/qgis-light.png) | ![Layer Properties](docs/screenshots/premium-dark_properties.png) ![Layer Properties](docs/screenshots/pro-light_properties.png) |
 
 ## Icons
 
-Every theme comes with three icon styles. Choose one in
-**Plugins → QGIS Studio Themes → Settings → Icons**; it changes at once,
-without restarting QGIS.
+Three styles, switched instantly in **Plugins → QGIS Studio Themes → Settings → Icons**:
 
-- **Monochrome** – the default: clean line icons in the theme's own icon
-  colour, calm and consistent across toolbars, menus and panels.
-- **Colourful** – the same icons in the manner of professional colour icon
-  sets such as Fluent and ArcGIS Pro: objects have solid bodies in calm,
-  cool medium tones with a deeper edge – gold folders, blue databases and
-  floppy disks, green maps, red pins and bookmarks, red toolboxes for the
-  Processing Toolbox's groups. Corners are square and the objects
-  seen most are drawn in detail, like QGIS's own: a floppy disk with its
-  shutter and label, documents with lines of text, a table with its header.
-  Actions (zoom, pan, settings) keep the theme's icon colour with at most one
-  coloured detail, and documents are white sheets on light themes and soft
-  grey ones on dark themes.
-- **QGIS classic** – QGIS's own icons, with the rest of the theme.
+- **Monochrome** (default): clean line icons in the theme's colour.
+- **Colourful**: solid, flat colour icons in the style of professional GIS
+  and Office icon sets.
+- **QGIS classic**: QGIS's own icons.
 
-All three cover the whole interface – toolbars and menus, the ribbon,
-panels and the Processing Toolbox, the layout designer, dialogs and the
-attribute form – with the same icons in Monochrome and Colourful. Both are
-pixel-sharp at every screen scaling. The images below show Studio Pro
-Light in each style.
+Monochrome and Colourful replace icons across the whole interface and are
+pixel-sharp at every screen scaling.
 
-| Monochrome | Colourful |
-|---|---|
-| ![Monochrome icons, Studio Pro Light](docs/screenshots/pro-light_icons-mono.png) | ![Colourful icons, Studio Pro Light](docs/screenshots/pro-light_icons-color.png) |
-| **QGIS classic** | |
-| ![QGIS classic icons, Studio Pro Light](docs/screenshots/pro-light_icons-classic.png) | |
+| Monochrome | Colourful | QGIS classic |
+|---|---|---|
+| ![Monochrome](docs/screenshots/pro-light_icons-mono.png) | ![Colourful](docs/screenshots/pro-light_icons-color.png) | ![QGIS classic](docs/screenshots/pro-light_icons-classic.png) |
 
 ## Features
 
-- **Modern icons** – over 1,000 QGIS icons replaced with a consistent icon
-  set based on [Tabler Icons](https://tabler.io/icons), coloured per theme.
-- **Sharp at any scaling** – icons are pre-rendered for each screen's exact
-  pixel size and stay crisp when monitors or scaling change.
-- **Toolbar names** – each toolbar is named next to its buttons; empty
-  toolbars collapse. In **Plugins → QGIS Studio Themes → Settings**, choose
-  where the names go (above or below the buttons, left of them across or
-  vertical, or off), whether they are full, short or chosen to fit, and
-  their size and weight.
-- **Smooth toolbar dragging** – a dragged toolbar moves as a whole, pushes
-  the ones after it and swaps places with the one before it when dragged
-  over it, without hiding any buttons the row has room for.
-- **Ribbon interface** – optionally, every toolbar button and menu command
-  in tabs of grouped large and small buttons (Project, Home, Data, Layer, Edit,
-  Modify, Annotate, View, Vector, Raster, Mesh, Processing, GPS, Plugins,
-  Settings, Help), with the modern icons; plugin toolbars and menus get
-  places of their own. It takes the menu bar's place. Turn it on in
-  **Settings → Interface**.
-  Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
-  plugin by Eithan Wes and Anita Graser.
-- **Three icon styles** – Monochrome (the theme's single-colour icons),
-  Colourful (the same icons with solid, professional colour) or QGIS classic
-  (QGIS's own icons); see [Icons](#icons).
-- **Clean layout** – controls of one height, flat buttons, rounded panel
-  rows, slim scrollbars, a clear focus ring and themed code editors.
-- **Typography and sizing** – the bundled Inter typeface, with compact sizes
-  chosen automatically on large, low-density monitors.
-- **Fast** – colours come from the Qt palette and icons from a few atlas
-  images drawn once and shared by every theme, so dialogs, panels and theme
-  switching stay quick.
+- **Ribbon** (optional, **Settings → Interface**): every toolbar and menu
+  command in tabs of large and small buttons, plugins included. Inspired by
+  the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar) plugin
+  by Eithan Wes and Anita Graser.
+- **Toolbar names** next to each toolbar's buttons, with configurable
+  position, length, size and weight.
+- **Layers panel**: a search field and a *List by Data Source* view.
+- **Clean layout**: flat buttons and tabs, roomy panel rows, slim
+  scrollbars and the bundled Inter typeface.
+- **Follows QGIS's icon size** in the ribbon, panels and dialogs.
+- **Fast**: icons are drawn once and shared by every theme.
 
 ## Contributing
 
-Pull requests are welcome. For larger changes, please open an issue first.
-Bug reports can be filed on the [issue tracker](https://github.com/GallPeters/qgis-studio-themes/issues).
+Pull requests are welcome; for larger changes, open an
+[issue](https://github.com/GallPeters/qgis-studio-themes/issues) first.
 
 ## License
 
-[GNU GPL v2](LICENSE)
-
-Bundled third-party assets:
-
-- [Tabler Icons](https://github.com/tabler/tabler-icons) – MIT License, see `icons/tabler/LICENSE`
-- [Inter](https://rsms.me/inter/) – SIL Open Font License 1.1, see `fonts/OFL.txt`
+[GNU GPL v2](LICENSE). Bundled: [Tabler Icons](https://github.com/tabler/tabler-icons)
+(MIT, `icons/tabler/LICENSE`) and [Inter](https://rsms.me/inter/) (OFL 1.1, `fonts/OFL.txt`).
