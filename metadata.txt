@@ -22,6 +22,8 @@ changelog=
           - New Ribbon density setting: Compact or Standard.
           - New Ribbon size setting: Small, Medium, Large, or Follow QGIS icon size (as before).
           - Large ribbon buttons always have room for their two-line labels, also with larger UI fonts.
+          - Large ribbon buttons with one-line labels (New, Open, Save, Pan Map...) sit centred on the ribbon's middle row, their labels right under the icons.
+          - A little more room above the ribbon's icons and below the group names.
           - In ribbon mode, the name position and name settings apply to the ribbon's group names: above or below the buttons, left of them (across or vertical, at the group's edge), or off to save height; full, short or auto.
           - The ribbon and the toolbars keep their own name position and name, so switching the interface keeps both.
           - The ribbon no longer has an empty margin above and below it.

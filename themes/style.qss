@@ -593,6 +593,8 @@ QLabel#studioRibbonCaption {
     padding: 0;
     margin: 0;
 }
+/* Large buttons' top and bottom padding is mirrored in
+ * studio_ribbon.LARGE_PADDING (one-line labels add half a line to both). */
 QToolButton[studioRibbon="large"] {
     padding: 4px 6px 3px 6px;
 }

@@ -79,10 +79,18 @@ LARGE_MIN_WIDTH = 56
 LABEL_ROOM = 7
 # The height of a two-line label in the UI font at the default size.
 DEFAULT_LABEL = 30
+# One label line (set_sizes): a large button with a one-line label moves its
+# icon down by half of it, so icon and label sit centred on the rows instead
+# of hanging from the top.
+LABEL_LINE = DEFAULT_LABEL // 2
+# style.qss's padding above and below a large button's icon and label, per
+# density (QToolButton[studioRibbon="large"]).
+LARGE_PADDING = {"standard": (4, 3), "compact": (3, 2)}
 # Room around a group's buttons (left, top, right, bottom), per density:
-# compact keeps less space above and below them.
-STANDARD_MARGINS = (6, 8, 6, 6)
-COMPACT_MARGINS = (6, 4, 6, 4)
+# compact keeps less space above and below them, but enough that the icons
+# and names do not touch the page's edges.
+STANDARD_MARGINS = (6, 9, 6, 7)
+COMPACT_MARGINS = (6, 6, 6, 6)
 GROUP_MARGINS = COMPACT_MARGINS
 # The ribbon's size (Settings > Ribbon size): "auto" follows QGIS's toolbar
 # icon size; the others stand for that size set to 16, 24 or 32.
@@ -129,7 +137,8 @@ def set_sizes(toolbar, density="standard", label=DEFAULT_LABEL):
     two-line labels `label` px high (see ribbon_sizes); True when they
     changed."""
     global SMALL_ICON, LARGE_ICON, ROW_HEIGHT, ROW_SPACING, BODY, LARGE_MIN_WIDTH  # pylint: disable=global-statement
-    global GROUP_MARGINS, DENSITY  # pylint: disable=global-statement
+    global GROUP_MARGINS, DENSITY, LABEL_LINE  # pylint: disable=global-statement
+    LABEL_LINE = label // 2
     compact = density == "compact"
     sizes = ribbon_sizes(toolbar, compact, label)
     if sizes == (SMALL_ICON, LARGE_ICON, ROW_HEIGHT, ROW_SPACING, LARGE_MIN_WIDTH) and density == DENSITY:
@@ -1404,8 +1413,28 @@ class StudioRibbon(QObject):
         if body.count() == 0:
             group.deleteLater()
             return None
+        self._centre_large(group)
         self._lay_out_group(group, body, title)
         return group
+
+    @staticmethod
+    def _centre_large(group):
+        """Large buttons with one-line labels: Qt keeps the icon at the
+        button's top and centres the label in the room of two lines, leaving
+        a gap under the icon and the pair hanging high. Half a line more
+        padding above and below centres icon and label on the rows with the
+        usual gap between them (the label stays put, the icon comes down),
+        as a two-line button's fill them: every large button is centred on
+        the middle row, one-line icons and labels all on one line."""
+        large = [b for b in group.findChildren(QToolButton)
+                 if b.property("studioRibbon") == "large" and "\n" not in b.text()]
+        if not large:
+            return
+        top, bottom = LARGE_PADDING.get(DENSITY, LARGE_PADDING["standard"])
+        shift = LABEL_LINE // 2
+        sheet = f"QToolButton {{ padding-top: {top + shift}px; padding-bottom: {bottom + shift}px; }}"
+        for button in large:
+            button.setStyleSheet(sheet)
 
     def _lay_out_group(self, group, body, title):
         """The group's buttons (`body`) and its name where the settings put
