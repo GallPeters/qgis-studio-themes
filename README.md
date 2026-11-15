@@ -54,8 +54,8 @@ pixel-sharp at every screen scaling.
 - **Ribbon** (optional, **Settings → Interface**): every toolbar and menu
   command in tabs of large and small buttons, plugins included. Inspired by
   the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar) plugin
-  by Eithan Wes and Anita Graser. Its size (small, medium, large or QGIS's
-  icon size) and density (standard or compact) are settings, and its group
+  by Eithan Wes and Anita Graser. Compact by default; its size (small, medium,
+  large or QGIS's icon size) and density (compact or standard) are settings, and its group
   names can go above, below or left of the buttons, or be turned off.
 - **Toolbar names** next to each toolbar's buttons, with configurable
   position, length, size and weight.

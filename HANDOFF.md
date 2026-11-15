@@ -14,8 +14,11 @@ Goal: a modern, mature GUI that **looks** like ArcGIS Pro but **behaves** like Q
 
 v1.5:
 - GitHub issue (Easy Search): plugins that shadow `QToolButton.menu()` / `QAction.menu()` with an attribute crashed `IconSwapper._visit`. Every `.menu()` call now goes through `studio_events.menu_of()` (calls Qt's method through the class, returns only a live `QMenu`). `_scan` also wraps each `_visit` in try/except (logged once per class, `_visit_failed`).
-- Ribbon settings (`studio_ribbon`): `ribbonSize` (auto/small/medium/large = toolbar size None/16/24/32), `ribbonDensity` (standard/compact: rows icon+2, `COMPACT_MARGINS`, compact tab/button rules in `style.qss` via `density` / `studioDensity` properties), `ribbonNamePosition` / `ribbonNameText` (group names: off/top/bottom/left/left_vertical; full/short/auto; own keys, default bottom/full; font shared with toolbar names). `StudioRibbon.set_style()` replaces `set_caption_font()`.
-- Measured at QGIS icon size 24 (Linux, offscreen probe): standard 151 px, compact 127, compact + names off/left 111; small compact 115; large standard 175.
+- Ribbon settings (`studio_ribbon`): `ribbonSize` (auto/small/medium/large = toolbar size None/16/24/32), `ribbonDensity` (**compact by default**, `DEFAULT_DENSITY`; compact: rows icon+2, `COMPACT_MARGINS` (6,4,6,4), tabs 8 px lower with names at most 12 px, `density` / `studioDensity` properties in `style.qss`), `ribbonNamePosition` / `ribbonNameText` (group names: off/top/bottom/left/left_vertical; full/short/auto; own keys, default bottom/full; font shared with toolbar names). `StudioRibbon.set_style()` replaces `set_caption_font()`.
+- Large buttons: `ribbon_sizes` spreads the rows (`ROW_SPACING`) until icon + two-line label (measured in the ribbon buttons' font, `_label_height`) fits, so labels are never cut at larger UI fonts.
+- The host toolbar's layout margins are zeroed (it took a plain QToolBar's 4 px padding before getting its name).
+- Measured at QGIS icon size 24, UI font 12 px (Linux, offscreen probe): compact 121 px, compact + names off/left 105, small compact 112, large compact 145, standard 143. ArcGIS Pro is ~118 px (estimate, not measured).
+- A user screenshot showed "Qt: QMetaEnum::keysToValue: empty keys string" in the message bar; not reproducible here (no plugin code sets an empty enum value). If it comes back, find which setting/stylesheet triggers it.
 
 ## 3. Open ideas (not approved, not built)
 Previewed to the user but not requested for building:

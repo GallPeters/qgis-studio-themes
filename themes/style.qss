@@ -552,24 +552,25 @@ QTabBar#studioRibbonTabs[collapsed="true"]::tab:top:selected {
     border-radius: 5px;
     background: transparent;
 }
-/* Compact density (studio_ribbon.Ribbon.set_density): the same tabs,
- * 6 px lower in every state (studio_ribbon.COMPACT_TAB_TOP is the current
- * tab's top margin). */
+/* Compact density (studio_ribbon.Ribbon.set_density, the default): the
+ * same tabs, 8 px lower in every state, their names at most 12 px
+ * (studio_ribbon.COMPACT_TAB_FONT; COMPACT_TAB_TOP is the current tab's
+ * top margin). */
 QTabBar#studioRibbonTabs[density="compact"]::tab:top {
-    margin: 4px 4px 2px 3px;
+    margin: 3px 4px 1px 3px;
     padding: 2px 12px;
 }
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:selected {
     margin: 2px 1px 0 0;
-    padding: 3px 14px 4px 14px;
+    padding: 2px 14px 3px 14px;
 }
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:first,
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:first:selected {
     margin: 2px 8px 0 4px;
-    padding: 4px 16px 4px 16px;
+    padding: 3px 16px 3px 16px;
 }
 QTabBar#studioRibbonTabs[density="compact"][collapsed="true"]::tab:top:selected {
-    margin: 4px 4px 2px 3px;
+    margin: 3px 4px 1px 3px;
     padding: 2px 12px;
 }
 QScrollArea#studioRibbonPage,
@@ -634,7 +635,7 @@ QToolButton#studioRibbonCollapse[collapsed="true"] {
     image: url(@theme_path/icons/studio/chevron-down.svg);
 }
 QToolButton#studioRibbonCollapse[density="compact"] {
-    padding: 2px;
+    padding: 1px;
 }
 QToolBar[studioLabel="handle"] > QToolButton#qt_toolbar_ext_button {
     image: url(@theme_path/icons/studio/toolbar-more-down.svg);

@@ -44,7 +44,7 @@ from qgis.PyQt.QtWidgets import (
 from . import studio_icons, studio_toolbars
 from .studio_events import EventHub, menu_of
 from .studio_layers import LayersPanel
-from .studio_ribbon import CAPTION_NAMES, CAPTION_POSITION, DENSITIES, RIBBON_SIZES, StudioRibbon
+from .studio_ribbon import CAPTION_NAMES, CAPTION_POSITION, DEFAULT_DENSITY, DENSITIES, RIBBON_SIZES, StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -2550,8 +2550,8 @@ class SettingsDialog(QDialog):
         ("large", "Large"),
     )
     DENSITIES = (
+        ("compact", "Compact (default)"),
         ("standard", "Standard"),
-        ("compact", "Compact"),
     )
 
     POSITIONS = (
@@ -3222,19 +3222,19 @@ class QgisStudioThemesPlugin:
         """(position, name style, size, weight, ribbon size, density) of the
         ribbon: its groups' names (below the buttons, in full, by default;
         in the toolbar names' font) and the size and density set in the
-        settings dialog (QGIS's icon size, standard density by default)."""
+        settings dialog (QGIS's icon size, compact density by default)."""
         settings = QgsSettings()
         _position, _names, size, weight = QgisStudioThemesPlugin.label_style()
         position = settings.value(RIBBON_POSITION_SETTING, CAPTION_POSITION, type=str)
         names = settings.value(RIBBON_NAMES_SETTING, CAPTION_NAMES, type=str)
         ribbon_size = settings.value(RIBBON_SIZE_SETTING, "auto", type=str)
-        density = settings.value(RIBBON_DENSITY_SETTING, "standard", type=str)
+        density = settings.value(RIBBON_DENSITY_SETTING, DEFAULT_DENSITY, type=str)
         return (
             position if position in POSITIONS else CAPTION_POSITION,
             names if names in NAME_STYLES else CAPTION_NAMES,
             size, weight,
             ribbon_size if ribbon_size in RIBBON_SIZES else "auto",
-            density if density in DENSITIES else "standard",
+            density if density in DENSITIES else DEFAULT_DENSITY,
         )
 
     @staticmethod

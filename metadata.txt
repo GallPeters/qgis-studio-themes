@@ -18,10 +18,13 @@ icon=icon.png
 changelog=
 
      ** v1.5 (15.11.2026):
+          - The ribbon is compact by default: about as high as other ribbons, with the same icon sizes. Standard density keeps the former look.
+          - New Ribbon density setting: Compact or Standard.
           - New Ribbon size setting: Small, Medium, Large, or Follow QGIS icon size (as before).
-          - New Ribbon density setting: Compact keeps the icon sizes and takes less room around them, so the ribbon is about 24 px lower.
-          - In ribbon mode, the name position and name settings apply to the ribbon's group names: above or below the buttons, left of them (across or vertical), or off to save height; full, short or auto.
+          - Large ribbon buttons always have room for their two-line labels, also with larger UI fonts.
+          - In ribbon mode, the name position and name settings apply to the ribbon's group names: above or below the buttons, left of them (across or vertical, at the group's edge), or off to save height; full, short or auto.
           - The ribbon and the toolbars keep their own name position and name, so switching the interface keeps both.
+          - The ribbon no longer has an empty margin above and below it.
           - The Help button beside the ribbon's tabs keeps its size at large icon sizes, so the tab row stays low.
           - Fixed an error ('QMenu' object is not callable) with plugins that store their menu as an attribute named menu (reported with Easy Search).
           - A widget of another plugin that cannot be themed no longer stops the rest of the window from getting the new icons.
