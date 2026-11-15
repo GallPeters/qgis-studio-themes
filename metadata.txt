@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.4
+version=1.5
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,15 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.5 (15.11.2026):
+          - New Ribbon size setting: Small, Medium, Large, or Follow QGIS icon size (as before).
+          - New Ribbon density setting: Compact keeps the icon sizes and takes less room around them, so the ribbon is about 24 px lower.
+          - In ribbon mode, the name position and name settings apply to the ribbon's group names: above or below the buttons, left of them (across or vertical), or off to save height; full, short or auto.
+          - The ribbon and the toolbars keep their own name position and name, so switching the interface keeps both.
+          - The Help button beside the ribbon's tabs keeps its size at large icon sizes, so the tab row stays low.
+          - Fixed an error ('QMenu' object is not callable) with plugins that store their menu as an attribute named menu (reported with Easy Search).
+          - A widget of another plugin that cannot be themed no longer stops the rest of the window from getting the new icons.
 
      ** v1.4 (10.11.2026):
           - Colourful icons are flat and finer, with 1 px edges; the objects seen most (folder, document, save, database, table, layers, map, globe, printer, toolbox, gear, filter...) are hand-drawn in detail.

@@ -9,13 +9,13 @@ QGIS 4 (Qt 6) plugin that themes the whole QGIS UI. Repo: github.com/GallPeters/
 
 Goal: a modern, mature GUI that **looks** like ArcGIS Pro but **behaves** like QGIS. Never mention ArcGIS/Esri in `metadata.txt`'s changelog.
 
-## 2. Status (09.11.2026)
-**v1.4 is finished and released to GitHub** (`main` pushed, `releases/qgis_studio_themes-1.4.zip` rebuilt; changelog dated 10.11.2026). The user uploads it to the QGIS plugins portal themselves. Next work goes into a new version (1.5): add a `** v1.5 (dd.mm.yyyy):` section above v1.4 in `metadata.txt` and bump `version=`.
+## 2. Status (15.11.2026)
+**v1.5 is finished and released to GitHub** (`main` pushed, `releases/qgis_studio_themes-1.5.zip`; changelog dated 15.11.2026). The user uploads it to the QGIS plugins portal themselves. Next work goes into 1.6: add a `** v1.6 (dd.mm.yyyy):` section above v1.5 in `metadata.txt` and bump `version=`.
 
-Last change in v1.4: `IconSwapper` now also swaps
-- widgets added to an already-scanned toolbar with `addWidget()` (`_action_added`: Identify Results' mode and settings buttons, Layer Styling's back/menu/undo/redo),
-- the status bar CRS button after every project CRS change (`_hook_crs` / `_crs_changed`; QGIS re-sets it from its own icon cache),
-- the magnifier of the plugin's own Layers search field (`studio_layers._theme_icons`).
+v1.5:
+- GitHub issue (Easy Search): plugins that shadow `QToolButton.menu()` / `QAction.menu()` with an attribute crashed `IconSwapper._visit`. Every `.menu()` call now goes through `studio_events.menu_of()` (calls Qt's method through the class, returns only a live `QMenu`). `_scan` also wraps each `_visit` in try/except (logged once per class, `_visit_failed`).
+- Ribbon settings (`studio_ribbon`): `ribbonSize` (auto/small/medium/large = toolbar size None/16/24/32), `ribbonDensity` (standard/compact: rows icon+2, `COMPACT_MARGINS`, compact tab/button rules in `style.qss` via `density` / `studioDensity` properties), `ribbonNamePosition` / `ribbonNameText` (group names: off/top/bottom/left/left_vertical; full/short/auto; own keys, default bottom/full; font shared with toolbar names). `StudioRibbon.set_style()` replaces `set_caption_font()`.
+- Measured at QGIS icon size 24 (Linux, offscreen probe): standard 151 px, compact 127, compact + names off/left 111; small compact 115; large standard 175.
 
 ## 3. Open ideas (not approved, not built)
 Previewed to the user but not requested for building:
@@ -37,6 +37,8 @@ Ask the user before building any of them.
   - After shots, reset `iconStyle=color` in `profiles\tests\QGIS\QGIS4.ini`, or the probe runs in classic style and reports everything unswapped.
   - Copy changed `.py` files into the probe profile before each run. Never touch the user's own running QGIS (a `qgis-bin.exe` without `--profiles-path`).
 - Earlier render scripts (icon sheets, `check.py`, `qss_check.py`): `...\c605fdb6-86c3-4955-bdd1-cab307e62e93\scratchpad\sheet\`; this session's `preview.py`, `redesign.py`, `allsheet.py` are in this session's scratchpad. Scratch folders may be cleaned by the system; copy what you need.
+
+- **Linux probe (15.11.2026 session):** QGIS 4.3 is installed (`/usr/bin/qgis`). Isolated profile under the session scratchpad `probe/root/profiles/tests` (plugin copied into its `python/plugins`); run `PROBE_OUT=<dir> QT_QPA_PLATFORM=offscreen qgis --profiles-path <probe>/root --profile tests --nologo --noversioncheck --code probe.py` (no window on the user's display). An installed copy (no `.git`) rebuilds its theme only when `metadata.txt` changes: `touch` it after copying a changed `style.qss`.
 
 ## 6. Release workflow
 1. Edit → changelog in `metadata.txt` (short, plain bullets) → commit.

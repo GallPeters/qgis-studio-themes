@@ -42,9 +42,9 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_icons, studio_toolbars
-from .studio_events import EventHub
+from .studio_events import EventHub, menu_of
 from .studio_layers import LayersPanel
-from .studio_ribbon import StudioRibbon
+from .studio_ribbon import CAPTION_NAMES, CAPTION_POSITION, DENSITIES, RIBBON_SIZES, StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
 from .studio_tokens import code_editor_ini, is_dark, parse_color, parse_tokens, render, resolve_tokens
 
@@ -84,6 +84,13 @@ SIZE_SETTING = "studio_themes/toolbarNameSize"
 INTERFACE_SETTING = "studio_themes/interface"
 INTERFACES = ("toolbars", "ribbon")
 WEIGHT_SETTING = "studio_themes/toolbarNameWeight"
+# The ribbon's group names: where they go and which name shows, set apart
+# from the toolbar names' (the font is shared), and the ribbon's size and
+# density (studio_ribbon RIBBON_SIZES, DENSITIES).
+RIBBON_POSITION_SETTING = "studio_themes/ribbonNamePosition"
+RIBBON_NAMES_SETTING = "studio_themes/ribbonNameText"
+RIBBON_SIZE_SETTING = "studio_themes/ribbonSize"
+RIBBON_DENSITY_SETTING = "studio_themes/ribbonDensity"
 MENU_NAME = "QGIS Studio Themes"
 # Compact sizes: "auto" (by the screen's pixel density), "on" or "off".
 COMPACT_SETTING = "studio_themes/compactSizes"
@@ -945,6 +952,8 @@ class IconSwapper(QObject):
         self._filtered = []
         self._stacks = {}
         self._menus = {}
+        # Widget classes _visit failed on (logged once each).
+        self._failed_classes = set()
         self._docks = set()
         # The status bar's CRS button (see _hook_crs), once hooked.
         self._crs_button = None
@@ -1935,7 +1944,13 @@ class IconSwapper(QObject):
             for widget in widgets:
                 if len(hidden) > 1 and self._on_skipped_page(widget, hidden):
                     continue
-                self._visit(widget, deferred)
+                try:
+                    self._visit(widget, deferred)
+                except Exception as error:  # pylint: disable=broad-except
+                    # A plugin's widget that breaks Qt's API (a method
+                    # shadowed by an attribute...) keeps its own icons;
+                    # the rest of the window is still themed.
+                    self._visit_failed(widget, error)
                 if isinstance(widget, QStackedWidget):
                     self._hook_stack(widget)
                     current = widget.currentWidget()
@@ -1948,6 +1963,17 @@ class IconSwapper(QObject):
         finally:
             self._scan_window = outer
         del everything
+
+    def _visit_failed(self, widget, error):
+        """Log a widget _visit could not handle, once per class."""
+        name = type(widget).__name__
+        if name in self._failed_classes:
+            return
+        self._failed_classes.add(name)
+        QgsMessageLog.logMessage(
+            f"Skipped icons of a {name} ({widget.objectName() or 'unnamed'}): {error!r}",
+            LOG_TAG, Qgis.MessageLevel.Warning,
+        )
 
     @staticmethod
     def _on_skipped_page(widget, hidden):
@@ -2027,7 +2053,8 @@ class IconSwapper(QObject):
             for extra in widget.actions():
                 if extra is not action:
                     self._swap(extra, None, None, deferred)
-            menu = widget.menu() or (action.menu() if action is not None else None)
+            # menu_of, not .menu(): plugins may shadow the method.
+            menu = menu_of(widget) or menu_of(action)
             if menu is not None:
                 self._hook_menu(menu)
                 # Mode buttons (snapping type, overlap...): QGIS later makes
@@ -2229,7 +2256,7 @@ class IconSwapper(QObject):
         swap happens on the Show event, after every aboutToShow handler, so
         actions QGIS (re)creates there are covered too; the event filter is
         installed only while the menu opens, not for every hover event."""
-        if id(menu) in self._menus:
+        if not isinstance(menu, QMenu) or id(menu) in self._menus:
             return
 
         def about_to_show(menu=menu):
@@ -2245,8 +2272,9 @@ class IconSwapper(QObject):
             return
         for action in menu.actions():
             self._swap(action, None, None, False)
-            if action.menu() is not None:
-                self._hook_menu(action.menu())
+            submenu = menu_of(action)
+            if submenu is not None:
+                self._hook_menu(submenu)
 
     def _rows(self, widget, kind, deferred):
         """Swap a list's or combo box's row icons. Rows added later are
@@ -2499,10 +2527,12 @@ class _Relay(QObject):
 
 class SettingsDialog(QDialog):
     """Plugins > QGIS Studio Themes > Settings: the interface (toolbars or
-    the ribbon), the icon style, where the toolbar names go, which name they show and in
-    what size and weight (the ribbon's group names too). Only what applies
-    to the interface chosen can be changed. Every change shows at once, so
-    the dialog only has Close."""
+    the ribbon), the icon style, the ribbon's size and density, and where
+    the names go, which name they show and in what size and weight: the
+    toolbars' names, or in ribbon mode its groups' names (each interface
+    keeps its own position and name; the font is shared). Only what
+    applies to the interface chosen can be changed. Every change shows at
+    once, so the dialog only has Close."""
 
     INTERFACES = (
         ("toolbars", "Toolbars"),
@@ -2513,6 +2543,16 @@ class SettingsDialog(QDialog):
         ("color", "Colourful"),
         ("classic", "QGIS classic"),
     )
+    RIBBON_SIZES = (
+        ("auto", "Follow QGIS icon size"),
+        ("small", "Small"),
+        ("medium", "Medium"),
+        ("large", "Large"),
+    )
+    DENSITIES = (
+        ("standard", "Standard"),
+        ("compact", "Compact"),
+    )
 
     POSITIONS = (
         ("off", "Off"),
@@ -2521,6 +2561,8 @@ class SettingsDialog(QDialog):
         ("left", "Left of the buttons"),
         ("left_vertical", "Left of the buttons, vertical"),
     )
+    # The ribbon's groups have no line to put a name in.
+    RIBBON_BOTTOM = "Below the buttons"
     NAMES = (
         ("auto", "Auto: full where it fits, short otherwise"),
         ("full", "Full"),
@@ -2537,45 +2579,43 @@ class SettingsDialog(QDialog):
         self._plugin = plugin
         self.setWindowTitle("QGIS Studio Themes Settings")
         self.setMinimumWidth(460)
-        position, names, size, weight = plugin.label_style()
-        self._interface = QComboBox()
-        for value, text in self.INTERFACES:
-            self._interface.addItem(text, value)
-        self._interface.setCurrentIndex(max(0, self._interface.findData(plugin.interface())))
-        self._icon_style = QComboBox()
-        for value, text in self.ICON_STYLES:
-            self._icon_style.addItem(text, value)
-        self._icon_style.setCurrentIndex(max(0, self._icon_style.findData(plugin.icon_style())))
+        _position, _names, size, weight = plugin.label_style()
+        _position, _names, _size, _weight, ribbon_size, density = plugin.ribbon_style()
+        self._interface = self._combo(self.INTERFACES, plugin.interface())
+        self._icon_style = self._combo(self.ICON_STYLES, plugin.icon_style())
         self._icon_style.setToolTip(
             "Monochrome: the theme's single-colour icons. Colourful: the same icons in their objects' "
             "own colours. QGIS classic: QGIS's own icons."
         )
-        self._position = QComboBox()
-        for value, text in self.POSITIONS:
-            self._position.addItem(text, value)
-        self._position.setCurrentIndex(max(0, self._position.findData(position)))
-        self._names = QComboBox()
-        for value, text in self.NAMES:
-            self._names.addItem(text, value)
-        self._names.setCurrentIndex(max(0, self._names.findData(names)))
+        self._ribbon_size = self._combo(self.RIBBON_SIZES, ribbon_size)
+        self._ribbon_size.setToolTip(
+            "The ribbon's icons and rows: as QGIS's toolbar icon size (Options > General) would make "
+            "them, or a size of their own."
+        )
+        self._density = self._combo(self.DENSITIES, density)
+        self._density.setToolTip(
+            "Compact keeps the icons' sizes and leaves less room around them, so the ribbon takes "
+            "less of the window's height."
+        )
+        self._position = self._combo(self.POSITIONS, None)
+        self._names = self._combo(self.NAMES, None)
         self._size = QComboBox()
         for value in TITLE_SIZES:
             self._size.addItem(f"{value} px" + (" (default)" if value == TITLE_SIZE else ""), value)
         self._size.setCurrentIndex(max(0, self._size.findData(size)))
-        self._weight = QComboBox()
-        for value, text in self.WEIGHTS:
-            self._weight.addItem(text, value)
-        self._weight.setCurrentIndex(max(0, self._weight.findData(weight)))
-        form = QFormLayout()
+        self._weight = self._combo(self.WEIGHTS, weight)
+        self._form = form = QFormLayout()
         form.addRow("Interface", self._interface)
         form.addRow("Icons", self._icon_style)
+        form.addRow("Ribbon size", self._ribbon_size)
+        form.addRow("Ribbon density", self._density)
         form.addRow("Toolbar name position", self._position)
         form.addRow("Toolbar name", self._names)
         form.addRow("Font size", self._size)
         form.addRow("Font weight", self._weight)
         self._note = note = QLabel()
         note.setWordWrap(True)
-        self._inactive = QLabel("Toolbar names show while a Studio theme is in use.")
+        self._inactive = QLabel("Toolbar names and the ribbon show while a Studio theme is in use.")
         self._inactive.setWordWrap(True)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.close)
@@ -2585,11 +2625,35 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._inactive)
         layout.addStretch(1)
         layout.addWidget(buttons)
+        self._load_names()
         self._fit_names()
-        for combo in (self._position, self._names, self._size, self._weight):
+        for combo in (self._position, self._names, self._size, self._weight, self._ribbon_size, self._density):
             combo.currentIndexChanged.connect(self._changed)
         self._interface.currentIndexChanged.connect(self._interface_changed)
         self._icon_style.currentIndexChanged.connect(self._icon_style_changed)
+
+    @staticmethod
+    def _combo(choices, current):
+        combo = QComboBox()
+        for value, text in choices:
+            combo.addItem(text, value)
+        if current is not None:
+            combo.setCurrentIndex(max(0, combo.findData(current)))
+        return combo
+
+    def _ribbon(self):
+        return self._interface.currentData() == "ribbon"
+
+    def _load_names(self):
+        """Show the name position and name of the interface chosen."""
+        if self._ribbon():
+            position, names = self._plugin.ribbon_style()[:2]
+        else:
+            position, names = self._plugin.label_style()[:2]
+        for combo, value in ((self._position, position), (self._names, names)):
+            blocked = combo.blockSignals(True)
+            combo.setCurrentIndex(max(0, combo.findData(value)))
+            combo.blockSignals(blocked)
 
     def showEvent(self, event):  # pylint: disable=invalid-name
         self._inactive.setVisible(not self._plugin.studio_shown())
@@ -2600,31 +2664,46 @@ class SettingsDialog(QDialog):
 
     def _interface_changed(self, _index=None):
         self._plugin.set_interface(self._interface.currentData())
+        self._load_names()
         self._changed()
 
     def _changed(self, _index=None):
         self._fit_names()
-        self._plugin.set_label_style(
-            self._position.currentData(), self._names.currentData(), self._size.currentData(),
-            self._weight.currentData(),
-        )
+        position, names = self._position.currentData(), self._names.currentData()
+        size, weight = self._size.currentData(), self._weight.currentData()
+        if self._ribbon():
+            self._plugin.set_label_font(size, weight)
+            self._plugin.set_ribbon_style(
+                position, names, self._ribbon_size.currentData(), self._density.currentData())
+        else:
+            self._plugin.set_label_style(position, names, size, weight)
         self._plugin.settings_changed()
 
     def _fit_names(self):
         """No name to choose without names; no full names reading upwards
-        (they rarely fit a toolbar's height): Auto shows them where they
-        do. The ribbon names its groups in the font chosen; where toolbar
-        names go does not apply to it."""
+        (they rarely fit a toolbar's or a ribbon group's height): Auto
+        shows them where they do. The rows name toolbars or, in ribbon
+        mode, the ribbon's groups; the ribbon's size and density apply to
+        it alone."""
         position = self._position.currentData()
-        ribbon = self._interface.currentData() == "ribbon"
-        self._position.setEnabled(not ribbon)
-        self._names.setEnabled(not ribbon and position != "off")
+        ribbon = self._ribbon()
+        noun = "Group" if ribbon else "Toolbar"
+        for widget, text in ((self._position, f"{noun} name position"), (self._names, f"{noun} name")):
+            label = self._form.labelForField(widget)
+            if label is not None:
+                label.setText(text)
+        self._position.setItemText(
+            self._position.findData("bottom"), self.RIBBON_BOTTOM if ribbon else dict(self.POSITIONS)["bottom"])
+        self._ribbon_size.setEnabled(ribbon)
+        self._density.setEnabled(ribbon)
+        self._names.setEnabled(position != "off")
         for combo in (self._size, self._weight):
-            combo.setEnabled(ribbon or position != "off")
+            combo.setEnabled(position != "off")
         if ribbon:
             self._note.setText(
-                "The ribbon shows every toolbar button in tabs, its groups named in the font chosen. "
-                "Double-click a tab to collapse the ribbon. Toolbars in layout designers keep their names."
+                "The ribbon shows every toolbar button in tabs. Its groups' names can go above or below "
+                "the buttons, left of them, or be turned off to save height. Double-click a tab to "
+                "collapse the ribbon. Toolbars in layout designers keep the toolbar names' settings."
             )
         else:
             self._note.setText(
@@ -3139,6 +3218,41 @@ class QgisStudioThemesPlugin:
         return self.label_style()[0] != "off"
 
     @staticmethod
+    def ribbon_style():
+        """(position, name style, size, weight, ribbon size, density) of the
+        ribbon: its groups' names (below the buttons, in full, by default;
+        in the toolbar names' font) and the size and density set in the
+        settings dialog (QGIS's icon size, standard density by default)."""
+        settings = QgsSettings()
+        _position, _names, size, weight = QgisStudioThemesPlugin.label_style()
+        position = settings.value(RIBBON_POSITION_SETTING, CAPTION_POSITION, type=str)
+        names = settings.value(RIBBON_NAMES_SETTING, CAPTION_NAMES, type=str)
+        ribbon_size = settings.value(RIBBON_SIZE_SETTING, "auto", type=str)
+        density = settings.value(RIBBON_DENSITY_SETTING, "standard", type=str)
+        return (
+            position if position in POSITIONS else CAPTION_POSITION,
+            names if names in NAME_STYLES else CAPTION_NAMES,
+            size, weight,
+            ribbon_size if ribbon_size in RIBBON_SIZES else "auto",
+            density if density in DENSITIES else "standard",
+        )
+
+    @staticmethod
+    def set_ribbon_style(position, names, ribbon_size, density):
+        settings = QgsSettings()
+        settings.setValue(RIBBON_POSITION_SETTING, position)
+        settings.setValue(RIBBON_NAMES_SETTING, names)
+        settings.setValue(RIBBON_SIZE_SETTING, ribbon_size)
+        settings.setValue(RIBBON_DENSITY_SETTING, density)
+
+    @staticmethod
+    def set_label_font(size, weight):
+        """The names' font, shared by toolbar and ribbon group names."""
+        settings = QgsSettings()
+        settings.setValue(SIZE_SETTING, size)
+        settings.setValue(WEIGHT_SETTING, weight)
+
+    @staticmethod
     def icon_style():
         """The icon style set in the settings dialog (ICON_STYLES)."""
         value = QgsSettings().value(ICON_STYLE_SETTING, "mono", type=str)
@@ -3243,7 +3357,7 @@ class QgisStudioThemesPlugin:
             # Names off before the toolbars are hidden: they restore the
             # toolbars' own sizes.
             self._labels.detach()
-            self._ribbon.set_caption_font(style[2], style[3])
+            self._ribbon.set_style(*self.ribbon_style())
             self._ribbon.activate()
         else:
             self._ribbon.deactivate(forget=self.interface() != "ribbon")

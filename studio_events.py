@@ -7,9 +7,14 @@ action enabled or disabled on a selection change...). Through the hub an
 object costs one such call per event, however many parts watch it, and
 event types no part asked for return at once, before any part's code
 runs.
+
+Also menu_of: a button's or action's menu, safe against plugins that
+shadow Qt's menu() method.
 """
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject
+from qgis.PyQt.QtGui import QAction
+from qgis.PyQt.QtWidgets import QMenu, QToolButton
 
 
 class EventHub(QObject):
@@ -75,3 +80,19 @@ class EventHub(QObject):
             if kind in types:
                 handler(watched, event)
         return False
+
+
+def menu_of(obj):
+    """The QMenu of a QToolButton or QAction, or None. Qt's own menu() is
+    called through the class, not looked up on the object: a plugin's
+    subclass may store its menu in an attribute named `menu`, which
+    hides the method (`obj.menu()` then raises
+    "'QMenu' object is not callable"). Anything but a live QMenu is None."""
+    for cls in (QToolButton, QAction):
+        if isinstance(obj, cls):
+            try:
+                menu = cls.menu(obj)
+            except (TypeError, RuntimeError):
+                return None
+            return menu if isinstance(menu, QMenu) and not sip.isdeleted(menu) else None
+    return None

@@ -38,14 +38,15 @@ import re
 
 from qgis.core import QgsSettings
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QEvent, QObject, QSize, Qt, QTimer
+from qgis.PyQt.QtCore import QEvent, QObject, QRect, QSize, Qt, QTimer
 from qgis.PyQt.QtGui import QFontMetrics, QIcon, QPainter, QPalette, QPixmap
 from qgis.PyQt.QtWidgets import (
-    QAction, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu, QScrollArea, QSizePolicy, QStackedWidget, QTabBar,
+    QAction, QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu, QScrollArea, QSizePolicy, QStackedWidget, QTabBar,
     QToolBar, QToolButton, QVBoxLayout, QWidget, QWidgetAction,
 )
 
 from . import studio_toolbars
+from .studio_events import menu_of
 
 HOST_NAME = "studioRibbonHost"
 # The tab shown, whether the ribbon is collapsed to its tabs, and the
@@ -58,9 +59,11 @@ HIDDEN_SETTING = "studio_themes/ribbonHiddenToolbars"
 QWIDGETSIZE_MAX = (1 << 24) - 1
 
 # Sizes (logical px): icons, the rows of small buttons and the groups'
-# room. They follow QGIS's toolbar icon size (Settings > Options > General
-# > Icon size), as the toolbars the ribbon stands for would: set by
-# set_sizes, these values are those of its default, 24.
+# room. By default they follow QGIS's toolbar icon size (Settings > Options
+# > General > Icon size), as the toolbars the ribbon stands for would; the
+# ribbon's own size and density settings (RIBBON_SIZES, DENSITIES) can
+# override that. Set by set_sizes, these values are those of the
+# default: QGIS's 24, standard density.
 LARGE_ICON = 32
 SMALL_ICON = 20
 ROW_HEIGHT = 24
@@ -68,35 +71,67 @@ ROWS = 3
 SPACING = 2
 BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
 LARGE_MIN_WIDTH = 56
+# Room around a group's buttons (left, top, right, bottom), per density:
+# compact keeps less space above and below them.
+STANDARD_MARGINS = (6, 8, 6, 6)
+COMPACT_MARGINS = (6, 3, 6, 2)
+GROUP_MARGINS = STANDARD_MARGINS
+# The ribbon's size (Settings > Ribbon size): "auto" follows QGIS's toolbar
+# icon size; the others stand for that size set to 16, 24 or 32.
+RIBBON_SIZES = {"auto": None, "small": 16, "medium": 24, "large": 32}
+# Its density (Settings > Ribbon density): compact keeps the icons' sizes
+# and takes less room around them (rows, group margins, tabs).
+DENSITIES = ("standard", "compact")
+DENSITY = "standard"
+# Where the groups' names go and which name shows (Settings, in ribbon
+# mode): the toolbar names' choices (studio_toolbars.POSITIONS,
+# NAME_STYLES), names below the buttons in full by default.
+CAPTION_POSITION = "bottom"
+CAPTION_NAMES = "full"
+# The gap between a name left of the buttons and the buttons.
+SIDE_GAP = 6
+# The largest icon of the buttons right of the tabs (Help), so a large
+# ribbon size keeps the tab row low.
+CORNER_ICON = 20
 
 
-def ribbon_sizes(toolbar):
+def ribbon_sizes(toolbar, compact=False):
     """(small icon, large icon, row height, large button minimum width) for
-    QGIS's toolbar icon size `toolbar`: small buttons a sixth smaller than
-    a toolbar's (on a 4 px step, never below 16), large ones 12 px larger
-    (ArcGIS Pro's 32 px at the default), rows 4 px taller than their icons.
-    A large button's icon leaves room for a two-line label in the three
-    rows' height. 24 gives 20, 32 and 24; 32 gives 28, 40 and 32."""
+    a toolbar icon size `toolbar`: small buttons a sixth smaller than a
+    toolbar's (on a 4 px step, never below 16), large ones 12 px larger
+    (32 px at the default 24), rows 4 px taller than their icons (2 px when
+    `compact`). A large button's icon (on a 4 px step) leaves room for a
+    two-line label in the three rows' height. 16 gives 16, 24 and 20; 24
+    gives 20, 32 and 24; 32 gives 28, 40 and 32."""
     small = max(16, round(toolbar * 5 / 6 / 4) * 4)
-    row = small + 4
+    row = small + (2 if compact else 4)
     body = ROWS * row + (ROWS - 1) * SPACING
-    large = min(small + 12, body - 37)
+    large = min(small + 12, (body - 37) // 4 * 4)
     return small, large, row, large + 24
 
 
-def set_sizes(toolbar):
-    """Use the sizes for QGIS's toolbar icon size `toolbar` (see
+def set_sizes(toolbar, density="standard"):
+    """Use the sizes for toolbar icon size `toolbar` in `density` (see
     ribbon_sizes); True when they changed."""
     global SMALL_ICON, LARGE_ICON, ROW_HEIGHT, BODY, LARGE_MIN_WIDTH  # pylint: disable=global-statement
-    sizes = ribbon_sizes(toolbar)
-    if sizes == (SMALL_ICON, LARGE_ICON, ROW_HEIGHT, LARGE_MIN_WIDTH):
+    global GROUP_MARGINS, DENSITY  # pylint: disable=global-statement
+    compact = density == "compact"
+    sizes = ribbon_sizes(toolbar, compact)
+    if sizes == (SMALL_ICON, LARGE_ICON, ROW_HEIGHT, LARGE_MIN_WIDTH) and density == DENSITY:
         return False
     SMALL_ICON, LARGE_ICON, ROW_HEIGHT, LARGE_MIN_WIDTH = sizes
     BODY = ROWS * ROW_HEIGHT + (ROWS - 1) * SPACING
+    GROUP_MARGINS = COMPACT_MARGINS if compact else STANDARD_MARGINS
+    DENSITY = density
     return True
-# The current tab's top margin in style.qss (studioRibbonTabs::tab:top:selected).
+
+
+# The current tab's top margin in style.qss (studioRibbonTabs::tab:top:selected),
+# per density, and the room above the tab row.
 TAB_TOP = 4
-GROUP_MARGINS = (6, 8, 6, 6)
+COMPACT_TAB_TOP = 2
+BAR_TOP = 5
+COMPACT_BAR_TOP = 2
 
 # Layouts of a group's small buttons: labelled, or icons only; or (plugins'
 # groups) large labelled buttons for up to AUTO_LARGE actions, else icons.
@@ -456,7 +491,7 @@ def _key(action):
     a menu's own action (which has none) the menu's."""
     if action.objectName():
         return action.objectName()
-    menu = action.menu()
+    menu = menu_of(action)
     return menu.objectName() if menu is not None else ""
 
 
@@ -469,6 +504,10 @@ class _Button(QToolButton):
         self._label = label
         self._placeholder = None
         self.setProperty("studioRibbon", kind)
+        # Compact rows are 2 px lower: less padding (style.qss). Set before
+        # the stylesheet first polishes the button.
+        if DENSITY == "compact":
+            self.setProperty("studioDensity", "compact")
         self.setAutoRaise(True)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
@@ -533,6 +572,11 @@ class _Tabs(QTabBar):
 
     UNDERLINE = 2
     GAP = 3  # between the underline and the tab's bottom edge
+    COMPACT_GAP = 2
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.gap = self.GAP
 
     def paintEvent(self, event):  # pylint: disable=invalid-name
         super().paintEvent(event)
@@ -547,7 +591,7 @@ class _Tabs(QTabBar):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self.palette().color(QPalette.ColorRole.Link))
-        y = tab.bottom() + 1 - self.GAP - self.UNDERLINE
+        y = tab.bottom() + 1 - self.gap - self.UNDERLINE
         painter.drawRoundedRect(tab.center().x() + 1 - width // 2, y, width, self.UNDERLINE, 1, 1)
         painter.end()
 
@@ -576,9 +620,9 @@ class Ribbon(QWidget):
         bar = QWidget()
         bar.setObjectName("studioRibbonBar")
         bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
-        top = QHBoxLayout(bar)
+        self._top = top = QHBoxLayout(bar)
         # Room above the tabs: the ribbon is the window's top row.
-        top.setContentsMargins(6, 5, 6, 0)
+        top.setContentsMargins(6, BAR_TOP, 6, 0)
         top.setSpacing(2)
         self.tabs = _Tabs()
         self.tabs.setObjectName("studioRibbonTabs")
@@ -592,7 +636,7 @@ class Ribbon(QWidget):
         top.addStretch(1)
         # Help and collapse centred on the tabs' names, which sit below
         # the row's middle (the tabs' top margin).
-        buttons = QHBoxLayout()
+        self._buttons = buttons = QHBoxLayout()
         buttons.setContentsMargins(0, TAB_TOP, 0, 0)
         buttons.setSpacing(2)
         buttons.addWidget(corner)
@@ -681,6 +725,24 @@ class Ribbon(QWidget):
         self.pages.setVisible(not collapsed)
         self._fit_height()
 
+    def set_density(self, density):
+        """Tabs in `density` (DENSITIES): compact ones have less padding
+        (style.qss, [density=\"compact\"]) and less room above them."""
+        compact = density == "compact"
+        value = "compact" if compact else None
+        if self.tabs.property("density") == value:
+            return
+        self._top.setContentsMargins(6, COMPACT_BAR_TOP if compact else BAR_TOP, 6, 0)
+        self._buttons.setContentsMargins(0, COMPACT_TAB_TOP if compact else TAB_TOP, 0, 0)
+        self.tabs.gap = _Tabs.COMPACT_GAP if compact else _Tabs.GAP
+        for widget in (self.tabs, self.collapse):
+            widget.setProperty("density", value)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            # A tab bar keeps its tabs' sizes until its style changes.
+            QApplication.sendEvent(widget, QEvent(QEvent.Type.StyleChange))
+        self.tabs.update()
+
     def wheelEvent(self, event):  # pylint: disable=invalid-name
         """The wheel scrolls a page wider than the window sideways."""
         page = self.pages.currentWidget()
@@ -691,6 +753,10 @@ class Ribbon(QWidget):
         delta = event.angleDelta().y() or event.angleDelta().x()
         bar.setValue(bar.value() - delta)
         event.accept()
+
+    def fit_height(self):
+        """Take a new page_height at once."""
+        self._fit_height()
 
     def _fit_height(self):
         """The pages' one height (see page_height)."""
@@ -713,10 +779,42 @@ def set_menu_bar_folded(window, folded):
     menu_bar.setMaximumHeight(0 if folded else QWIDGETSIZE_MAX)
 
 
-def page_height(caption_font):
-    """A page's height: a group's buttons, margins and caption."""
-    caption = QFontMetrics(caption_font).height()
-    return GROUP_MARGINS[1] + BODY + SPACING + caption + GROUP_MARGINS[3]
+def page_height(caption_font, position="bottom"):
+    """A page's height: a group's buttons and margins, and its name's line
+    when the name goes above or below them (a name left of the buttons, or
+    none, takes no height)."""
+    caption = SPACING + QFontMetrics(caption_font).height() if position in ("top", "bottom") else 0
+    return GROUP_MARGINS[1] + BODY + caption + GROUP_MARGINS[3]
+
+
+class _Caption(QLabel):
+    """A group's name: across, or reading upwards left of the buttons
+    (`upright`), in the stylesheet's caption colour (QLabel#studioRibbonCaption)."""
+
+    def __init__(self, text, upright, parent=None):
+        super().__init__(text, parent)
+        self.setObjectName("studioRibbonCaption")
+        self._upright = upright
+
+    def sizeHint(self):  # pylint: disable=invalid-name
+        size = super().sizeHint()
+        return size.transposed() if self._upright else size
+
+    def minimumSizeHint(self):  # pylint: disable=invalid-name
+        size = super().minimumSizeHint()
+        return size.transposed() if self._upright else size
+
+    def paintEvent(self, event):  # pylint: disable=invalid-name
+        if not self._upright:
+            super().paintEvent(event)
+            return
+        painter = QPainter(self)
+        painter.setFont(self.font())
+        painter.setPen(self.palette().color(self.foregroundRole()))
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        painter.drawText(QRect(0, 0, self.height(), self.width()), Qt.AlignmentFlag.AlignCenter, self.text())
+        painter.end()
 
 
 class StudioRibbon(QObject):
@@ -787,6 +885,14 @@ class StudioRibbon(QObject):
         # The actions on the ribbon (by C++ object), as last built.
         self.placed = set()
         self._caption_font = studio_toolbars.title_font()
+        # The groups' names: where they go and which name shows (see
+        # set_style); the short names given on the page being built.
+        self._caption_position = CAPTION_POSITION
+        self._caption_names = CAPTION_NAMES
+        self._shorts_taken = set()
+        # The ribbon's size and density settings (RIBBON_SIZES, DENSITIES).
+        self._size_choice = "auto"
+        self._density = "standard"
         self._corner = None
 
     @property
@@ -804,27 +910,54 @@ class StudioRibbon(QObject):
             for index in range(self._ribbon.tabs.count()):
                 self._ribbon.invalidate(index)
 
-    def set_caption_font(self, size, weight):
-        """The groups' captions: the toolbar names' font (the settings')."""
+    def set_style(self, position, names, size, weight, ribbon_size="auto", density="standard"):
+        """The groups' names (where they go, which name shows, their font:
+        studio_toolbars.POSITIONS, NAME_STYLES, TITLE_SIZES, WEIGHTS) and
+        the ribbon's size and density (RIBBON_SIZES, DENSITIES), as set in
+        the settings dialog. Pages are built again when any changed."""
+        position = position if position in studio_toolbars.POSITIONS else CAPTION_POSITION
+        names = names if names in studio_toolbars.NAME_STYLES else CAPTION_NAMES
         font = studio_toolbars.title_font(size, weight)
-        if font == self._caption_font:
-            return
-        self._caption_font = font
+        ribbon_size = ribbon_size if ribbon_size in RIBBON_SIZES else "auto"
+        density = density if density in DENSITIES else "standard"
+        changed = (font, position, names) != (self._caption_font, self._caption_position, self._caption_names)
+        self._caption_font, self._caption_position, self._caption_names = font, position, names
+        self._size_choice, self._density = ribbon_size, density
         if self._ribbon is not None:
-            self._ribbon.page_height = page_height(self._caption_font)
+            self._apply_sizes(force=changed)
+
+    def _toolbar_size(self):
+        """The toolbar icon size the ribbon's sizes stand for: its own size
+        setting, or QGIS's toolbar icon size."""
+        fixed = RIBBON_SIZES.get(self._size_choice)
+        if fixed is not None:
+            return fixed
+        window = self._window
+        return window.iconSize().width() if window is not None and not sip.isdeleted(window) else 24
+
+    def _apply_sizes(self, force=False):
+        """Use the sizes and density set (set_sizes); every page is built
+        again when they changed (or `force`)."""
+        changed = set_sizes(self._toolbar_size(), self._density)
+        if self._ribbon is None:
+            return
+        self._ribbon.set_density(self._density)
+        if changed or force:
+            self._ribbon.page_height = page_height(self._caption_font, self._caption_position)
+            self._ribbon.fit_height()
+            if changed:
+                self._fill_corner()  # Help's buttons, in the new row height
             for index in range(self._ribbon.tabs.count()):
                 self._ribbon.invalidate(index)
 
     def _icon_size_changed(self, *_args):
         """QGIS's toolbar icon size changed: the buttons and rows follow
-        (set_sizes) and every page is built again in the new sizes."""
+        (unless the ribbon has a size of its own) and every page is built
+        again in the new sizes."""
         window = self._window
         if self._ribbon is None or window is None or sip.isdeleted(window):
             return
-        if set_sizes(window.iconSize().width()):
-            self._ribbon.page_height = page_height(self._caption_font)
-            for index in range(self._ribbon.tabs.count()):
-                self._ribbon.invalidate(index)
+        self._apply_sizes()
 
     # ---- Showing and hiding -----------------------------------------------
 
@@ -833,8 +966,9 @@ class StudioRibbon(QObject):
             return
         window = self._iface.mainWindow()
         self._window = window
-        # Buttons in the sizes of QGIS's toolbar icon size, followed live.
-        set_sizes(window.iconSize().width())
+        # Buttons in the sizes of QGIS's toolbar icon size (followed live)
+        # or the ribbon's own size, in the density set.
+        set_sizes(self._toolbar_size(), self._density)
         window.iconSizeChanged.connect(self._icon_size_changed)
         self._hidden = []
         hidden_before = QgsSettings().value(HIDDEN_SETTING, [], type=list) or []
@@ -853,7 +987,8 @@ class StudioRibbon(QObject):
         corner_layout.setSpacing(2)
         self._watch_menus()
         self._ribbon = Ribbon([title for title, _groups in TABS], self._build_page, self._corner)
-        self._ribbon.page_height = page_height(self._caption_font)
+        self._ribbon.set_density(self._density)
+        self._ribbon.page_height = page_height(self._caption_font, self._caption_position)
         self._fill_corner()
         host = self._host = QToolBar("Ribbon", window)
         host.setObjectName(HOST_NAME)
@@ -1002,8 +1137,8 @@ class StudioRibbon(QObject):
             # A plugin's menu may have no parent (Processing's): found
             # through the menu bar.
             menu_bar = self._window.menuBar()
-            menu = next((a.menu() for a in (menu_bar.actions() if menu_bar is not None else ())
-                         if a.menu() is not None and a.menu().objectName() == name), None)
+            menu = next((m for m in (menu_of(a) for a in (menu_bar.actions() if menu_bar is not None else ()))
+                         if m is not None and m.objectName() == name), None)
             menu = menu or self._window.findChild(QMenu, name)
             if menu is None:
                 continue
@@ -1087,6 +1222,7 @@ class StudioRibbon(QObject):
         layout.setContentsMargins(4, 0, 4, 0)
         layout.setSpacing(0)
         title, groups = TABS[index]
+        self._shorts_taken = set()
         all_toolbars = self._toolbars()
         toolbars = {t.objectName(): t for t in all_toolbars if t.objectName()}
         # What "menu" sources leave out: what TABS places, every toolbar's
@@ -1110,7 +1246,8 @@ class StudioRibbon(QObject):
                     layout.addWidget(widget)
             menu_bar = self._window.menuBar()
             extra = [] if menu_bar is None else [
-                a for a in menu_bar.actions() if a.menu() is not None and a.menu().objectName() not in self._menu_tabs]
+                a for a in menu_bar.actions()
+                if menu_of(a) is not None and menu_of(a).objectName() not in self._menu_tabs]
             widget = self._group(content, ("Menus", (("actions", extra),), (), LABELS), toolbars, seen)
             if widget is not None:
                 layout.addWidget(widget)
@@ -1173,9 +1310,6 @@ class StudioRibbon(QObject):
             layout_kind = ICONS
         group = QFrame(parent)
         group.setObjectName("studioRibbonGroup")
-        outer = QVBoxLayout(group)
-        outer.setContentsMargins(*GROUP_MARGINS)
-        outer.setSpacing(SPACING)
         body = QHBoxLayout()
         body.setSpacing(SPACING)
         body.setContentsMargins(0, 0, 0, 0)
@@ -1227,14 +1361,67 @@ class StudioRibbon(QObject):
         if body.count() == 0:
             group.deleteLater()
             return None
+        self._lay_out_group(group, body, title)
+        return group
+
+    def _lay_out_group(self, group, body, title):
+        """The group's buttons (`body`) and its name where the settings put
+        it: above or below them, left of them (across or reading upwards),
+        or nowhere."""
+        position = self._caption_position
+        side = position in studio_toolbars.SIDE_MODES
+        outer = QHBoxLayout(group) if side else QVBoxLayout(group)
+        outer.setContentsMargins(*GROUP_MARGINS)
+        outer.setSpacing(SIDE_GAP if side else SPACING)
+        text = self._caption_text(title, body, position)
+        caption = None
+        if text:
+            caption = _Caption(text, position == "left_vertical", group)
+            caption.setFont(self._caption_font)
+        if side:
+            column = QVBoxLayout()
+            column.setContentsMargins(0, 0, 0, 0)
+            column.addLayout(body)
+            column.addStretch(1)
+            if caption is not None:
+                # Centred on the buttons' rows (BODY high), at their top.
+                caption.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                caption.setFixedHeight(BODY)
+                outer.addWidget(caption, 0, Qt.AlignmentFlag.AlignTop)
+            outer.addLayout(column)
+            return
+        if caption is not None and position == "top":
+            caption.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+            outer.addWidget(caption)
         outer.addLayout(body)
         outer.addStretch(1)
-        caption = QLabel(title.upper(), group)
-        caption.setObjectName("studioRibbonCaption")
-        caption.setFont(self._caption_font)
-        caption.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
-        outer.addWidget(caption)
-        return group
+        if caption is not None and position == "bottom":
+            caption.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+            outer.addWidget(caption)
+
+    def _caption_text(self, title, body, position):
+        """The name a group shows: none when names are off, else its full
+        name, its short one (up to four letters, unique on the page), or
+        with "auto" the full one where it fits: no wider than the buttons
+        (across), or than their height (reading upwards, which never shows
+        the full name otherwise, as toolbar names)."""
+        if position not in studio_toolbars.ROW_MODES:
+            return ""
+        full = title.upper()
+        names = self._caption_names
+        if position == "left_vertical" and names == "full":
+            names = "auto"
+        if names == "full":
+            return full
+        if names == "auto":
+            width = QFontMetrics(self._caption_font).horizontalAdvance(full)
+            room = BODY - 4 if position == "left_vertical" else body.sizeHint().width()
+            if width <= room:
+                return full
+        candidates = studio_toolbars.short_candidates(title)
+        short = next((c for c in candidates if c not in self._shorts_taken), candidates[0] if candidates else full)
+        self._shorts_taken.add(short)
+        return short
 
     def _widget(self, parent, action, toolbar, kind):
         """The ribbon's widget for an action: a button for it, a clone of
@@ -1250,12 +1437,13 @@ class StudioRibbon(QObject):
             return None
         button = _Button(kind, parent=parent)
         button.setDefaultAction(action)
+        menu = menu_of(action)
         if isinstance(shown, QToolButton):
             button.setPopupMode(shown.popupMode())
-        elif action.menu() is not None:
+        elif menu is not None:
             button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        if _uses_widget_actions(action.menu()):
-            button.setMenu(_BorrowingMenu(action.menu(), button))
+        if _uses_widget_actions(menu):
+            button.setMenu(_BorrowingMenu(menu, button))
         if action.icon().isNull():
             self._give_icon(button, action, kind)
         elif self._icons is not None:
@@ -1266,7 +1454,7 @@ class StudioRibbon(QObject):
     def _give_icon(self, button, action, kind):
         """A command QGIS gives no icon (most only in its menus): one of the
         theme's (ICON_FALLBACKS), or an empty one keeping labels in line."""
-        name = ICON_FALLBACKS.get(_key(action)) or (GENERIC_MENU_ICON if action.menu() is not None else None)
+        name = ICON_FALLBACKS.get(_key(action)) or (GENERIC_MENU_ICON if menu_of(action) is not None else None)
         if name is not None and self._icons is not None and self._icons.adopt(action, name):
             self._adopted.append(action)
         elif kind != "icon":
@@ -1277,7 +1465,7 @@ class StudioRibbon(QObject):
         from its menu becomes its default): the same tools, the chosen one
         passed back to QGIS's button (its own handler remembers it)."""
         button = _Button(kind, parent=parent)
-        menu = source.menu()
+        menu = menu_of(source)
         if menu is not None:
             button.setMenu(_BorrowingMenu(menu, button) if _uses_widget_actions(menu) else menu)
         else:
@@ -1373,6 +1561,12 @@ class StudioRibbon(QObject):
             if action.isSeparator() or not action.isVisible():
                 continue
             widget = self._widget(self._corner, action, toolbar, "icon")
-            if widget is not None:
-                layout.addWidget(widget)
+            if widget is None:
+                continue
+            if isinstance(widget, QToolButton) and SMALL_ICON > CORNER_ICON:
+                # In the tab row: never taller than the medium size's.
+                widget.setIconSize(QSize(CORNER_ICON, CORNER_ICON))
+                widget.setFixedHeight(CORNER_ICON + ROW_HEIGHT - SMALL_ICON)
+                widget.setMinimumWidth(CORNER_ICON + ROW_HEIGHT - SMALL_ICON + 4)
+            layout.addWidget(widget)
 
