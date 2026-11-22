@@ -1040,8 +1040,15 @@ BADGE_RADIUS = 2.75
 BADGE_GAP = 1.8
 BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check"}
 # Colourful icons mark delete ("x") with a red cross like the other marks,
-# instead of a red dot (which said little at toolbar sizes).
-COLOR_BADGE_MARKS = {**BADGE_MARKS, "x": "x"}
+# instead of a red dot (which said little at toolbar sizes). Since 1.6 they
+# also have arrow (download, upload, export), gear, search, play and bolt
+# badges, for the glyphs whose Tabler drawing gave a corner to such a
+# symbol (COLOR_BADGED).
+COLOR_BADGE_MARKS = {**BADGE_MARKS, "x": "x",
+                     **{mark: mark for mark in ("down", "up", "out", "cog", "search", "play", "bolt")}}
+# Badge marks drawn as solid white shapes (a line arrow read as a plus at
+# 16 px).
+FILLED_MARKS = frozenset(("play", "bolt", "down", "up", "out"))
 # Half the width of a mark, in units.
 MARK_ARM = 2.7
 
@@ -1110,10 +1117,17 @@ MATERIAL_HUES = {
     "glass": "glass", "blue": "blue", "blueS": "blue", "green": "green", "greenS": "green",
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
-    "toolredS": "toolred", "steel": "steel", "steelS": "steel",
+    "toolredS": "toolred", "steel": "steel", "steelS": "steel", "gold": "gold", "goldS": "gold",
 }
-# The colour of the +, - and check marks of badges (add, remove, accept).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {"plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42"})
+# The colour of each badge (add, remove, accept, delete; arrows green as
+# the add mark, a grey gear, a blue magnifier, an amber bolt).
+COLOR_MARKS = dict.fromkeys(COLOR_MODES, {
+    "plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42",
+    "down": "#539653", "up": "#539653", "out": "#539653", "play": "#539653",
+    "cog": "#6c747f", "search": "#3f7fc0", "bolt": "#d38a2c",
+})
+# Badges have a dark edge: their colour this far towards black.
+BADGE_EDGE = 0.5
 # Colourful badges are solid discs in the mark's colour with the mark in
 # white (Add Group, Remove Layer...): read at a glance at any size, where a
 # thin coloured mark looked faint beside the solid icons. Radius and mark
@@ -1123,15 +1137,18 @@ DISC_ARM = 2.0
 
 
 def _disc_badge(center, radius, mark, mode, arm, width):
-    """A solid disc badge: the mark's colour, a slightly deeper edge and the
-    mark in white."""
+    """A solid disc badge: the mark's colour, a dark edge and the mark in
+    white."""
     color = COLOR_MARKS[mode][mark]
-    edge = _mix(color, "#000000", 0.25)
-    cap = "round" if mark in ("check", "x") else "square"
+    edge = _mix(color, "#000000", BADGE_EDGE)
     c = _num(center)
-    return (f'<circle cx="{c}" cy="{c}" r="{_num(radius - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
-            f'<path d="{_mark_path(mark, center, arm)}" stroke="#ffffff" stroke-width="{_num(width)}" '
-            f'stroke-linecap="{cap}"/>')
+    disc = f'<circle cx="{c}" cy="{c}" r="{_num(radius - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
+    d = _mark_path(mark, center, arm)
+    if mark in FILLED_MARKS:
+        return disc + f'<path d="{d}" fill="#ffffff" stroke="none"/>'
+    cap = "round" if mark in ("check", "x", "search") else "square"
+    return disc + (f'<path d="{d}" stroke="#ffffff" stroke-width="{_num(width)}" stroke-linecap="{cap}" '
+                   'stroke-linejoin="miter" fill="none"/>')
 # Fills are flat since 1.4, as ArcGIS Pro's icons (_color_body, _lg). The
 # shading below (lit towards white at the top, deepened towards the hue's
 # edge at the bottom) is still defined for any fill that refers to it.
@@ -1183,7 +1200,9 @@ def _shading(body):
 # dark ones). No shadow is cast outside the icons: they sit flat on their
 # toolbars, as Fluent's and ArcGIS Pro's do. Highlights (light lines), the
 # theme's icon colour and badge marks keep their colours.
-OUTLINE_DEEPEN = {"light": 0.15, "dark": 0.3}
+# Since 1.6 deeper (still 1 px), for more contrast between the edges and
+# the light bodies.
+OUTLINE_DEEPEN = {"light": 0.45, "dark": 0.5}
 _EDGE = re.compile(r'stroke="(#[0-9a-fA-F]{6})"')
 
 
@@ -1232,6 +1251,35 @@ def _mark_path(mark, c, arm):
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}M{_num(c)} {_num(c - arm)}V{_num(c + arm)}"
     if mark == "minus":
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}"
+    n, a = _num, arm
+    if mark in ("down", "up", "out"):
+        # A solid arrow: a stem and a wide head, a quarter longer than the
+        # other marks; "out" is "up" turned 45 degrees clockwise.
+        a *= 1.25
+        stem = a * 0.3
+        points = [(-stem, -a), (stem, -a), (stem, -0.05 * a), (0.95 * a, -0.05 * a), (0, a),
+                  (-0.95 * a, -0.05 * a), (-stem, -0.05 * a)]
+        if mark != "down":
+            points = [(x, -y) for x, y in points]
+        if mark == "out":
+            k = math.sqrt(0.5)
+            points = [((x - y) * k, (x + y) * k) for x, y in points]
+        return "M" + "L".join(f"{n(c + x)} {n(c + y)}" for x, y in points) + "Z"
+    if mark == "cog":
+        # A ring with four teeth.
+        r = a * 0.6
+        return (f"M{n(c - r)} {n(c)}A{n(r)} {n(r)} 0 1 0 {n(c + r)} {n(c)}A{n(r)} {n(r)} 0 1 0 {n(c - r)} {n(c)}"
+                f"M{n(c)} {n(c - a)}V{n(c - r)}M{n(c)} {n(c + r)}V{n(c + a)}"
+                f"M{n(c - a)} {n(c)}H{n(c - r)}M{n(c + r)} {n(c)}H{n(c + a)}")
+    if mark == "search":
+        r, o = a * 0.55, c - a * 0.25
+        return (f"M{n(o - r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o + r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o - r)} {n(o)}"
+                f"M{n(o + r * 0.75)} {n(o + r * 0.75)}L{n(c + a)} {n(c + a)}")
+    if mark == "play":
+        return f"M{n(c - a * 0.6)} {n(c - a * 0.9)}L{n(c + a * 0.9)} {n(c)}L{n(c - a * 0.6)} {n(c + a * 0.9)}Z"
+    if mark == "bolt":
+        return (f"M{n(c + a * 0.25)} {n(c - a)}L{n(c - a * 0.7)} {n(c + a * 0.15)}H{n(c)}L{n(c - a * 0.25)} {n(c + a)}"
+                f"L{n(c + a * 0.7)} {n(c - a * 0.15)}H{n(c)}Z")
     if mark == "x":
         # A cross, a little smaller than a plus so it fills the same room.
         d = arm * 0.8
@@ -2032,6 +2080,22 @@ COLOR_RECIPES.update({
     "list-check": ("greenS/", "greenS/", "greenS/", "ink", "ink", "ink"),
     "repeat": ("blueS/", "blueS/"),
 })
+# 1.6 refinements: Refresh in one blue; the open middle hexagon filled
+# (outlines alone vanished on dark themes); dots in one medium tone with no
+# deep edge; a light blade for Split Features and a light puzzle piece
+# (solid grey and green blobs before); an open lock in gold like the closed
+# one.
+COLOR_RECIPES.update({
+    "refresh": ("blueS/", "blueS/"),
+    "hexagons": ("green!",),
+    "grain": ("blueS~",), "grid-dots": ("blueS~",),
+    "slice": ("gray!",),
+    "puzzle": ("green",),
+    "lock-open": ("goldS", "dark/", "grayS/"),
+})
+# The Zoom In magnifier: flat light glass, a solid handle at 45 degrees.
+LENS = '<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
+HANDLE = '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
 _COLOR_DRAWINGS = {
     # Save: a floppy with a metal shutter and its slot, a label with lines.
     "device-floppy": ('<path d="M4 3h13l4 4v14h-17z"/><path d="M8 3h8v6h-8z"/><path d="M13 4.5v3"/>'
@@ -2070,14 +2134,48 @@ _COLOR_DRAWINGS = {
     # Magnifiers: flat light glass in a ring, a solid handle at 45 degrees
     # starting just outside the ring (radius 7.5 from the lens's centre; it
     # began inside the glass, crossing into it).
-    "search": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
-               '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>', ("glass", "grayS")),
-    "zoom-in": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
-                '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
-                '<path d="M7 10h6M10 7v6"/>', ("glass", "grayS", "dark/")),
-    "zoom-out": ('<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
-                 '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
-                 '<path d="M7 10h6"/>', ("glass", "grayS", "dark/")),
+    # The plus and minus are marks (class "mark"): whole pixels with square
+    # ends, the centre snapped once so the arms match (1.25 px round-capped
+    # lines looked uneven). Zoom to Selection and to Layer use the same
+    # magnifier (they were an ink ring with a thin ink handle).
+    "search": (LENS + HANDLE, ("glass", "grayS")),
+    "zoom-in": (LENS + HANDLE + '<path d="M7 10h6M10 7v6" class="mark"/>', ("glass", "grayS", "dark/")),
+    "zoom-out": (LENS + HANDLE + '<path d="M7 10h6" class="mark"/>', ("glass", "grayS", "dark/")),
+    "zoom-check": (LENS + HANDLE + '<path d="M7 10l2 2l4 -4"/>', ("glass", "grayS", "dark/")),
+    "zoom-in-area": ('<path d="M10 15a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"/><path d="M19.6 18.2L22.4 21L21 22.4L18.2 19.6z"/>'
+                     '<path d="M13 15h4M15 13v4" class="mark"/>'
+                     '<path d="M6 18h-1a2 2 0 0 1 -2 -2v-1"/><path d="M3 11v-1"/><path d="M3 6v-1a2 2 0 0 1 2 -2h1"/>'
+                     '<path d="M10 3h1"/><path d="M15 3h1a2 2 0 0 1 2 2v1"/>', ("glass", "grayS", "dark/", "grayS/")),
+    # Pan: Tabler's hand, filled solid white on every theme (an outline of
+    # the whole hand under its lines), with a dark outline.
+    "hand-stop": ('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V3.5a1.5 1.5 0 1 1 3 0V5.5a1.5 1.5 0 0 1 3 0V7.5'
+                  'a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1 -6 6h-1.792a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3'
+                  'c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28z" '
+                  'fill="currentColor"/>'
+                  '<path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5"/>'
+                  '<path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5"/>'
+                  '<path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 '
+                  '-.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28'
+                  'l1.47 1.47"/>', ("white", "dark/")),
+    # Pan to Selection: a red dot of radius 1.5 (radius 1 was a 1 px speck).
+    "focus-centered": ('<path d="M10.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>'
+                       '<path d="M4 8v-2a2 2 0 0 1 2 -2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/>'
+                       '<path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2 -2v-2"/>', ("redS", "ink")),
+    # Map Tips: the dots as whole-pixel squares (class "dot").
+    "message-dots": ('<path d="M12 11v.01" class="dot"/><path d="M8 11v.01" class="dot"/>'
+                     '<path d="M16 11v.01" class="dot"/>'
+                     '<path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3l12 0"/>',
+                     ("ink", "ink", "ink", "blue!")),
+    # Style Manager: Tabler's palette with five filled dots (class "disc":
+    # whole-pixel discs, which never turn into crosses).
+    "palette": ('<path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 '
+                '-1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/>'
+                + "".join(f'<path d="M{x - 1} {y}a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" class="disc"/>'
+                          for x, y in ((6.5, 14.5), (7, 9.5), (11, 6.2), (16, 7), (18.2, 11.2))),
+                ("paper!", "redS", "yellowS", "greenS", "blueS", "purpleS")),
+    # A shield, the base of shield-check (a badge since 1.6).
+    "shield": ('<path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3z"/>',
+               ("blue",)),
     # Objects.
     "package": ('<path d="M12 3l9 4.5l-9 4.5l-9 -4.5z"/><path d="M3 7.5v9.5l9 4.5v-9.5z"/>'
                 '<path d="M21 7.5v9.5l-9 4.5v-9.5z"/><path d="M7.5 5.25l9 4.5v3"/>',
@@ -2089,8 +2187,9 @@ _COLOR_DRAWINGS = {
             '<path d="M5 15l3 -3l3 2l3 -4l4 2"/>', ("green", "greenS/", "redS/")),
     "photo": ('<path d="M3 4h18v16h-18z"/><path d="M3 18l5 -6l4 4l3 -3l6 6v1h-18z"/>'
               '<path d="M14 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>', ("blue", "greenS", "yellowS")),
+    # Gold, like the detailed lock (it was grey below 24 px).
     "lock": ('<path d="M5 11h14v10h-14z"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/><path d="M12 14.5v3"/>',
-             ("grayS", "grayS/", "dark/")),
+             ("goldS", "grayS/", "dark/")),
     "calendar": ('<path d="M3 5h18v16h-18z"/><path d="M3 5h18v4h-18z"/><path d="M8 3v4M16 3v4"/>'
                  '<path d="M6 13h2M11 13h2M16 13h2M6 17h2M11 17h2"/>', ("paper", "redS", "grayS/", "ink")),
     "home": ('<path d="M5 11h14v10h-14z"/><path d="M2.5 12l9.5 -8.5l9.5 8.5z"/><path d="M10 15h4v6h-4z"/>',
@@ -2187,10 +2286,8 @@ DETAIL_GROW = 1.15
 # faint or fuzzy there and keep the simpler drawings below DETAIL_MIN.
 DETAIL_SMALL = 24
 DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
-# Drawings simple enough to stay clean at every size: detailed down to
-# 16 px (menus and trees too), so they look the same everywhere.
-DETAIL_EVERYWHERE = frozenset(("settings", "filter", "filter-code", "stack-2", "eye", "tree-expand",
-                               "tree-collapse", "layers-source"))
+# Drawings detailed down to 16 px (menus and trees too): every other one,
+# set after DETAILED below.
 _TEXT = "#97a1ab"
 
 
@@ -2242,8 +2339,8 @@ def _circle(cx, cy, r):
 
 
 # Neutral slate for the Layers panel's tools (filters, expand and
-# collapse, the eye), so its row is not all blue.
-SLATE_FILL, SLATE_EDGE = "#8f9dab", "#3f4b57"
+# collapse), so its row is not all blue; lighter since 1.6.
+SLATE_FILL, SLATE_EDGE, SLATE_BAR = "#b1bdc9", "#46535f", "#8792a0"
 
 
 def _flat_funnel(k=1.0):
@@ -2251,7 +2348,7 @@ def _flat_funnel(k=1.0):
     by `k` from the top left."""
     f = lambda v: f"{v * k:.2f}".rstrip("0").rstrip(".")  # noqa: E731
     return (f'<path d="M{f(3.5)} {f(5.5)}H{f(28.5)}L{f(18.5)} {f(17)}V{f(25.5)}L{f(13.5)} {f(28.5)}V{f(17)}Z" '
-            f'fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>')
+            f'fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>')
 
 
 def _tree_arrows(outward):
@@ -2261,9 +2358,15 @@ def _tree_arrows(outward):
         up, down = "M16 2.5L23.5 10H19V13H13V10H8.5Z", "M16 29.5L23.5 22H19V19H13V22H8.5Z"
     else:
         up, down = "M16 13.5L23.5 6H19V2.5H13V6H8.5Z", "M16 18.5L23.5 26H19V29.5H13V26H8.5Z"
-    return (f'<path d="{up}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>'
-            f'<path d="{down}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}" stroke-linejoin="round"/>'
-            '<rect x="4.5" y="15" width="23" height="2" rx="1" fill="#6f7a86"/>')
+    return (f'<path d="{up}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
+            f'<path d="{down}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
+            f'<rect x="4.5" y="15" width="23" height="2" fill="{SLATE_BAR}"/>')
+
+
+EYE = ('<path d="M2.5 16C7 9.5 11 7.5 16 7.5S25 9.5 29.5 16C25 22.5 21 24.5 16 24.5S7 22.5 2.5 16Z" '
+       'fill="#ffffff" stroke="#4f5a66"/>'
+       '<circle cx="16" cy="16" r="6" fill="#6f8296" stroke="#3f4b57"/>'
+       '<circle cx="16" cy="16" r="2.5" fill="#1d2a38"/><circle cx="18" cy="14" r="1.2" fill="#ffffff"/>')
 
 
 def _lines(x, ys, w, h=1, color=_TEXT):
@@ -2416,17 +2519,33 @@ DETAILED = {
     "filter-code": (
         "",
         _flat_funnel(0.82)
-        + f'<rect x="15.5" y="16.5" width="15" height="12" rx="2" fill="#ffffff" stroke="{SLATE_EDGE}"/>'
-        f'<path d="M21 19.5L18.5 22.5L21 25.5M25 19.5L27.5 22.5L25 25.5" stroke="{SLATE_EDGE}" '
-        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="bg"/>',
+        # The tag 1 unit in and narrower: enlarged (DETAIL_GROW), its right
+        # edge fell outside the icon.
+        + f'<rect x="13.5" y="16.5" width="14" height="11" rx="1" fill="#ffffff" stroke="{SLATE_EDGE}"/>'
+        f'<path d="M18.5 19.5L16.5 22L18.5 24.5M22.5 19.5L24.5 22L22.5 24.5" stroke="{SLATE_EDGE}" '
+        'stroke-width="1.6" class="bg"/>',
     ),
     # An eye: white, a slate iris and a dark pupil with a glint.
-    "eye": (
+    "eye": ("", EYE),
+    # Hide All Layers: the same eye with a red slash in a cut-out gap, as
+    # Tabler's eye-off (it was an ink outline beside the detailed eye).
+    "eye-off": (
+        '<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">'
+        '<rect x="0" y="0" width="32" height="32" fill="#fff"/>'
+        '<path d="M6.5 5.5L26.5 25.5" stroke="#000" stroke-width="5"/></mask>',
+        f'<g mask="url(#m)">{EYE}</g><path d="M6.5 5.5L26.5 25.5" stroke="#c9443a" stroke-width="2" class="bg"/>',
+    ),
+    # Scissors: two pointed steel blades crossing at a screw, red ring
+    # handles (Tabler's two blobs and two lines read poorly as scissors).
+    "cut": (
         "",
-        '<path d="M2.5 16C7 9.5 11 7.5 16 7.5S25 9.5 29.5 16C25 22.5 21 24.5 16 24.5S7 22.5 2.5 16Z" '
-        'fill="#ffffff" stroke="#4f5a66" stroke-linejoin="round"/>'
-        f'<circle cx="16" cy="16" r="6" fill="#6f8296" stroke="{SLATE_EDGE}"/>'
-        '<circle cx="16" cy="16" r="2.5" fill="#1d2a38"/><circle cx="18" cy="14" r="1.2" fill="#ffffff"/>',
+        '<path d="M8.5 3.5L17.5 14.5L20.5 19L18.5 20.5L14.5 16.5Z" fill="#e3e7eb" stroke="#4f5a66"/>'
+        '<path d="M23.5 3.5L14.5 14.5L11.5 19L13.5 20.5L17.5 16.5Z" fill="#e3e7eb" stroke="#4f5a66"/>'
+        f'<path d="{_circle(10, 23.5, 4.5)}{_circle(10, 23.5, 2.2)}" fill="#d65a4f" fill-rule="evenodd" '
+        'stroke="#7d2620"/>'
+        f'<path d="{_circle(22, 23.5, 4.5)}{_circle(22, 23.5, 2.2)}" fill="#d65a4f" fill-rule="evenodd" '
+        'stroke="#7d2620"/>'
+        '<circle cx="16" cy="15.5" r="1.3" fill="#3d4650"/>',
     ),
     "tree-expand": ("", _tree_arrows(True)),
     "tree-collapse": ("", _tree_arrows(False)),
@@ -2451,6 +2570,15 @@ DETAILED = {
         '<circle cx="16" cy="4.5" r=".9" fill="#4f5a66"/>',
     ),
 }
+# Sharper corners since 1.6: miter joins everywhere, half the rounding of
+# rounded rectangles.
+for _glyph, (_defs, _body) in list(DETAILED.items()):
+    _body = _body.replace(' stroke-linejoin="round"', "")
+    DETAILED[_glyph] = (_defs, re.sub(r'rx="([\d.]+)"', lambda m: f'rx="{float(m.group(1)) / 2:g}"', _body))
+# Since 1.6 every detailed drawing is used at every size, so an icon looks
+# the same in a menu as on the ribbon (the simpler drawings differed: a
+# grey lock, a globe of blue lines), except those that turn faint small.
+DETAIL_EVERYWHERE = frozenset(set(DETAILED) - DETAIL_ONLY_LARGE)
 _DETAIL_ID = re.compile(r'id="(\w+)"|url\(#(\w+)\)')
 
 
@@ -2644,9 +2772,76 @@ COLOR_PREFIX = "color:"
 # vertical column down the hammer head's side); exact diagonals are
 # smoothed evenly instead.
 UNSNAPPED = frozenset(("tool", "chevrons-down", "chevrons-up"))
-# Colourful lines: round ends (they end inside the shapes they meet), sharp
-# joins, with acute ones cut flat rather than spiking.
-COLOR_STROKE = 'stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="2"'
+# Colourful lines: square ends and sharp joins since 1.6 (round ends and
+# joins cut at a miter of 2 looked soft); a line ending on a pixel centre
+# then ends on a pixel edge.
+COLOR_STROKE = 'stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4"'
+# Glyphs whose Tabler drawing leaves a corner to a symbol (an arrow, a gear,
+# a check): drawn whole with a disc badge instead, in the Colourful style
+# (the other styles keep the Tabler drawing). A badge on the spec itself
+# wins over the glyph's own.
+COLOR_BADGED = {
+    "database-plus": "database+plus", "database-cog": "database+cog",
+    "database-export": "database+out", "database-import": "database+down",
+    "world-download": "world+down", "world-share": "world+out", "world-cog": "world+cog",
+    "world-search": "world+search",
+    "eye-check": "eye+check", "eye-minus": "eye+minus", "eye-x": "eye+x",
+    "shield-check": "shield+check", "clock-play": "clock+play",
+    "file-export": "file+out", "file-import": "file+down", "file-x": "file+x", "file-settings": "file+cog",
+    "pencil-cog": "pencil+cog", "pencil-bolt": "pencil+bolt", "pencil-cancel": "pencil+x",
+    "photo-down": "photo+down", "map-pin-search": "map-pin+search",
+    "pointer-plus": "pointer+plus", "pointer-minus": "pointer+minus",
+    "cloud-download": "cloud+down", "cloud-upload": "cloud+up", "table-options": "table+cog",
+}
+
+
+def _color_spec(spec):
+    """(glyph, badge) of a spec as the Colourful style draws it."""
+    glyph, _, badge = spec.partition("+")
+    if glyph in COLOR_BADGED:
+        glyph, _, own = COLOR_BADGED[glyph].partition("+")
+        badge = badge or own
+    return glyph, badge
+
+
+# Marks (class "mark": a zoom plus or minus) are drawn MARK_GROW-th of the
+# icon wide in whole pixels with square ends, the centre snapped once so
+# every arm has the same length; dots (class "dot") are DOT_PX squares;
+# discs (class "disc") filled circles with a whole-pixel box.
+MARK_GROW, DOT_PX = 20, 2
+
+
+def _mark_drawer(size, place):
+    """draw(segments, kind) -> (path data, width) for marks, dots and discs
+    of an icon of `size` px whose units `place` maps to pixels."""
+    unit = place(1, 0)[0] - place(0, 0)[0]
+
+    def draw(segments, kind):
+        if kind == "disc":
+            left, top, right, bottom = _extent(segments)
+            (x1, y1), (x2, y2) = place(left, top), place(right, bottom)
+            dia = max(2, round(2.6 * unit + 0.4))
+            off = 0.5 if dia % 2 else 0.0
+            cx = math.floor((x1 + x2) / 2 - off + 0.5) + off
+            cy = math.floor((y1 + y2) / 2 - off + 0.5) + off
+            r = _num(dia / 2)
+            return f"M{_num(cx - dia / 2)} {_num(cy)}a{r} {r} 0 1 0 {dia} 0a{r} {r} 0 1 0 -{dia} 0z", dia
+        w = max(1, round(size / MARK_GROW)) if kind == "mark" else DOT_PX
+        off = 0.5 if w % 2 else 0.0
+
+        def sn(v):
+            return math.floor(v - off + 0.5) + off
+        d = []
+        for sub, _closed in _subpaths(segments):
+            (x1, y1), (x2, y2) = place(*sub[0][1:3]), place(*sub[-1][-2:])
+            cx, cy = sn((x1 + x2) / 2), sn((y1 + y2) / 2)
+            hx, hy = round(abs(x2 - x1) / 2), round(abs(y2 - y1) / 2)
+            if kind == "dot":
+                d.append(f"M{_num(cx - w / 2)} {_num(cy - w / 2)}h{w}v{w}h-{w}z")
+            else:
+                d.append(f"M{_num(cx - hx)} {_num(cy - hy)}L{_num(cx + hx)} {_num(cy + hy)}")
+        return "".join(d), w
+    return draw
 # Rounded corners up to this radius (units) are drawn square in Colourful
 # icons; larger arcs (circles, curves) keep their shape.
 SQUARE_RADIUS = 3.6
@@ -2775,10 +2970,13 @@ def _legible(candidates, under):
     return max(candidates, key=lambda color: _contrast(color, under))
 
 
-def _color_body(glyph, mode, ink, draw):
+def _color_body(glyph, mode, ink, draw, mark=None):
     """A glyph's parts in colour as SVG: (the coloured parts, the ink parts
-    in `ink`), drawn by draw(segments) -> path data. Every fill comes
-    first, the largest first (a body under its window), then the lines."""
+    in `ink`), drawn by draw(segments) -> path data, and marks, dots and
+    discs by mark(segments, kind) -> (path data, width) when given (see
+    _mark_drawer; without it they are drawn like any part). Every fill
+    comes first, the largest first (a body under its window), then the
+    lines."""
     recipe = COLOR_RECIPES.get(glyph, ("ink",))
     sign = glyph in SIGNS
     paths = _color_paths(glyph)
@@ -2786,16 +2984,29 @@ def _color_body(glyph, mode, ink, draw):
     # The fills, to give the details drawn on them a colour that reads.
     areas = [
         (_extent(shape), fill)
-        for (segments, attrs), (fill, _line, whole) in zip(paths, parts) if fill and "fill=" not in attrs
+        for (segments, attrs), (fill, _line, whole) in zip(paths, parts)
+        if fill and "fill=" not in attrs and 'class="disc"' not in attrs
         for shape, closed in _subpaths(segments) if closed or whole
     ]
     fills, colored, inked = [], [], []
     for i, (segments, attrs) in enumerate(paths):
         fill, line, whole = parts[i]
+        kind = next((k for k in ("mark", "dot", "disc") if f'class="{k}"' in attrs), None)
         # Signs keep their designed marks (white on the disc).
-        if not sign and (fill is None or "fill=" in attrs):
+        if not sign and (fill is None or "fill=" in attrs) and kind != "disc":
             line = _on_fill(segments, line, areas, mode, recipe[min(i, len(recipe) - 1)])
         lines = colored if line else inked
+        if kind and mark is not None:
+            d, width = mark(segments, kind)
+            if kind == "disc":
+                # A filled dot, a little deeper than its hue's body.
+                colored.append(f'<path d="{d}" fill="{_mix(fill, "#000000", 0.12)}" stroke="none" class="bg"/>')
+            elif kind == "dot":
+                lines.append(f'<path d="{d}" fill="{line or ink}" stroke="none" class="bg"/>')
+            else:
+                lines.append(f'<path d="{d}" stroke="{line or ink}" stroke-width="{width}" '
+                             'stroke-linecap="square" class="bg"/>')
+            continue
         if "fill=" in attrs:
             # A part the glyph fills itself (a dot): solid, like its line.
             lines.append(f'<path d="{draw(segments)}" fill="{fill or line or ink}" stroke="none"/>')
@@ -2860,7 +3071,7 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
     badges) for a `mode` theme: ink parts in colors["icon"]. Detailed
     glyphs are drawn detailed: this SVG serves the large sizes without a
     pre-rendered PNG."""
-    glyph, _, badge = spec.partition("+")
+    glyph, badge = _color_spec(spec)
     if glyph in DETAILED:
         # Scalable: its edges scale with it (no device pixel to keep to).
         return _detailed_px(glyph, badge, 24, 1, "all", colors["accent"], colors["danger"], mode, hairline=False)
@@ -2907,7 +3118,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     same pixel grid. `layer`: "color" draws the coloured parts and the
     badge marks (fixed colours), "ink" the ink parts in `ink` (a mask the
     theme tints), "all" everything (badge dots in `accent` and `danger`)."""
-    glyph, _, badge = spec.partition("+")
+    glyph, badge = _color_spec(spec)
     px = size / 24
     width = stroke_px(size) if width is None else width
     if _detailed_at(glyph, size):
@@ -2943,12 +3154,14 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     snap_thin = snapper(thin)
     # The coloured parts are drawn finer than the ink ones, each on the
     # grid of its own width so both stay sharp.
+    mark = _mark_drawer(size, place)
     colored = inked = ""
     if layer != "ink":
         colored = "".join(
-            _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit))[0])
+            _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit), mark)[0])
     if layer != "color":
-        inked = "".join(_color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit))[1])
+        inked = "".join(
+            _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit), mark)[1])
     drawn = _num(ink_width + STROKE_EXTRA)
     fine = _deepen(f'<g stroke-width="{_num(thin + STROKE_EXTRA)}">{colored}</g>', mode) if colored else ""
     body = fine + inked
