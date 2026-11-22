@@ -3,7 +3,16 @@
 Six modern UI themes for QGIS 4: a clean stylesheet, a complete icon set,
 the Inter typeface and an optional ribbon.
 
-![Studio Pro Light](docs/screenshots/pro-light_icons-color.png)
+<p align="center">
+<kbd><img src="docs/screenshots/hero-project.png" alt="Studio Pro Light with Natural Earth data" width="820"></kbd>
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><kbd><img src="docs/screenshots/hero-labels.png" alt="Layer Styling and attribute table" width="400"></kbd></td>
+<td width="50%" align="center"><kbd><img src="docs/screenshots/hero-layout.png" alt="Print layout" width="400"></kbd></td>
+</tr>
+</table>
 
 ## Install
 
@@ -16,22 +25,48 @@ Requires QGIS 4.0 or later.
 
 ## Themes
 
-| Theme | Look |
-|---|---|
-| Studio Pro Light | Light grey, blue accents |
-| Studio Orange Light | Warm paper, [Kartoza](https://kartoza.com) colours |
-| Studio QGIS Light | Light paper, [QGIS brand](https://qgis.org/styleguide/) colours |
-| Studio Premium Dark | Neutral grey, QGIS green accents |
-| Studio Web Dark | Navy, like qgis.org |
-| Studio Orange Dark | Near-black, orange accents |
-
-| Studio Premium Dark | Studio Web Dark |
-|---|---|
-| ![Studio Premium Dark](docs/screenshots/premium-dark.png) | ![Studio Web Dark](docs/screenshots/web-dark.png) |
-| **Studio Orange Dark** | **Studio Orange Light** |
-| ![Studio Orange Dark](docs/screenshots/orange-dark.png) | ![Studio Orange Light](docs/screenshots/orange-light.png) |
-| **Studio QGIS Light** | **Layer Properties (Premium Dark / Pro Light)** |
-| ![Studio QGIS Light](docs/screenshots/qgis-light.png) | ![Layer Properties](docs/screenshots/premium-dark_properties.png) ![Layer Properties](docs/screenshots/pro-light_properties.png) |
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Studio Pro Light</b><br>Light grey, blue accents<br><br>
+<kbd><img src="docs/screenshots/pro-light.png" alt="Studio Pro Light" width="400"></kbd>
+</td>
+<td width="50%" valign="top">
+<b>Studio QGIS Light</b><br>Light paper, <a href="https://qgis.org/styleguide/">QGIS brand</a> colours<br><br>
+<kbd><img src="docs/screenshots/qgis-light.png" alt="Studio QGIS Light" width="400"></kbd>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<b>Studio Orange Light</b><br>Warm paper, <a href="https://kartoza.com">Kartoza</a> colours<br><br>
+<kbd><img src="docs/screenshots/orange-light.png" alt="Studio Orange Light" width="400"></kbd>
+</td>
+<td width="50%" valign="top">
+<b>Studio Orange Dark</b><br>Near-black, orange accents<br><br>
+<kbd><img src="docs/screenshots/orange-dark.png" alt="Studio Orange Dark" width="400"></kbd>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<b>Studio Premium Dark</b><br>Neutral grey, QGIS green accents<br><br>
+<kbd><img src="docs/screenshots/premium-dark.png" alt="Studio Premium Dark" width="400"></kbd>
+</td>
+<td width="50%" valign="top">
+<b>Studio Web Dark</b><br>Navy, like qgis.org<br><br>
+<kbd><img src="docs/screenshots/web-dark.png" alt="Studio Web Dark" width="400"></kbd>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<b>Layer Properties</b><br>Premium Dark<br><br>
+<kbd><img src="docs/screenshots/premium-dark_properties.png" alt="Layer Properties" width="400"></kbd>
+</td>
+<td width="50%" valign="top">
+<b>Layer Properties</b><br>Pro Light<br><br>
+<kbd><img src="docs/screenshots/pro-light_properties.png" alt="Layer Properties" width="400"></kbd>
+</td>
+</tr>
+</table>
 
 ## Icons
 
@@ -45,9 +80,13 @@ Three styles, switched instantly in **Plugins → QGIS Studio Themes → Setting
 Monochrome and Colourful replace icons across the whole interface and are
 pixel-sharp at every screen scaling.
 
-| Monochrome | Colourful | QGIS classic |
-|---|---|---|
-| ![Monochrome](docs/screenshots/pro-light_icons-mono.png) | ![Colourful](docs/screenshots/pro-light_icons-color.png) | ![QGIS classic](docs/screenshots/pro-light_icons-classic.png) |
+<table>
+<tr>
+<td width="33%" align="center"><b>Monochrome</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-mono.png" alt="Monochrome" width="265"></kbd></td>
+<td width="33%" align="center"><b>Colourful</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful" width="265"></kbd></td>
+<td width="33%" align="center"><b>QGIS classic</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic" width="265"></kbd></td>
+</tr>
+</table>
 
 ## Features
 
