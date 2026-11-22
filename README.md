@@ -9,9 +9,9 @@ the Inter typeface and an optional ribbon.
 
 ## Install
 
-1. **Plugins → Manage and Install Plugins** → install **QGIS Studio Themes**
-   (or download it from the [plugin repository](https://plugins.qgis.org/plugins/qgis_studio_themes/)).
-2. **Settings → Options → General → UI Theme** → pick a Studio theme.
+1. **Plugins → Manage and Install Plugins**: install QGIS Studio Themes, or download it
+   from the [plugin repository](https://plugins.qgis.org/plugins/qgis_studio_themes/).
+2. **Settings → Options → General → UI Theme**: pick a Studio theme.
 3. Restart QGIS.
 
 Requires QGIS 4.0 or later.
@@ -25,14 +25,14 @@ Requires QGIS 4.0 or later.
 <kbd><img src="docs/screenshots/pro-light.png" alt="Studio Pro Light" width="400"></kbd>
 </td>
 <td width="50%" valign="top">
-<b>Studio QGIS Light</b><br>Light paper, <a href="https://qgis.org/styleguide/">QGIS brand</a> colours<br><br>
-<kbd><img src="docs/screenshots/qgis-light.png" alt="Studio QGIS Light" width="400"></kbd>
+<b>Studio Premium Dark</b><br>Neutral grey, QGIS green accents<br><br>
+<kbd><img src="docs/screenshots/premium-dark.png" alt="Studio Premium Dark" width="400"></kbd>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<b>Studio Orange Light</b><br>Warm paper, <a href="https://kartoza.com">Kartoza</a> colours<br><br>
-<kbd><img src="docs/screenshots/orange-light.png" alt="Studio Orange Light" width="400"></kbd>
+<b>Studio Web Dark</b><br>Navy, like qgis.org<br><br>
+<kbd><img src="docs/screenshots/web-dark.png" alt="Studio Web Dark" width="400"></kbd>
 </td>
 <td width="50%" valign="top">
 <b>Studio Orange Dark</b><br>Near-black, orange accents<br><br>
@@ -41,26 +41,42 @@ Requires QGIS 4.0 or later.
 </tr>
 <tr>
 <td width="50%" valign="top">
-<b>Studio Premium Dark</b><br>Neutral grey, QGIS green accents<br><br>
-<kbd><img src="docs/screenshots/premium-dark.png" alt="Studio Premium Dark" width="400"></kbd>
+<b>Studio Orange Light</b><br>Warm paper, <a href="https://kartoza.com">Kartoza</a> colours<br><br>
+<kbd><img src="docs/screenshots/orange-light.png" alt="Studio Orange Light" width="400"></kbd>
 </td>
 <td width="50%" valign="top">
-<b>Studio Web Dark</b><br>Navy, like qgis.org<br><br>
-<kbd><img src="docs/screenshots/web-dark.png" alt="Studio Web Dark" width="400"></kbd>
+<b>Studio QGIS Light</b><br>Light paper, <a href="https://qgis.org/styleguide/">QGIS brand</a> colours<br><br>
+<kbd><img src="docs/screenshots/qgis-light.png" alt="Studio QGIS Light" width="400"></kbd>
 </td>
 </tr>
 </table>
 
+## Settings
+
+Open them in Plugins → QGIS Studio Themes → Settings. Every change shows at once.
+
+<p align="center">
+<kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="442"></kbd>
+</p>
+
+- **Interface**: toolbars or a ribbon.
+- **Icons**: monochrome, colourful or QGIS classic.
+- **Ribbon size**: small, medium, large, or follow QGIS's icon size.
+- **Ribbon density**: compact saves height, standard gives the icons more room.
+- **Group name position**: above, below or left of the buttons, or off.
+- **Group name**: full, short, or auto, which shortens names that don't fit.
+- **Font size**: the size of the group names.
+- **Font weight**: bold, regular or light group names.
+
+With toolbars, the group name settings apply to the toolbar names.
+
 ## Icons
 
-Three styles, switched instantly in **Plugins → QGIS Studio Themes → Settings → Icons**:
-
-- **Monochrome** (default): clean line icons in the theme's colour.
-- **Colourful**: solid, flat colour icons in the style of professional GIS
-  and Office icon sets.
+- **Monochrome**: clean line icons in the theme's colour. The default.
+- **Colourful**: solid, flat colour icons, like professional GIS and Office icon sets.
 - **QGIS classic**: QGIS's own icons.
 
-Monochrome and Colourful replace icons across the whole interface and are
+Monochrome and Colourful replace icons across the whole interface and stay
 pixel-sharp at every screen scaling.
 
 <p>
@@ -74,39 +90,16 @@ pixel-sharp at every screen scaling.
 <kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>
 </p>
 
-## Settings
-
-**Plugins → QGIS Studio Themes → Settings**. Every change shows at once.
-
-<p align="center">
-<kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="442"></kbd>
-</p>
-
-- **Interface**: classic **Toolbars** or the **Ribbon**.
-- **Icons**: **Monochrome**, **Colourful** or **QGIS classic**.
-- **Ribbon size**: follow QGIS's icon size, or **Small**, **Medium** or **Large**.
-- **Ribbon density**: **Compact** leaves less room around the icons, so the
-  ribbon takes less height; **Standard** is roomier.
-- **Group name position** (Toolbar name position with toolbars): **Above**,
-  **below** or **left of** the buttons (with toolbars also **left, vertical**), or **Off**.
-- **Group name** (Toolbar name): **Full**, **Short** (up to four letters), or
-  **Auto**: full where it fits, short otherwise.
-- **Font size** and **Font weight**: the size and weight of the group or toolbar names.
-
 ## Features
 
-- **Ribbon** (optional, **Settings → Interface**): every toolbar and menu
-  command in tabs of large and small buttons, plugins included. Inspired by
-  the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar) plugin
-  by Eithan Wes and Anita Graser. Compact by default; its size (small, medium,
-  large or QGIS's icon size) and density (compact or standard) are settings, and its group
-  names can go above, below or left of the buttons, or be turned off.
-- **Toolbar names** next to each toolbar's buttons, with configurable
-  position, length, size and weight.
-- **Layers panel**: a search field and a *List by Data Source* view.
-- **Clean layout**: flat buttons and tabs, roomy panel rows, slim
-  scrollbars and the bundled Inter typeface.
-- **Follows QGIS's icon size** in the ribbon, panels and dialogs.
+- **Ribbon**: every toolbar and menu command in tabs of large and small buttons,
+  plugins included. Inspired by the [Ribbon Toolbar](https://github.com/eithanwes/ribbon_toolbar)
+  plugin by Eithan Wes and Anita Graser.
+- **Toolbar names**: a name next to each toolbar's buttons.
+- **Layers panel**: a search field and a List by Data Source view.
+- **Clean layout**: flat buttons and tabs, roomy panel rows, slim scrollbars
+  and the bundled Inter typeface.
+- **QGIS icon size**: the ribbon, panels and dialogs follow it.
 - **Fast**: icons are drawn once and shared by every theme.
 
 ## Contributing
