@@ -7,13 +7,6 @@ the Inter typeface and an optional ribbon.
 <kbd><img src="docs/screenshots/hero-project.png" alt="Studio Pro Light with Natural Earth data" width="820"></kbd>
 </p>
 
-<table>
-<tr>
-<td width="50%" align="center"><kbd><img src="docs/screenshots/hero-labels.png" alt="Layer Styling and attribute table" width="400"></kbd></td>
-<td width="50%" align="center"><kbd><img src="docs/screenshots/hero-layout.png" alt="Print layout" width="400"></kbd></td>
-</tr>
-</table>
-
 ## Install
 
 1. **Plugins → Manage and Install Plugins** → install **QGIS Studio Themes**
@@ -80,13 +73,16 @@ Three styles, switched instantly in **Plugins → QGIS Studio Themes → Setting
 Monochrome and Colourful replace icons across the whole interface and are
 pixel-sharp at every screen scaling.
 
-<table>
-<tr>
-<td width="33%" align="center"><b>Monochrome</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-mono.png" alt="Monochrome" width="265"></kbd></td>
-<td width="33%" align="center"><b>Colourful</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful" width="265"></kbd></td>
-<td width="33%" align="center"><b>QGIS classic</b><br><br><kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic" width="265"></kbd></td>
-</tr>
-</table>
+<p>
+<b>Monochrome</b><br>
+<kbd><img src="docs/screenshots/pro-light_icons-mono.png" alt="Monochrome icons" width="820"></kbd><br><br>
+
+<b>Colourful</b><br>
+<kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful icons" width="820"></kbd><br><br>
+
+<b>QGIS classic</b><br>
+<kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>
+</p>
 
 ## Features
 
