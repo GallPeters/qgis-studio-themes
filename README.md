@@ -49,16 +49,6 @@ Requires QGIS 4.0 or later.
 <kbd><img src="docs/screenshots/web-dark.png" alt="Studio Web Dark" width="400"></kbd>
 </td>
 </tr>
-<tr>
-<td width="50%" valign="top">
-<b>Layer Properties</b><br>Premium Dark<br><br>
-<kbd><img src="docs/screenshots/premium-dark_properties.png" alt="Layer Properties" width="400"></kbd>
-</td>
-<td width="50%" valign="top">
-<b>Layer Properties</b><br>Pro Light<br><br>
-<kbd><img src="docs/screenshots/pro-light_properties.png" alt="Layer Properties" width="400"></kbd>
-</td>
-</tr>
 </table>
 
 ## Icons
@@ -83,6 +73,25 @@ pixel-sharp at every screen scaling.
 <b>QGIS classic</b><br>
 <kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>
 </p>
+
+## Settings
+
+**Plugins → QGIS Studio Themes → Settings**. Every change shows at once.
+
+<p align="center">
+<kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="442"></kbd>
+</p>
+
+- **Interface**: classic **Toolbars** or the **Ribbon**.
+- **Icons**: **Monochrome**, **Colourful** or **QGIS classic**.
+- **Ribbon size**: follow QGIS's icon size, or **Small**, **Medium** or **Large**.
+- **Ribbon density**: **Compact** leaves less room around the icons, so the
+  ribbon takes less height; **Standard** is roomier.
+- **Group name position** (Toolbar name position with toolbars): **Above**,
+  **below** or **left of** the buttons (with toolbars also **left, vertical**), or **Off**.
+- **Group name** (Toolbar name): **Full**, **Short** (up to four letters), or
+  **Auto**: full where it fits, short otherwise.
+- **Font size** and **Font weight**: the size and weight of the group or toolbar names.
 
 ## Features
 
