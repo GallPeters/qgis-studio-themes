@@ -2963,8 +2963,9 @@ def _color_reach(glyph):
 #   crisp:  pure black (the default);
 #   medium: a deep shade of each object's own colour, 65 percent of the
 #           way to black;
-#   soft:   each object's own edge colour, deepened as every coloured
-#           edge is (OUTLINE_DEEPEN), the lightest that still outlines;
+#   soft:   each object's own edge colour, only 20 percent of the way to
+#           black: light, close to softpro's grey but a little darker and
+#           in the object's colour;
 #   softpro: the restraint of desktop GIS ribbons (ArcGIS Pro's): neutral
 #           mid-grey outlines, bodies a little lighter, white objects
 #           white, small accents at full strength (_soft_pro), and the
@@ -2977,7 +2978,7 @@ DEFAULT_OUTLINE = "crisp"
 OUTLINE_LOOKS = {
     "crisp": (None, 0.0, 1.0),
     "medium": (0.65, 0.0, 1.0),
-    "soft": (0.45, 0.0, 1.0),
+    "soft": (0.2, 0.0, 1.0),
     "softpro": (None, 0.0, 1.0),   # drawn as crisp, then _soft_pro
 }
 # The outline style of the icon being drawn, per thread (masks are drawn in
@@ -3003,12 +3004,21 @@ def _look():
 
 def _outline_color(edge, mode):
     """The outline drawn for an object whose own edge colour is `edge`: pure
-    black, or that colour so far towards black that _deepen (which deepens
-    it again) brings it to the style's share."""
+    black, or that colour moved so that _deepen (which deepens it again)
+    brings it to the style's share of the way to black: towards black, or
+    for a share below _deepen's, lightened beforehand."""
     share = _look()[0]
     if share is None:
         return OUTLINE
-    return _mix(edge, "#000000", max(0.0, 1 - (1 - share) / (1 - OUTLINE_DEEPEN[mode])))
+    factor = (1 - share) / (1 - OUTLINE_DEEPEN[mode])
+    if factor <= 1:
+        return _mix(edge, "#000000", 1 - factor)
+    lifted = "#" + "".join(f"{min(255, round(int(edge[i:i + 2], 16) * factor)):02x}" for i in (1, 3, 5))
+    # So light that _deepen would leave it (or clipped at white): the
+    # share itself, as drawn (a light grid line on a page).
+    if _luminance(lifted) > 0.55 or "ff" in (lifted[1:3], lifted[3:5], lifted[5:7]):
+        return _mix(edge, "#000000", share)
+    return lifted
 
 
 def _material(name, mode, sign):
