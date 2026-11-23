@@ -562,7 +562,7 @@ QTabBar#studioRibbonTabs[density="compact"]::tab:top {
 }
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:selected {
     margin: 2px 1px 0 0;
-    padding: 2px 14px 3px 14px;
+    padding: 2px 14px 4px 14px;
 }
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:first,
 QTabBar#studioRibbonTabs[density="compact"]::tab:top:first:selected {

@@ -95,12 +95,12 @@ GROUP_MARGINS = COMPACT_MARGINS
 # The ribbon's size (Settings > Ribbon size): "auto" follows QGIS's toolbar
 # icon size; the others stand for that size set to 16, 24 or 32.
 RIBBON_SIZES = {"auto": None, "small": 16, "medium": 24, "large": 32}
-# Its density (Settings > Ribbon density): standard by default; compact keeps the
-# icons' sizes and takes less room around them (rows, group margins, tabs),
-# about as high as other ribbons.
+# Its density (Settings > Ribbon density): compact by default, keeping the
+# icons' sizes and taking less room around them (rows, group margins, tabs),
+# about as high as other ribbons; standard gives them more room.
 DENSITIES = ("compact", "standard")
-DEFAULT_DENSITY = "standard"
-DENSITY = "standard"
+DEFAULT_DENSITY = "compact"
+DENSITY = "compact"
 # Compact tabs: their names at most this size (px), as other ribbons'.
 COMPACT_TAB_FONT = 12
 # Where the groups' names go and which name shows (Settings, in ribbon
@@ -596,7 +596,10 @@ class _Tabs(QTabBar):
 
     UNDERLINE = 2
     GAP = 3  # between the underline and the tab's bottom edge
-    COMPACT_GAP = 2
+    # Compact tabs: lower, so a pixel row stays clear between it and the
+    # name (style.qss gives compact tabs a pixel more below the name), as
+    # in standard tabs; at 2 it touched the name.
+    COMPACT_GAP = 1
 
     def __init__(self, parent=None):
         super().__init__(parent)
