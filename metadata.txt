@@ -18,15 +18,11 @@ icon=icon.png
 changelog=
 
      ** v1.6 (23.11.2026):
-          - Colourful icons: darker thin outlines, square line ends and sharper corners.
-          - Colourful icons: icons with a symbol in one corner (download, export, settings, search, check, plus, minus...) are drawn whole with a round badge, like Add Layer.
-          - Colourful icons: new badges for download, upload, export, settings, search, play and bolt; all badges have a dark edge.
-          - Colourful icons: the detailed drawings are used at every size, so an icon looks the same in menus as on the ribbon.
-          - Refined Colourful icons: Pan (a white hand), Zoom In and Out (crisp marks), Zoom to Selection and Zoom to Layer (the Zoom In magnifier), Pan to Selection, Refresh, Map Tips, Style Manager, Cut, Split Features, Hide All Layers, Filter, Expand All, Collapse All, locks, Plugins, Topological Editing, point clouds and feature arrays.
-          - Colourful icons that faded on dark themes are now clear (Temporal Controller, Check Validity, WCS and WFS layers, Topological Editing).
-          - New Colourful icons: Shapefile (a green page with a polygon), Virtual Layer (a database with a magnifier), Filter by Expression (a sigma badge), Expand All and Collapse All (a tree with + and -), documentation (a closed book), About (a bold i), Report Issue, Get Involved and Support.
-          - Colourful globes (WMS, WFS, WCS, CRS) are the clear blue line globe at every size.
-          - Brighter Style Manager palette with vivid dots; a slightly darker Plugins puzzle piece.
+          - New defaults: ribbon interface, Colourful icons, standard ribbon density, group names auto, 9 px names.
+          - Colourful icons redesigned: darker thin outlines, sharper corners, the same drawing at every size.
+          - Icons with a symbol in one corner (download, export, settings, check...) are drawn whole with a round badge.
+          - New or refined icons: Pan, zoom tools, Shapefile, Virtual Layer, Filter by Expression, Expand and Collapse All, Help, About, Report Issue, Support and more.
+          - Icons that faded on dark themes are clear again.
 
      ** v1.5 (15.11.2026):
           - The ribbon is compact by default: about as high as other ribbons, with the same icon sizes. Standard density keeps the former look.

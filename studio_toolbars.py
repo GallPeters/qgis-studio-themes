@@ -101,7 +101,7 @@ SIDE_MODES = ("left", "left_vertical")
 # a whole pixel so the letters stay apart (fractional spacing puts letters
 # between pixels).
 TITLE_SIZES = tuple(range(9, 15))
-TITLE_SIZE = 11
+TITLE_SIZE = 9
 WEIGHTS = ("bold", "regular", "light")
 TITLE_SPACING = 1.0
 # The gap between the title strip and the buttons, so a hovered or checked

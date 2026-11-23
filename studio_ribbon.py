@@ -95,19 +95,19 @@ GROUP_MARGINS = COMPACT_MARGINS
 # The ribbon's size (Settings > Ribbon size): "auto" follows QGIS's toolbar
 # icon size; the others stand for that size set to 16, 24 or 32.
 RIBBON_SIZES = {"auto": None, "small": 16, "medium": 24, "large": 32}
-# Its density (Settings > Ribbon density): compact (the default) keeps the
+# Its density (Settings > Ribbon density): standard by default; compact keeps the
 # icons' sizes and takes less room around them (rows, group margins, tabs),
 # about as high as other ribbons.
 DENSITIES = ("compact", "standard")
-DEFAULT_DENSITY = "compact"
+DEFAULT_DENSITY = "standard"
 DENSITY = "standard"
 # Compact tabs: their names at most this size (px), as other ribbons'.
 COMPACT_TAB_FONT = 12
 # Where the groups' names go and which name shows (Settings, in ribbon
 # mode): the toolbar names' choices (studio_toolbars.POSITIONS,
-# NAME_STYLES), names below the buttons in full by default.
+# NAME_STYLES), names below the buttons by default, in full where they fit.
 CAPTION_POSITION = "bottom"
-CAPTION_NAMES = "full"
+CAPTION_NAMES = "auto"
 # The gap between a name left of the buttons and the buttons.
 SIDE_GAP = 6
 # The largest icon of the buttons right of the tabs (Help), so a large

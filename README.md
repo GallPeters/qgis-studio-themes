@@ -59,21 +59,21 @@ Open them in Plugins → QGIS Studio Themes → Settings. Every change shows at 
 <kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="442"></kbd>
 </p>
 
-- **Interface**: toolbars or a ribbon.
+- **Interface**: toolbars or a ribbon (the default).
 - **Icons**: monochrome, colourful or QGIS classic.
 - **Ribbon size**: small, medium, large, or follow QGIS's icon size.
-- **Ribbon density**: compact saves height, standard gives the icons more room.
+- **Ribbon density**: standard (the default) gives the icons more room, compact saves height.
 - **Group name position**: above, below or left of the buttons, or off.
 - **Group name**: full, short, or auto, which shortens names that don't fit.
-- **Font size**: the size of the group names.
+- **Font size**: the size of the group names (9 px by default).
 - **Font weight**: bold, regular or light group names.
 
 With toolbars, the group name settings apply to the toolbar names.
 
 ## Icons
 
-- **Monochrome**: clean line icons in the theme's colour. The default.
-- **Colourful**: solid, flat colour icons, like professional GIS and Office icon sets.
+- **Monochrome**: clean line icons in the theme's colour.
+- **Colourful**: solid, flat colour icons, like professional GIS and Office icon sets. The default.
 - **QGIS classic**: QGIS's own icons.
 
 Monochrome and Colourful replace icons across the whole interface and stay

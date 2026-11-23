@@ -2550,8 +2550,8 @@ class SettingsDialog(QDialog):
         ("large", "Large"),
     )
     DENSITIES = (
-        ("compact", "Compact (default)"),
-        ("standard", "Standard"),
+        ("compact", "Compact"),
+        ("standard", "Standard (default)"),
     )
 
     POSITIONS = (
@@ -3220,9 +3220,9 @@ class QgisStudioThemesPlugin:
     @staticmethod
     def ribbon_style():
         """(position, name style, size, weight, ribbon size, density) of the
-        ribbon: its groups' names (below the buttons, in full, by default;
+        ribbon: its groups' names (below the buttons, full where they fit, by default;
         in the toolbar names' font) and the size and density set in the
-        settings dialog (QGIS's icon size, compact density by default)."""
+        settings dialog (QGIS's icon size, standard density by default)."""
         settings = QgsSettings()
         _position, _names, size, weight = QgisStudioThemesPlugin.label_style()
         position = settings.value(RIBBON_POSITION_SETTING, CAPTION_POSITION, type=str)
@@ -3255,10 +3255,10 @@ class QgisStudioThemesPlugin:
     @staticmethod
     def icon_style():
         """The icon style set in the settings dialog (ICON_STYLES)."""
-        value = QgsSettings().value(ICON_STYLE_SETTING, "mono", type=str)
+        value = QgsSettings().value(ICON_STYLE_SETTING, "color", type=str)
         if value == "duotone":
             value = "color"  # its name in early 1.3 builds
-        return value if value in ICON_STYLES else "mono"
+        return value if value in ICON_STYLES else "color"
 
     def set_icon_style(self, style):
         """Show `style`'s icons at once: the active theme is rebuilt in it
@@ -3300,8 +3300,8 @@ class QgisStudioThemesPlugin:
     @staticmethod
     def interface():
         """The interface set in the settings dialog (INTERFACES)."""
-        value = QgsSettings().value(INTERFACE_SETTING, "toolbars", type=str)
-        return value if value in INTERFACES else "toolbars"
+        value = QgsSettings().value(INTERFACE_SETTING, "ribbon", type=str)
+        return value if value in INTERFACES else "ribbon"
 
     @staticmethod
     def set_interface(interface):
