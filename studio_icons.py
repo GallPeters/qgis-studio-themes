@@ -18,7 +18,6 @@ draws every glyph in device pixels with its points moved onto the pixel
 grid and a stroke of whole pixels, like a hand-hinted icon: straight lines
 come out solid and sharp. Those are pre-rendered as PNGs (see the plugin).
 """
-import colorsys
 import contextlib
 import functools
 import math
@@ -2428,7 +2427,6 @@ DETAILED = {
         '<rect x="4" y="11" width="7" height="15" fill="#eef3f9"/>'
         '<path d="M11.5 11V26M19.5 11V26M4 15.5H28M4 20.5H28" stroke="#b4bdc7"/>'
         '<rect x="3.5" y="5.5" width="25" height="5" fill="url(#a)" stroke="#24548c"/>'
-        '<path d="M11.5 6V10M19.5 6V10" stroke="#24548c" opacity=".6"/>'
         '<rect x="3.5" y="5.5" width="25" height="21" stroke="#5d6873"/>',
     ),
     "stack-2": (
@@ -2964,14 +2962,10 @@ def _color_reach(glyph):
 #   medium: a deep shade of each object's own colour, 65 percent of the
 #           way to black;
 #   soft:   each object's own edge colour, only 20 percent of the way to
-#           black: light, close to softpro's grey but a little darker and
-#           in the object's colour;
-#   softpro: the restraint of desktop GIS ribbons (ArcGIS Pro's): neutral
-#           mid-grey outlines, bodies a little lighter, white objects
-#           white, small accents at full strength (_soft_pro), and the
-#           theme's line colour softened (soft_ink, applied by the plugin).
+#           black: light, but still clearly outlined and in the object's
+#           colour.
 OUTLINE = "#000000"
-OUTLINE_STYLES = ("crisp", "medium", "soft", "softpro")
+OUTLINE_STYLES = ("crisp", "medium", "soft")
 DEFAULT_OUTLINE = "crisp"
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
@@ -2979,7 +2973,6 @@ OUTLINE_LOOKS = {
     "crisp": (None, 0.0, 1.0),
     "medium": (0.65, 0.0, 1.0),
     "soft": (0.2, 0.0, 1.0),
-    "softpro": (None, 0.0, 1.0),   # drawn as crisp, then _soft_pro
 }
 # The outline style of the icon being drawn, per thread (masks are drawn in
 # worker threads while the GUI thread may draw an icon of another style).
@@ -3306,92 +3299,9 @@ def _box(d):
     return (min(xs), min(ys), max(xs), max(ys)) if xs else None
 
 
-def _finish(svg, size, ink, mode="light"):
+def _finish(svg, size, ink, mode="light"):  # pylint: disable=unused-argument
     """A Colourful icon's last touches: near-black colours black
-    (BLACK_BELOW), small markers vivid (MARKER_SHARE); in the softpro
-    outline style the soft colours (_soft_pro)."""
-    svg = _finish_colors(svg, size, ink)
-    if getattr(_DRAWING, "outline", DEFAULT_OUTLINE) == "softpro":
-        svg = _soft_pro(svg, size, mode, ink)
-    return svg
-
-
-# The softpro outline style: outlines (black, greys) in a neutral mid grey,
-# dark details a softer grey, bodies a little lighter and fuller, whites and
-# greys as they are, small parts (SOFT_SMALL of the icon or less) and the
-# badge dot at full strength.
-SOFT_EDGE = {"light": "#6f7377", "dark": "#9a9ea3"}
-SOFT_DETAIL = {"light": "#5f6367", "dark": "#a6aaaf"}
-SOFT_SMALL = 0.32
-_SOFT_TAG = re.compile(r"<(\w+)\b[^>]*>")
-_SOFT_D = re.compile(r'd="([^"]*)"')
-
-
-def soft_ink(color):
-    """The theme's line colour in the softpro style: a dark one lifted
-    towards a neutral grey, a light one lowered a little."""
-    amount = 0.38 if _luminance(color) < 0.18 else 0.15
-    return _mix(color, "#808489", amount)
-
-
-def _soft_fill(color, small):
-    r, g, b = (int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
-    if s < 0.08 or l > 0.93:
-        return color
-    if small:
-        s = min(1, s * 1.05)
-    else:
-        s, l = min(1, s * 1.08), l + (0.92 - l) * 0.12
-    return "#" + "".join(f"{round(v * 255):02x}" for v in colorsys.hls_to_rgb(h, l, s))
-
-
-def _soft_small(tag, size):
-    limit = size * SOFT_SMALL
-    match = _SOFT_D.search(tag)
-    if match:
-        try:
-            box = _box(match.group(1))
-        except ValueError:  # relative arcs: the small dots
-            return True
-        return bool(box) and box[2] - box[0] <= limit and box[3] - box[1] <= limit
-    radius = re.search(r'\br="([\d.]+)"', tag)
-    if radius:
-        return float(radius.group(1)) * 2 <= limit
-    w, h = re.search(r'\bwidth="([\d.]+)"', tag), re.search(r'\bheight="([\d.]+)"', tag)
-    return bool(w and h) and float(w.group(1)) <= limit and float(h.group(1)) <= limit
-
-
-def _soft_pro(svg, size, mode, ink):
-    """The softpro colours of a finished icon. The theme's line colour (an
-    ink other than the masks' black) is left to the plugin (soft_ink)."""
-    ink = ink.lower()
-    badge_at = svg.find("<circle cx=", svg.rfind("</g>"))
-    head, tail = (svg[:badge_at], svg[badge_at:]) if badge_at > 0 else (svg, "")
-
-    def tag(match):
-        text = match.group(0)
-        if match.group(1) in ("svg", "mask", "defs") or 'fill="#fff"' in text or 'fill="#000"' in text:
-            return text
-        small = _soft_small(text, size)
-
-        def attr(a):
-            name, color = a.group(1), a.group(2).lower()
-            if color == ink and ink != "#000000":
-                return a.group(0)
-            lum = _luminance(color)
-            if name == "stroke":
-                sat = colorsys.rgb_to_hls(*(int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)))[2]
-                return f'stroke="{SOFT_EDGE[mode]}"' if lum <= 0.2 and sat < 0.25 else a.group(0)
-            if lum <= 0.12:
-                return f'{name}="{SOFT_DETAIL[mode]}"'
-            return f'{name}="{_soft_fill(color, small)}"'
-        return _COLOR.sub(attr, text)
-    return _SOFT_TAG.sub(tag, head) + tail
-
-
-def _finish_colors(svg, size, ink):
-    """_finish without the outline style's colours."""
+    (BLACK_BELOW), small markers vivid (MARKER_SHARE)."""
     ink = ink.lower()
 
     black_below = BLACK_BELOW if _look()[0] is None else 0

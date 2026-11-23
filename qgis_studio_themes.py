@@ -312,14 +312,13 @@ def tinted(mask, color):
     return image
 
 
-def compose_atlas(masks, colors, color=False, faded=False, soft=False):
+def compose_atlas(masks, colors, color=False, faded=False):
     """One state's atlas from the masks of a size: the glyph layer in the
     icon colour, the badge layers in theirs (QColor values in `colors`).
     With `color` (the Colourful style), the colour layer of the theme's kind
     (light or dark, by its window colour) as drawn, `faded` for the
-    disabled state, under the ink layer in the icon colour (softened with
-    `soft`: the softpro outline style). A few image operations in Qt,
-    instead of drawing every icon again."""
+    disabled state, under the ink layer in the icon colour. A few
+    image operations in Qt, instead of drawing every icon again."""
     if color:
         layer = masks["color-dark" if colors["window"].lightness() < 128 else "color-light"]
         atlas = QImage(layer.size(), QImage.Format.Format_ARGB32_Premultiplied)
@@ -328,8 +327,7 @@ def compose_atlas(masks, colors, color=False, faded=False, soft=False):
         painter.setOpacity(DISABLED_COLOR_OPACITY if faded else 1.0)
         painter.drawImage(0, 0, layer)
         painter.setOpacity(1.0)
-        ink = QColor(studio_icons.soft_ink(colors["icon"].name())) if soft else colors["icon"]
-        painter.drawImage(0, 0, tinted(masks["ink"], ink))
+        painter.drawImage(0, 0, tinted(masks["ink"], colors["icon"]))
     else:
         atlas = tinted(masks["glyph"], colors["icon"])
         painter = QPainter(atlas)
@@ -647,10 +645,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
         # Disabled Colourful icons are the theme's disabled single-colour
         # ones here (only shown until the pre-rendered PNGs are ready).
         if color and state != "disabled":
-            state_colors = colors[state]
-            if icon_outline == "softpro" and state == "normal":
-                state_colors = dict(state_colors, icon=studio_icons.soft_ink(QColor(state_colors["icon"]).name()))
-            return studio_icons.render_icon_color(spec, state_colors, icon_scale, mode, icon_outline)
+            return studio_icons.render_icon_color(spec, colors[state], icon_scale, mode, icon_outline)
         return studio_icons.render_icon(spec, colors[state], icon_scale)
 
     pending = []
@@ -1800,8 +1795,7 @@ class IconSwapper(QObject):
                 masks = render_one(spec, size, width, self._scale, self._outline)
                 self._one_masks[mask_key] = masks
             colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
-            pixmap = compose_atlas(masks, colors, self._style == "color", state == "disabled",
-                                   self._soft_ink(state))
+            pixmap = compose_atlas(masks, colors, self._style == "color", state == "disabled")
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
         return pixmap
@@ -1818,7 +1812,7 @@ class IconSwapper(QObject):
                 masks = self._load_masks(size, width)
                 colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
                 self._atlases[atlas_key] = None if masks is None else compose_atlas(
-                    masks, colors, self._style == "color", state == "disabled", self._soft_ink(state))
+                    masks, colors, self._style == "color", state == "disabled")
             atlas = self._atlases[atlas_key]
             if not self._atlas_index:
                 self._atlas_index = atlas_index()
@@ -2379,12 +2373,6 @@ class IconSwapper(QObject):
     def outline(self):
         return self._outline
 
-    def _soft_ink(self, state):
-        """Whether the line colour of `state` is softened: in the softpro
-        outline style, for normal icons (selected and disabled ones keep
-        their theme colours)."""
-        return self._style == "color" and self._outline == "softpro" and state == "normal"
-
     def set_outline(self, outline):
         """The Colourful outline style (studio_icons.OUTLINE_STYLES) of the
         next apply(): its own masks (drawn if missing, see _prerender), the
@@ -2589,7 +2577,6 @@ class SettingsDialog(QDialog):
         ("crisp", "Crisp: black (default)"),
         ("medium", "Medium: dark, in each object's colour"),
         ("soft", "Soft: lighter, in each object's colour"),
-        ("softpro", "Soft pro: grey outlines, calm colours"),
     )
     RIBBON_SIZES = (
         ("auto", "Follow QGIS icon size"),
