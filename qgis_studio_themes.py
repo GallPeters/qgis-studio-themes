@@ -2574,8 +2574,7 @@ class SettingsDialog(QDialog):
         ("classic", "QGIS classic"),
     )
     OUTLINES = (
-        ("strong", "Strong: black, a little heavier"),
-        ("crisp", "Crisp: black, 1 px (default)"),
+        ("crisp", "Crisp: black (default)"),
         ("medium", "Medium: dark, in each object's colour"),
         ("soft", "Soft: lighter, in each object's colour"),
     )

@@ -1041,16 +1041,12 @@ BADGE_CENTER = 19.3
 BADGE_RADIUS = 2.75
 BADGE_GAP = 1.8
 BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check"}
-# Colourful icons mark delete ("x") with a red cross like the other marks,
-# instead of a red dot (which said little at toolbar sizes). Since 1.6 they
-# also have arrow (download, upload, export), gear, search, play and bolt
-# badges, for the glyphs whose Tabler drawing gave a corner to such a
-# symbol (COLOR_BADGED).
+# Colourful icons have a coloured dot for these badges, delete ("x")
+# included, and since 1.6 also for the glyphs whose Tabler drawing gave a
+# corner to an arrow (download, upload, export), a gear, a magnifier, a
+# play sign or a bolt (COLOR_BADGED).
 COLOR_BADGE_MARKS = {**BADGE_MARKS, "x": "x",
                      **{mark: mark for mark in ("down", "up", "out", "cog", "search", "play", "bolt", "expr")}}
-# Badge marks drawn as solid white shapes (a line arrow read as a plus at
-# 16 px).
-FILLED_MARKS = frozenset(("play", "bolt", "down", "up", "out"))
 # Half the width of a mark, in units.
 MARK_ARM = 2.7
 
@@ -1126,141 +1122,46 @@ MATERIAL_HUES = {
     "toolredS": "toolred", "steel": "steel", "steelS": "steel", "gold": "gold", "goldS": "gold",
     "leaf": "leaf", "sheet": "sheet",
 }
-# The colour of each badge (add, remove, accept, delete; arrows green as
-# the add mark, a grey gear, a blue magnifier, an amber bolt).
-COLOR_MARKS = dict.fromkeys(COLOR_MODES, {
-    "plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42",
-    "down": "#539653", "up": "#539653", "out": "#539653", "play": "#539653",
-    "cog": "#6c747f", "search": "#3f7fc0", "bolt": "#d38a2c", "expr": "#3f7fc0",
-})
-# Colourful badges are solid discs in the mark's colour with the mark in
-# white (Add Group, Remove Layer...): read at a glance at any size, where a
-# thin coloured mark looked faint beside the solid icons. Their sizes are
-# whole device pixels (_badge_tier).
+# Colourful badges (since 1.6) are small solid dots in the icon's
+# bottom-right corner, without a symbol: green to add or create, red to
+# remove, delete or cancel, blue for any other action (download, export,
+# settings, search, check, run). A disc with a white symbol in it hid too
+# much of the icon behind.
+BADGE_COLORS = {"add": "#36a447", "remove": "#e5463c", "other": "#2f7fe0"}
+BADGE_KINDS = {"plus": "add", "star": "add", "minus": "remove", "x": "remove"}
 
 
-def _badge_tier(size):
-    """(disc diameter, mark line width) in device pixels of the disc badge
-    of an icon of `size` px. Odd diameters, so every mark is centred on a
-    pixel; small at 16 px, where a larger disc hid most of the icon."""
+def _badge_size(size):
+    """The diameter in device pixels of the badge dot of an icon of `size`
+    px: odd, so the dot is centred on a pixel."""
     if size <= 17:
-        return 7, 1.0
+        return 5
     if size <= 26:
-        return 11, 1.0
+        return 7
     if size <= 36:
-        return 15, 1.5
-    return 17, 1.5
-
-
-def _badge_place(size, center):
-    """(centre, diameter, line width) of the disc badge around `center`,
-    kept inside the icon."""
-    d, w = _badge_tier(size)
-    return min(center, size - d / 2), d, w
+        return 9
+    return 11
 
 
 def _badge_hole(size):
-    """(centre, radius) of the hole cut out of the glyph around the disc."""
-    c, d, _w = _badge_place(size, math.floor(BADGE_CENTER * size / 24) + 0.5)
-    return c, d / 2 + max(1, round(BADGE_GAP * size / 24))
+    """(centre, radius) of the dot in the icon's corner and of the hole cut
+    out of the glyph around it, a pixel wider."""
+    d = _badge_size(size)
+    c = size - d / 2
+    return c, d / 2 + 1
 
 
-def _pixel_line(points, thick):
-    """The pixels of a polyline through whole-pixel `points` (Bresenham),
-    `thick` pixels wide."""
-    cells = set()
-    for (x0, y0), (x1, y1) in zip(points, points[1:]):
-        dx, dy = abs(x1 - x0), -abs(y1 - y0)
-        sx, sy = (1 if x1 > x0 else -1), (1 if y1 > y0 else -1)
-        err, x, y = dx + dy, x0, y0
-        while True:
-            cells.update((x + k, y) for k in range(thick))
-            if (x, y) == (x1, y1):
-                break
-            e2 = 2 * err
-            if e2 >= dy:
-                err += dy
-                x += sx
-            if e2 <= dx:
-                err += dx
-                y += sy
-    return cells
-
-
-def _pixel_ring(cx, cy, r, thick):
-    """The pixels of a ring of radius `r` around pixel (cx, cy)."""
-    return {(x, y) for y in range(cy - r - 1, cy + r + 2) for x in range(cx - r - 1, cx + r + 2)
-            if abs(math.hypot(x - cx, y - cy) - r) <= (0.75 if thick else 0.5)}
-
-
-def _white_pixels(cells):
-    return "".join(f'<rect x="{x}" y="{y}" width="1" height="1" fill="#ffffff"/>' for x, y in sorted(cells))
-
-
-def _disc_badge(center, mark, mode, size):
-    """A solid disc badge of an icon of `size` px: the mark's colour, a
-    black edge and the mark in pure white, clear of the edge all round.
-    Diagonal marks, arrows, the magnifier and the gear are drawn in whole
-    white pixels: QtSvg smooths a thin line (it ignores shape-rendering),
-    and smoothed it blended into the disc's colour and could hardly be
-    seen."""
-    c, d, w = _badge_place(size, center)
-    n = _num
-    color = COLOR_MARKS[mode][mark]
+def _disc_badge(mark, mode, size):
+    """The badge dot of an icon of `size` px for `mark`, its edge as dark as
+    the outlines (_look)."""
+    c, _hole = _badge_hole(size)
+    color = BADGE_COLORS[BADGE_KINDS.get(mark, "other")]
     share = _look()[0]
     edge = OUTLINE if share is None else _mix(color, "#000000", share)
-    disc = f'<circle cx="{n(c)}" cy="{n(c)}" r="{n(d / 2 - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
-    if mark in ("plus", "minus"):
-        half = max(1, (d - 7) // 2)
-        p = f"M{n(c - half)} {n(c)}H{n(c + half)}" + (f"M{n(c)} {n(c - half)}V{n(c + half)}" if mark == "plus" else "")
-        return disc + f'<path d="{p}" stroke="#ffffff" stroke-width="{n(w)}" stroke-linecap="butt" fill="none"/>'
-    thick = w > 1.2
-    if mark in ("check", "x"):
-        path = _mark_path(mark, c, max(1.25, (d - 7) / 2 * 0.8))
-        nums = [math.floor(float(v)) for v in re.findall(r"-?\d+(?:\.\d+)?", path)]
-        points = list(zip(nums[0::2], nums[1::2]))
-        width = 2 if thick else 1
-        if mark == "x":
-            return disc + _white_pixels(_pixel_line(points[:2], width) | _pixel_line(points[2:], width))
-        return disc + _white_pixels(_pixel_line(points, width))
-    if mark in ("down", "up", "out", "search", "cog"):
-        cx = math.floor(c)
-        k = max(1, round(max(1.25, (d - 7) / 2)))
-        cells = set()
-        if mark in ("down", "up"):
-            head = max(1, round(k * 0.7))
-            sgn = 1 if mark == "down" else -1
-            stem = 1 if k < 4 else 3
-            tip = cx + sgn * k
-            for i in range(head + 1):
-                cells.update((x, tip - sgn * i) for x in range(cx - i, cx + i + 1))
-            # A longer stem when tiny, or the arrow reads as a plus.
-            top = cx - sgn * (k if k > 1 else 2)
-            for y in range(min(top, tip - sgn * head), max(top, tip - sgn * head) + 1):
-                cells.update((x, y) for x in range(cx - stem // 2, cx + stem // 2 + 1))
-        elif mark == "out":
-            head = max(1, round(k * 0.8))
-            tx, ty = cx + k, cx - k
-            cells |= _pixel_line([(cx - k, cx + k), (tx, ty)], 2 if thick else 1)
-            cells.update((x, ty) for x in range(tx - head, tx + 1))
-            cells.update((tx, y) for y in range(ty, ty + head + 1))
-        elif mark == "search":
-            r = max(1, round(k * 0.6))
-            lens = cx - max(1, k // 2)
-            cells |= _pixel_ring(lens, lens, r, thick)
-            s = lens + max(1, round(r * 0.75)) + 1
-            cells |= _pixel_line([(s, s), (cx + k, cx + k)], 2 if thick else 1)
-        else:  # cog: a ring with four teeth
-            r = max(1, round(k * 0.6))
-            cells |= _pixel_ring(cx, cx, r, thick)
-            if k >= 2:
-                cells.update(((cx, cx - r - 1), (cx, cx + r + 1), (cx - r - 1, cx), (cx + r + 1, cx)))
-        return disc + _white_pixels(cells)
-    p = _mark_path(mark, c, max(1.25, (d - 7) / 2) * 0.8)
-    if mark in FILLED_MARKS:
-        return disc + f'<path d="{p}" fill="#ffffff" stroke="none"/>'
-    return disc + (f'<path d="{p}" stroke="#ffffff" stroke-width="{n(w)}" stroke-linecap="square" '
-                   'stroke-linejoin="miter" fill="none" shape-rendering="crispEdges"/>')
+    r = _badge_size(size) / 2 - 0.5
+    return f'<circle cx="{_num(c)}" cy="{_num(c)}" r="{_num(r)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
+
+
 # Fills are flat since 1.4, as ArcGIS Pro's icons (_color_body, _lg). The
 # shading below (lit towards white at the top, deepened towards the hue's
 # edge at the bottom) is still defined for any fill that refers to it.
@@ -1357,50 +1258,13 @@ def color_stroke_px(width):
 
 
 def _mark_path(mark, c, arm):
-    """Path data of a badge mark centred on (c, c), `arm` from centre to
-    end, in whatever units the caller draws in."""
+    """Path data of a single-colour icon's badge mark (BADGE_MARKS) centred
+    on (c, c), `arm` from centre to end, in whatever units the caller draws
+    in."""
     if mark == "plus":
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}M{_num(c)} {_num(c - arm)}V{_num(c + arm)}"
     if mark == "minus":
         return f"M{_num(c - arm)} {_num(c)}H{_num(c + arm)}"
-    n, a = _num, arm
-    if mark in ("down", "up", "out"):
-        # A solid arrow: a stem and a wide head, a quarter longer than the
-        # other marks; "out" is "up" turned 45 degrees clockwise.
-        a *= 1.25
-        stem = a * 0.3
-        points = [(-stem, -a), (stem, -a), (stem, -0.05 * a), (0.95 * a, -0.05 * a), (0, a),
-                  (-0.95 * a, -0.05 * a), (-stem, -0.05 * a)]
-        if mark != "down":
-            points = [(x, -y) for x, y in points]
-        if mark == "out":
-            k = math.sqrt(0.5)
-            points = [((x - y) * k, (x + y) * k) for x, y in points]
-        return "M" + "L".join(f"{n(c + x)} {n(c + y)}" for x, y in points) + "Z"
-    if mark == "cog":
-        # A ring with four teeth.
-        r = a * 0.6
-        return (f"M{n(c - r)} {n(c)}A{n(r)} {n(r)} 0 1 0 {n(c + r)} {n(c)}A{n(r)} {n(r)} 0 1 0 {n(c - r)} {n(c)}"
-                f"M{n(c)} {n(c - a)}V{n(c - r)}M{n(c)} {n(c + r)}V{n(c + a)}"
-                f"M{n(c - a)} {n(c)}H{n(c - r)}M{n(c + r)} {n(c)}H{n(c + a)}")
-    if mark == "search":
-        r, o = a * 0.55, c - a * 0.25
-        return (f"M{n(o - r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o + r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o - r)} {n(o)}"
-                f"M{n(o + r * 0.75)} {n(o + r * 0.75)}L{n(c + a)} {n(c + a)}")
-    if mark == "expr":
-        # A sigma (filter by expression).
-        return (f"M{n(c + a * .75)} {n(c - a * .85)}H{n(c - a * .7)}L{n(c + a * .1)} {n(c)}"
-                f"L{n(c - a * .7)} {n(c + a * .85)}H{n(c + a * .75)}")
-    if mark == "play":
-        return f"M{n(c - a * 0.6)} {n(c - a * 0.9)}L{n(c + a * 0.9)} {n(c)}L{n(c - a * 0.6)} {n(c + a * 0.9)}Z"
-    if mark == "bolt":
-        return (f"M{n(c + a * 0.25)} {n(c - a)}L{n(c - a * 0.7)} {n(c + a * 0.15)}H{n(c)}L{n(c - a * 0.25)} {n(c + a)}"
-                f"L{n(c + a * 0.7)} {n(c - a * 0.15)}H{n(c)}Z")
-    if mark == "x":
-        # A cross, a little smaller than a plus so it fills the same room.
-        d = arm * 0.8
-        return (f"M{_num(c - d)} {_num(c - d)}L{_num(c + d)} {_num(c + d)}"
-                f"M{_num(c + d)} {_num(c - d)}L{_num(c - d)} {_num(c + d)}")
     # A check mark: short stroke down to the right, long stroke up.
     return (f"M{_num(c - arm)} {_num(c + arm * 0.05)}L{_num(c - arm * 0.3)} {_num(c + arm * 0.7)}"
             f"L{_num(c + arm)} {_num(c - arm * 0.65)}")
@@ -2947,9 +2811,7 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
         hole = radius + max(1, round(BADGE_GAP * px))
     parts += [_badge_mask(center, hole, size), f'<g mask="url(#b)">{body}</g>']
     if disc:
-        offset = 0.5 if width % 2 else 0.0
-        middle = math.floor(BADGE_CENTER * px - offset + 0.5) + offset
-        parts.append(_disc_badge(middle, COLOR_BADGE_MARKS[badge], mode, size))
+        parts.append(_disc_badge(COLOR_BADGE_MARKS[badge], mode, size))
     elif layer == "all":
         fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
@@ -3097,20 +2959,20 @@ def _color_reach(glyph):
 # database's thin edge. How dark is a setting (Plugins > QGIS Studio Themes >
 # Settings > Outlines), as the same 1 px line looks finer on a laptop's
 # small pixels than on a desktop monitor's large ones:
-#   strong: pure black, with a faint fringe (0.1 px more);
-#   crisp:  pure black, exactly 1 px (the default);
-#   medium, soft: a deep shade of each object's own colour, 80 and 65
-#           percent of the way to black.
+#   crisp:  pure black (the default);
+#   medium: a deep shade of each object's own colour, 65 percent of the
+#           way to black;
+#   soft:   each object's own edge colour, deepened as every coloured
+#           edge is (OUTLINE_DEEPEN), the lightest that still outlines.
 OUTLINE = "#000000"
-OUTLINE_STYLES = ("strong", "crisp", "medium", "soft")
+OUTLINE_STYLES = ("crisp", "medium", "soft")
 DEFAULT_OUTLINE = "crisp"
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
-    "strong": (None, 0.1, 1.1),
     "crisp": (None, 0.0, 1.0),
-    "medium": (0.8, 0.0, 1.0),
-    "soft": (0.65, 0.0, 1.0),
+    "medium": (0.65, 0.0, 1.0),
+    "soft": (0.45, 0.0, 1.0),
 }
 # The outline style of the icon being drawn, per thread (masks are drawn in
 # worker threads while the GUI thread may draw an icon of another style).
@@ -3385,7 +3247,7 @@ def _render_color(spec, colors, scale, mode):
     parts.append(_shading(body))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
     if badge in COLOR_BADGE_MARKS:
-        parts.append(_disc_badge(math.floor(BADGE_CENTER) + 0.5, COLOR_BADGE_MARKS[badge], mode, 24))
+        parts.append(_disc_badge(COLOR_BADGE_MARKS[badge], mode, 24))
     elif badge:
         fill = colors["danger"] if badge == "x" else colors["accent"]
         parts.append(f'<circle cx="{BADGE_CENTER}" cy="{BADGE_CENTER}" r="{BADGE_RADIUS}" fill="{fill}"/>')
@@ -3526,7 +3388,7 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
         mask = ' mask="url(#b)"'
     parts.append(f'<g{mask} stroke-width="{drawn}">{body}</g>')
     if badge in COLOR_BADGE_MARKS and layer in ("color", "all"):
-        parts.append(_disc_badge(snap(BADGE_CENTER * px), COLOR_BADGE_MARKS[badge], mode, size))
+        parts.append(_disc_badge(COLOR_BADGE_MARKS[badge], mode, size))
     elif badge and badge not in COLOR_BADGE_MARKS and layer == "all":
         fill = danger if badge == "x" else accent
         parts.append(f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(radius)}" fill="{fill}"/>')
