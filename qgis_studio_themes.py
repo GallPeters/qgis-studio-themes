@@ -237,6 +237,9 @@ MASK_LAYERS = {
 # own icons.
 ICON_STYLES = ("mono", "color", "classic")
 ICON_STYLE_SETTING = "studio_themes/iconStyle"
+# How dark Colourful icons' outlines are (Settings > Outlines;
+# studio_icons.OUTLINE_STYLES).
+OUTLINE_SETTING = "studio_themes/iconOutline"
 # A disabled Colourful icon: its colours faded, its ink in the theme's
 # disabled icon colour.
 DISABLED_COLOR_OPACITY = 0.5
@@ -265,10 +268,11 @@ def masks_key():
     return digest.hexdigest()[:16]
 
 
-def mask_folders(profile_masks):
+def mask_folders(profile_masks, outline=studio_icons.DEFAULT_OUTLINE):
     """Where masks are looked up (and drawn): the folder of this version's
-    drawings in the profile's mask folder `profile_masks`."""
-    return (profile_masks / masks_key(),)
+    drawings in the profile's mask folder `profile_masks`, one per outline
+    style of the Colourful icons."""
+    return (profile_masks / f"{masks_key()}-{outline}",)
 
 
 def mask_path(folder, size, width, scale, layer):
@@ -351,7 +355,7 @@ def state_path(icons_dir, name, state):
     return icons_dir / state / f"{studio_icons.ICON_MAP[name]}.svg"
 
 
-def render_masks(folder, size, width, scale, stop):
+def render_masks(folder, size, width, scale, stop, outline=studio_icons.DEFAULT_OUTLINE):
     """Draw the masks of every distinct icon at one (pixel size, line
     width, glyph scale), each drawn for that exact size with its lines on
     the pixel grid (studio_icons.render_icon_px), so it is shown 1:1,
@@ -376,9 +380,9 @@ def render_masks(folder, size, width, scale, stop):
                     svg = studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width)
                     QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[layer], cell)
             for mode in studio_icons.COLOR_MODES:
-                svg = studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode)
+                svg = studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode, outline=outline)
                 QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters[f"color-{mode}"], cell)
-            svg = studio_icons.render_icon_color_px(spec, size, scale, width, "ink")
+            svg = studio_icons.render_icon_color_px(spec, size, scale, width, "ink", outline=outline)
             QSvgRenderer(QByteArray(svg.encode("utf-8"))).render(painters["ink"], cell)
             time.sleep(0)  # let the GUI thread take Python's lock if it waits
     finally:
@@ -399,7 +403,7 @@ def render_masks(folder, size, width, scale, stop):
     return True
 
 
-def render_one(spec, size, width, scale):
+def render_one(spec, size, width, scale, outline=studio_icons.DEFAULT_OUTLINE):
     """The mask layers of one drawing at one exact pixel size, drawn as
     render_masks draws an atlas cell (same layers and formats as
     load_masks): for sizes no atlas covers, so they are never resampled."""
@@ -419,8 +423,9 @@ def render_one(spec, size, width, scale):
         if layer is not None:
             draw(layer, studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width))
     for mode in studio_icons.COLOR_MODES:
-        draw(f"color-{mode}", studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode))
-    draw("ink", studio_icons.render_icon_color_px(spec, size, scale, width, "ink"))
+        draw(f"color-{mode}", studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode,
+                                                               outline=outline))
+    draw("ink", studio_icons.render_icon_color_px(spec, size, scale, width, "ink", outline=outline))
     return {
         layer: image if layer.startswith("color") else image.convertToFormat(QImage.Format.Format_Alpha8)
         for layer, image in images.items()
@@ -568,14 +573,15 @@ def load_tokens(folder):
     ))
 
 
-def prerender_masks(folders, sizes, scale, stop):
+def prerender_masks(folders, sizes, scale, stop, outline=studio_icons.DEFAULT_OUTLINE):
     """Draw the masks of the (pixel size, line width) pairs `sizes` that
     are not there yet into the profile's mask folder (worker thread), one
-    size at a time, so an interrupted run keeps what it finished. Returns
-    True once all are written, False if stopped or failed."""
+    size at a time, so an interrupted run keeps what it finished; Colourful
+    outlines in the style `outline`, that of `folders`. Returns True once
+    all are written, False if stopped or failed."""
     try:
         for size, width in sorted(missing_masks(folders, sizes, scale)):
-            if not render_masks(folders[-1], size, width, scale, stop):
+            if not render_masks(folders[-1], size, width, scale, stop, outline):
                 return False
     except OSError:
         return False
@@ -585,16 +591,19 @@ def prerender_masks(folders, sizes, scale, stop):
 
 def prune_masks(folder):
     """Delete the masks of other plugin versions next to `folder`: each
-    version draws its own set, and nothing else ever removes them."""
+    version draws its own set, and nothing else ever removes them. This
+    version's sets of other outline styles are kept, so switching back
+    draws nothing."""
     for other in folder.parent.iterdir():
-        if other.is_dir() and other != folder:
+        if other.is_dir() and not other.name.startswith(masks_key() + "-"):
             shutil.rmtree(other, ignore_errors=True)
 
 
 def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
-                icon_scale=studio_icons.SCALE, icon_style="mono"):
+                icon_scale=studio_icons.SCALE, icon_style="mono", icon_outline=studio_icons.DEFAULT_OUTLINE):
     """Write the resolved stylesheet and all icons for one theme into
-    `target`, in `icon_style` (ICON_STYLES; "classic" writes QGIS's own);
+    `target`, in `icon_style` (ICON_STYLES; "classic" writes QGIS's own),
+    Colourful outlines in the style `icon_outline`;
     style.qss gets the real stylesheet only when `active` (see
     STUB_STYLE). Skipped when nothing changed since the last build, so
     startup costs only a few stat() calls; a rebuild rewrites only the
@@ -636,7 +645,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
         # Disabled Colourful icons are the theme's disabled single-colour
         # ones here (only shown until the pre-rendered PNGs are ready).
         if color and state != "disabled":
-            return studio_icons.render_icon_color(spec, colors[state], icon_scale, mode)
+            return studio_icons.render_icon_color(spec, colors[state], icon_scale, mode, icon_outline)
         return studio_icons.render_icon(spec, colors[state], icon_scale)
 
     pending = []
@@ -935,6 +944,10 @@ class IconSwapper(QObject):
         # Where the icon masks are found (see mask_folders), the glyph scale
         # they are drawn at and the active theme's icon colours per state
         # (QColor values, see icon_colors).
+        self._profile_masks = profile_masks
+        # Colourful outlines (studio_icons.OUTLINE_STYLES): each style has
+        # its own masks.
+        self._outline = studio_icons.DEFAULT_OUTLINE
         self._mask_folders = mask_folders(profile_masks) if profile_masks is not None else ()
         self._scale = studio_icons.SCALE
         self._colors = None
@@ -1779,7 +1792,7 @@ class IconSwapper(QObject):
             mask_key = (spec, size, width, self._scale)
             masks = self._one_masks.get(mask_key)
             if masks is None:
-                masks = render_one(spec, size, width, self._scale)
+                masks = render_one(spec, size, width, self._scale, self._outline)
                 self._one_masks[mask_key] = masks
             colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
             pixmap = compose_atlas(masks, colors, self._style == "color", state == "disabled")
@@ -2356,6 +2369,23 @@ class IconSwapper(QObject):
         self._atlases = {}
         self._pixmaps = {}
 
+    @property
+    def outline(self):
+        return self._outline
+
+    def set_outline(self, outline):
+        """The Colourful outline style (studio_icons.OUTLINE_STYLES) of the
+        next apply(): its own masks (drawn if missing, see _prerender), the
+        icons drawn in the previous style forgotten."""
+        self._outline = outline
+        if self._profile_masks is not None:
+            self._mask_folders = mask_folders(self._profile_masks, outline)
+        self._masks = {}
+        self._one_masks = {}
+        self._atlases = {}
+        self._pixmaps = {}
+        self._png = None
+
     def swap_action(self, action):
         """Our icon for an action's QGIS icon now, not once a menu showing
         it is first opened: the ribbon shows commands of menus that never
@@ -2543,6 +2573,12 @@ class SettingsDialog(QDialog):
         ("color", "Colourful"),
         ("classic", "QGIS classic"),
     )
+    OUTLINES = (
+        ("strong", "Strong: black, a little heavier"),
+        ("crisp", "Crisp: black, 1 px (default)"),
+        ("medium", "Medium: dark, in each object's colour"),
+        ("soft", "Soft: lighter, in each object's colour"),
+    )
     RIBBON_SIZES = (
         ("auto", "Follow QGIS icon size"),
         ("small", "Small"),
@@ -2587,6 +2623,11 @@ class SettingsDialog(QDialog):
             "Monochrome: the theme's single-colour icons. Colourful: the same icons in their objects' "
             "own colours. QGIS classic: QGIS's own icons."
         )
+        self._outline = self._combo(self.OUTLINES, plugin.icon_outline())
+        self._outline.setToolTip(
+            "How dark the outlines of Colourful icons are. The same thin line looks heavier on a "
+            "desktop monitor's large pixels than on a laptop's: Medium or Soft may suit large screens."
+        )
         self._ribbon_size = self._combo(self.RIBBON_SIZES, ribbon_size)
         self._ribbon_size.setToolTip(
             "The ribbon's icons and rows: as QGIS's toolbar icon size (Options > General) would make "
@@ -2607,6 +2648,7 @@ class SettingsDialog(QDialog):
         self._form = form = QFormLayout()
         form.addRow("Interface", self._interface)
         form.addRow("Icons", self._icon_style)
+        form.addRow("Outlines", self._outline)
         form.addRow("Ribbon size", self._ribbon_size)
         form.addRow("Ribbon density", self._density)
         form.addRow("Toolbar name position", self._position)
@@ -2631,6 +2673,7 @@ class SettingsDialog(QDialog):
             combo.currentIndexChanged.connect(self._changed)
         self._interface.currentIndexChanged.connect(self._interface_changed)
         self._icon_style.currentIndexChanged.connect(self._icon_style_changed)
+        self._outline.currentIndexChanged.connect(self._outline_changed)
 
     @staticmethod
     def _combo(choices, current):
@@ -2661,6 +2704,10 @@ class SettingsDialog(QDialog):
 
     def _icon_style_changed(self, _index=None):
         self._plugin.set_icon_style(self._icon_style.currentData())
+        self._fit_names()
+
+    def _outline_changed(self, _index=None):
+        self._plugin.set_icon_outline(self._outline.currentData())
 
     def _interface_changed(self, _index=None):
         self._plugin.set_interface(self._interface.currentData())
@@ -2696,6 +2743,8 @@ class SettingsDialog(QDialog):
             self._position.findData("bottom"), self.RIBBON_BOTTOM if ribbon else dict(self.POSITIONS)["bottom"])
         self._ribbon_size.setEnabled(ribbon)
         self._density.setEnabled(ribbon)
+        # Outlines are those of Colourful icons.
+        self._outline.setEnabled(self._icon_style.currentData() == "color")
         self._names.setEnabled(position != "off")
         for combo in (self._size, self._weight):
             combo.setEnabled(position != "off")
@@ -2911,7 +2960,7 @@ class QgisStudioThemesPlugin:
             BUILD_FORMAT + build_stamp(shared_sources()) + f"|menu{menu_size:g}"
             + ("|compact" if compact else "")
         )
-        self._shared_stamp = self._stamp_base + f"|icons-{self.icon_style()}"
+        self._shared_stamp = self._icons_stamp(self.icon_style())
         # Only the configured theme is built now; the others only need a
         # placeholder style.qss to be registered and are built in the
         # background (or on demand, if selected first).
@@ -2962,7 +3011,7 @@ class QgisStudioThemesPlugin:
             try:
                 if build_theme(
                     self.THEMES[name], self.theme_target(name), self._shared_stamp, active,
-                    self._extra_tokens, scale, self.icon_style(),
+                    self._extra_tokens, scale, self.icon_style(), self.icon_outline(),
                 ):
                     self._rebuilt.add(name)
             except Exception as error:  # pylint: disable=broad-except
@@ -3157,6 +3206,8 @@ class QgisStudioThemesPlugin:
         )
         if self._icons.style != self.icon_style():
             self._icons.set_style(self.icon_style())
+        if self._icons.outline != self.icon_outline():
+            self._icons.set_outline(self.icon_outline())
         self._icons.apply(theme, icons_dir, self.iface.mainWindow(), colors, scale, compact=self._compact)
         self._layers.attach()
         self._style_message_bar()
@@ -3260,6 +3311,18 @@ class QgisStudioThemesPlugin:
             value = "color"  # its name in early 1.3 builds
         return value if value in ICON_STYLES else "color"
 
+    @staticmethod
+    def icon_outline():
+        """The Colourful outline style set in the settings dialog
+        (studio_icons.OUTLINE_STYLES)."""
+        value = QgsSettings().value(OUTLINE_SETTING, studio_icons.DEFAULT_OUTLINE, type=str)
+        return value if value in studio_icons.OUTLINE_STYLES else studio_icons.DEFAULT_OUTLINE
+
+    def _icons_stamp(self, style):
+        """The build stamp of the themes' icons in `style` and the outline
+        style set."""
+        return self._stamp_base + f"|icons-{style}|outline-{self.icon_outline()}"
+
     def set_icon_style(self, style):
         """Show `style`'s icons at once: the active theme is rebuilt in it
         (the others when next shown), its icons swapped again from QGIS's
@@ -3267,20 +3330,32 @@ class QgisStudioThemesPlugin:
         previous = self.icon_style()
         if style not in ICON_STYLES or style == previous:
             return
-        QgsSettings().setValue(ICON_STYLE_SETTING, style)
+        self._change_icons(ICON_STYLE_SETTING, style, previous, "icon style")
+
+    def set_icon_outline(self, outline):
+        """Show Colourful icons with `outline`'s outlines at once, as
+        set_icon_style shows another style."""
+        previous = self.icon_outline()
+        if outline not in studio_icons.OUTLINE_STYLES or outline == previous:
+            return
+        self._change_icons(OUTLINE_SETTING, outline, previous, "outlines")
+
+    def _change_icons(self, setting, value, previous, what):
+        """Store an icon setting and show it at once (set_icon_style)."""
+        QgsSettings().setValue(setting, value)
         if self._stamp_base is None:
             return
-        self._shared_stamp = self._stamp_base + f"|icons-{style}"
+        self._shared_stamp = self._icons_stamp(self.icon_style())
         theme = self._active
         if theme is None:
             return
         name = self._studio_themes()[theme][0]
         if not self._build(name):
-            # Keep the style shown (the log has the error).
-            QgsSettings().setValue(ICON_STYLE_SETTING, previous)
-            self._shared_stamp = self._stamp_base + f"|icons-{previous}"
+            # Keep the icons shown (the log has the error).
+            QgsSettings().setValue(setting, previous)
+            self._shared_stamp = self._icons_stamp(self.icon_style())
             self.iface.messageBar().pushMessage(
-                "Studio Themes", "Could not change the icon style; see the QGIS Studio Themes log.",
+                "Studio Themes", f"Could not change the {what}; see the QGIS Studio Themes log.",
                 Qgis.MessageLevel.Warning, 10,
             )
             return
@@ -3393,7 +3468,7 @@ class QgisStudioThemesPlugin:
         shares them, so switching themes draws nothing."""
         if self.icon_style() == "classic":
             return  # QGIS's own icons: no masks needed
-        folders, scale = self._icons.mask_folders, self._icons.scale
+        folders, scale, outline = self._icons.mask_folders, self._icons.scale, self._icons.outline
         sizes = missing_masks(folders, self._icons.needed_png_sizes(), scale)
         if not folders or not sizes or scale in self._rendering:
             return
@@ -3401,7 +3476,7 @@ class QgisStudioThemesPlugin:
 
         def work():
             try:
-                if prerender_masks(folders, sizes, scale, self._stop):
+                if prerender_masks(folders, sizes, scale, self._stop, outline):
                     self._relay.pngs_ready.emit(scale)
             finally:
                 # Also after an error, so the next request tries again.

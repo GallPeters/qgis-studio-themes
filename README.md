@@ -61,6 +61,7 @@ Open them in Plugins → QGIS Studio Themes → Settings. Every change shows at 
 
 - **Interface**: toolbars or a ribbon (the default).
 - **Icons**: monochrome, colourful or QGIS classic.
+- **Outlines**: how dark colourful icons' outlines are: strong, crisp (the default), medium or soft. Softer outlines suit large desktop monitors.
 - **Ribbon size**: small, medium, large, or follow QGIS's icon size.
 - **Ribbon density**: standard (the default) gives the icons more room, compact saves height.
 - **Group name position**: above, below or left of the buttons, or off.

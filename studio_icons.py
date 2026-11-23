@@ -18,9 +18,11 @@ draws every glyph in device pixels with its points moved onto the pixel
 grid and a stroke of whole pixels, like a hand-hinted icon: straight lines
 come out solid and sharp. Those are pre-rendered as PNGs (see the plugin).
 """
+import contextlib
 import functools
 import math
 import re
+import threading
 from pathlib import Path
 
 GLYPHS_DIR = Path(__file__).parent / "icons" / "tabler"
@@ -1020,8 +1022,6 @@ STROKE = 1.5
 # Extra width (device pixels) of pixel-snapped lines, beyond their whole
 # pixels (see render_icon_px).
 STROKE_EXTRA = 0.25
-# The same for Colourful icons: a 1 px core with a faint fringe.
-COLOR_STROKE_EXTRA = 0.1
 SCALE = 1.15
 COMPACT_SCALE = 1.15
 # Glyphs with a badge are placed from the top-left instead, almost as large
@@ -1206,8 +1206,10 @@ def _disc_badge(center, mark, mode, size):
     seen."""
     c, d, w = _badge_place(size, center)
     n = _num
-    disc = (f'<circle cx="{n(c)}" cy="{n(c)}" r="{n(d / 2 - 0.5)}" fill="{COLOR_MARKS[mode][mark]}" '
-            'stroke="#000000" stroke-width="1"/>')
+    color = COLOR_MARKS[mode][mark]
+    share = _look()[0]
+    edge = OUTLINE if share is None else _mix(color, "#000000", share)
+    disc = f'<circle cx="{n(c)}" cy="{n(c)}" r="{n(d / 2 - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
     if mark in ("plus", "minus"):
         half = max(1, (d - 7) // 2)
         p = f"M{n(c - half)} {n(c)}H{n(c + half)}" + (f"M{n(c)} {n(c - half)}V{n(c + half)}" if mark == "plus" else "")
@@ -2415,9 +2417,8 @@ DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
 # set after DETAILED below.
 _TEXT = "#97a1ab"
 # Detailed drawings since 1.6: mid-light edges and text lines this far
-# towards black, and edges a hair over 1 px (a 1 px core, a faint fringe).
+# towards black.
 DETAIL_LIGHT_DARKEN = 0.5
-DETAIL_EDGE = 1.1
 
 
 def _detailed_at(glyph, size):
@@ -2746,7 +2747,7 @@ DETAIL_EVERYWHERE = frozenset(set(DETAILED) - DETAIL_ONLY_LARGE)
 _DETAIL_ID = re.compile(r'id="(\w+)"|url\(#(\w+)\)')
 
 
-def _detailed(glyph, transform, edge=1, snap=None):
+def _detailed(glyph, transform, edge=1, snap=None, mode="light"):
     """(defs, drawing) of a detailed glyph placed by `transform` (from its
     32 px grid), or with `snap` (factor, offset) drawn in device pixels on
     the pixel grid; edges `edge` wide unless drawn otherwise, its ids
@@ -2759,11 +2760,11 @@ def _detailed(glyph, transform, edge=1, snap=None):
         return f'id="d{match.group(1)}"' if match.group(1) else f"url(#d{match.group(2)})"
 
     def stroke(match):
-        # Since 1.6 dark edges are black (OUTLINE) and mid-light ones half
-        # way to black; highlights keep their colour.
+        # Since 1.6 dark edges are as dark as the outlines (_outline_color)
+        # and mid-light ones half way to black; highlights keep their colour.
         lum = _luminance(match.group(1))
         if lum <= 0.55:
-            return f'stroke="{OUTLINE}"'
+            return f'stroke="{_outline_color(match.group(1), mode)}"'
         if lum <= 0.8:
             return f'stroke="{_mix(match.group(1), OUTLINE, DETAIL_LIGHT_DARKEN)}"'
         return match.group(0)
@@ -2926,10 +2927,10 @@ def _detailed_px(glyph, badge, size, width, layer, accent, danger, mode, hairlin
         offset = (size - 32 * factor) / 2
     if hairline:
         # Device pixels, every coordinate on the pixel grid, 1 px edges.
-        defs, body = _detailed(glyph, "translate(0 0)", DETAIL_EDGE, snap=(factor, offset))
+        defs, body = _detailed(glyph, "translate(0 0)", _look()[2], snap=(factor, offset), mode=mode)
     else:
         transform = f"translate({_num(offset)} {_num(offset)}) scale({_num(factor)})"
-        defs, body = _detailed(glyph, transform)
+        defs, body = _detailed(glyph, transform, mode=mode)
     body = _deepen(body, mode)
     if mode == "dark":
         # Lines black on light themes, light on dark ones (the tree line).
@@ -3092,9 +3093,54 @@ def _color_reach(glyph):
 
 
 # Since 1.6 the outline of every filled shape, and every detail drawn on a
-# fill, is pure black, 1 px (a hair more, COLOR_STROKE_EXTRA): sharp and
-# clear on light bodies, like the database's thin dark edge.
+# fill, is 1 px and dark: sharp and clear on light bodies, like the
+# database's thin edge. How dark is a setting (Plugins > QGIS Studio Themes >
+# Settings > Outlines), as the same 1 px line looks finer on a laptop's
+# small pixels than on a desktop monitor's large ones:
+#   strong: pure black, with a faint fringe (0.1 px more);
+#   crisp:  pure black, exactly 1 px (the default);
+#   medium, soft: a deep shade of each object's own colour, 80 and 65
+#           percent of the way to black.
 OUTLINE = "#000000"
+OUTLINE_STYLES = ("strong", "crisp", "medium", "soft")
+DEFAULT_OUTLINE = "crisp"
+# (share of the way to black, None for pure black; extra width of
+# Colourful lines in device pixels; width of detailed drawings' edges).
+OUTLINE_LOOKS = {
+    "strong": (None, 0.1, 1.1),
+    "crisp": (None, 0.0, 1.0),
+    "medium": (0.8, 0.0, 1.0),
+    "soft": (0.65, 0.0, 1.0),
+}
+# The outline style of the icon being drawn, per thread (masks are drawn in
+# worker threads while the GUI thread may draw an icon of another style).
+_DRAWING = threading.local()
+
+
+@contextlib.contextmanager
+def _outlined(outline):
+    """Draw in the outline style `outline` (OUTLINE_STYLES; None: the
+    default) within the block."""
+    previous = getattr(_DRAWING, "outline", DEFAULT_OUTLINE)
+    _DRAWING.outline = outline if outline in OUTLINE_LOOKS else DEFAULT_OUTLINE
+    try:
+        yield
+    finally:
+        _DRAWING.outline = previous
+
+
+def _look():
+    return OUTLINE_LOOKS[getattr(_DRAWING, "outline", DEFAULT_OUTLINE)]
+
+
+def _outline_color(edge, mode):
+    """The outline drawn for an object whose own edge colour is `edge`: pure
+    black, or that colour so far towards black that _deepen (which deepens
+    it again) brings it to the style's share."""
+    share = _look()[0]
+    if share is None:
+        return OUTLINE
+    return _mix(edge, "#000000", max(0.0, 1 - (1 - share) / (1 - OUTLINE_DEEPEN[mode])))
 
 
 def _material(name, mode, sign):
@@ -3103,8 +3149,9 @@ def _material(name, mode, sign):
     or "dark") theme, in a sign or not: a filled shape outlined in black
     (OUTLINE), unless its line is its fill's own colour."""
     fill, line, whole = _material_colors(name, mode, sign)
-    if fill and (line != fill or name.rstrip("/!~") == "glass"):
-        line = OUTLINE
+    glass = name.rstrip("/!~") == "glass"
+    if fill and (line != fill or glass):
+        line = _outline_color(COLOR_HUES["blue"][2] if glass or not line else line, mode)
     return fill, line, whole
 
 
@@ -3271,12 +3318,15 @@ def _on_fill(segments, line, areas, mode, material):
     ]
     if not under:
         return line
-    # Since 1.6 black (OUTLINE), as sharp as the outlines; white and dark
-    # marks keep their colour.
-    if material.rstrip("/!~") not in ("white", "dark"):
-        return OUTLINE
     # The smallest fill holding it lies on top.
     _area_box, color = min(under, key=lambda item: (item[0][2] - item[0][0]) * (item[0][3] - item[0][1]))
+    # Since 1.6 as dark as the outlines (_outline_color), in its own hue or
+    # that of the fill under it; white and dark marks keep their colour.
+    if material.rstrip("/!~") not in ("white", "dark"):
+        hue = MATERIAL_HUES.get(material.rstrip("/!~"))
+        if hue not in COLOR_HUES:
+            hue = FILL_HUES.get(color)
+        return _outline_color(COLOR_HUES[hue][2] if hue in COLOR_HUES else "#4a5058", mode)
     # The theme's icon colour is drawn in one layer for every theme: it
     # must read in both kinds of theme, or the detail gets a fixed colour.
     current = [line] if line else list(THEME_INK.values())
@@ -3296,11 +3346,17 @@ def _on_fill(segments, line, areas, mode, material):
     return _legible(deeper + [DARK_MARK, "#ffffff"], color)
 
 
-def render_icon_color(spec, colors, scale=SCALE, mode="light"):
+def render_icon_color(spec, colors, scale=SCALE, mode="light", outline=None):
     """The Colourful version of render_icon (same glyph placement and
-    badges) for a `mode` theme: ink parts in colors["icon"]. Detailed
-    glyphs are drawn detailed: this SVG serves the large sizes without a
-    pre-rendered PNG."""
+    badges) for a `mode` theme, its outlines in the style `outline`: ink
+    parts in colors["icon"]. Detailed glyphs are drawn detailed: this SVG
+    serves the large sizes without a pre-rendered PNG."""
+    with _outlined(outline):
+        return _render_color(spec, colors, scale, mode)
+
+
+def _render_color(spec, colors, scale, mode):
+    """render_icon_color in the current outline style."""
     glyph, badge = _color_spec(spec)
     if glyph in DETAILED:
         # Scalable: its edges scale with it (no device pixel to keep to).
@@ -3338,7 +3394,8 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light"):
 
 
 # Since 1.6 every colour darker than this (luminance) is pure black, the
-# theme's icon colour excepted: near-black edges read soft beside black ones.
+# theme's icon colour excepted: near-black edges read soft beside black ones
+# (with pure-black outlines only).
 BLACK_BELOW = 0.07
 # Small markers (vertices, the model designer's boxes: no wider or higher
 # than this share of the icon) in vivid colours instead of the medium
@@ -3376,9 +3433,11 @@ def _finish(svg, size, ink):
     (BLACK_BELOW), small markers vivid (MARKER_SHARE)."""
     ink = ink.lower()
 
+    black_below = BLACK_BELOW if _look()[0] is None else 0
+
     def black(match):
         color = match.group(2).lower()
-        if color == ink or _luminance(color) >= BLACK_BELOW:
+        if color == ink or _luminance(color) >= black_below:
             return match.group(0)
         return f'{match.group(1)}="#000000"'
 
@@ -3391,12 +3450,14 @@ def _finish(svg, size, ink):
 
 
 def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
-                         accent="#000000", danger="#000000", mode="light"):
+                         accent="#000000", danger="#000000", mode="light", outline=None):
     """The Colourful version of render_icon_px for a `mode` theme, on the
-    same pixel grid. `layer`: "color" draws the coloured parts and the
-    badge marks (fixed colours), "ink" the ink parts in `ink` (a mask the
-    theme tints), "all" everything (badge dots in `accent` and `danger`)."""
-    return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink)
+    same pixel grid, its outlines in the style `outline` (OUTLINE_STYLES).
+    `layer`: "color" draws the coloured parts and the badge marks (fixed
+    colours), "ink" the ink parts in `ink` (a mask the theme tints), "all"
+    everything (badge dots in `accent` and `danger`)."""
+    with _outlined(outline):
+        return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink)
 
 
 def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode):
@@ -3445,8 +3506,9 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
     if layer != "color":
         inked = "".join(
             _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit), mark)[1])
-    drawn = _num(ink_width + COLOR_STROKE_EXTRA)
-    fine = _deepen(f'<g stroke-width="{_num(thin + COLOR_STROKE_EXTRA)}">{colored}</g>', mode) if colored else ""
+    extra = _look()[1]
+    drawn = _num(ink_width + extra)
+    fine = _deepen(f'<g stroke-width="{_num(thin + extra)}">{colored}</g>', mode) if colored else ""
     body = fine + inked
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '

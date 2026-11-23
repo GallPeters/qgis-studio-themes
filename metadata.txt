@@ -20,6 +20,7 @@ changelog=
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful icons, standard ribbon density, group names auto, 9 px names.
           - Colourful icons redesigned: thin black outlines and details, sharper corners, vivid small markers, the same drawing at every size.
+          - New Outlines setting for Colourful icons: Strong, Crisp (default), Medium or Soft; softer outlines suit large desktop monitors.
           - Icons with a symbol in one corner (download, export, settings, check...) are drawn whole with a round badge and a sharp white symbol.
           - New or refined icons: Pan, zoom tools, Shapefile, Virtual Layer, Filter by Expression, Expand and Collapse All, Help, About, Report Issue, Support and more.
           - Icons that faded on dark themes are clear again.
