@@ -1045,7 +1045,7 @@ BADGE_MARKS = {"plus": "plus", "star": "plus", "minus": "minus", "check": "check
 # badges, for the glyphs whose Tabler drawing gave a corner to such a
 # symbol (COLOR_BADGED).
 COLOR_BADGE_MARKS = {**BADGE_MARKS, "x": "x",
-                     **{mark: mark for mark in ("down", "up", "out", "cog", "search", "play", "bolt")}}
+                     **{mark: mark for mark in ("down", "up", "out", "cog", "search", "play", "bolt", "expr")}}
 # Badge marks drawn as solid white shapes (a line arrow read as a plus at
 # 16 px).
 FILLED_MARKS = frozenset(("play", "bolt", "down", "up", "out"))
@@ -1093,10 +1093,14 @@ COLOR_HUES = {  # (light body, medium body, edge)
     "toolred": ("#ca6961", "#bd4d45", "#8a3630"),
     # Steel: a hammer's head, darker than the neutral greys.
     "steel": ("#8a939d", "#5f6873", "#3a414a"),
+    # Leaf: a light green a little deeper than green's (the puzzle piece).
+    "leaf": ("#93c287", "#66a466", "#417a43"),
 }
 # Paper (fill, edge) on light and dark themes.
 COLOR_MODES = ("light", "dark")
 PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
+# A sheet: paper, but lighter on dark themes (the palette).
+SHEET_DARK = "#eceef1"
 # A magnifier's light glass, in an ink frame.
 GLASS = "#c8dcef"
 # Signs (info, help, warning, OK): solid, in the hue's medium body, with a
@@ -1118,13 +1122,14 @@ MATERIAL_HUES = {
     "red": "red", "redS": "red", "pink": "red", "pinkS": "red", "orange": "orange", "orangeS": "orange",
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
     "toolredS": "toolred", "steel": "steel", "steelS": "steel", "gold": "gold", "goldS": "gold",
+    "leaf": "leaf", "sheet": "sheet",
 }
 # The colour of each badge (add, remove, accept, delete; arrows green as
 # the add mark, a grey gear, a blue magnifier, an amber bolt).
 COLOR_MARKS = dict.fromkeys(COLOR_MODES, {
     "plus": "#539653", "minus": "#c25a53", "check": "#539653", "x": "#c94a42",
     "down": "#539653", "up": "#539653", "out": "#539653", "play": "#539653",
-    "cog": "#6c747f", "search": "#3f7fc0", "bolt": "#d38a2c",
+    "cog": "#6c747f", "search": "#3f7fc0", "bolt": "#d38a2c", "expr": "#3f7fc0",
 })
 # Badges have a dark edge: their colour this far towards black.
 BADGE_EDGE = 0.5
@@ -1144,6 +1149,9 @@ def _disc_badge(center, radius, mark, mode, arm, width):
     c = _num(center)
     disc = f'<circle cx="{c}" cy="{c}" r="{_num(radius - 0.5)}" fill="{color}" stroke="{edge}" stroke-width="1"/>'
     d = _mark_path(mark, center, arm)
+    if mark == "expr":
+        # The sigma in a finer line, so it reads as a sigma.
+        width = max(0.85, width * 0.7)
     if mark in FILLED_MARKS:
         return disc + f'<path d="{d}" fill="#ffffff" stroke="none"/>'
     cap = "round" if mark in ("check", "x", "search") else "square"
@@ -1275,6 +1283,10 @@ def _mark_path(mark, c, arm):
         r, o = a * 0.55, c - a * 0.25
         return (f"M{n(o - r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o + r)} {n(o)}A{n(r)} {n(r)} 0 1 0 {n(o - r)} {n(o)}"
                 f"M{n(o + r * 0.75)} {n(o + r * 0.75)}L{n(c + a)} {n(c + a)}")
+    if mark == "expr":
+        # A sigma (filter by expression).
+        return (f"M{n(c + a * .75)} {n(c - a * .85)}H{n(c - a * .7)}L{n(c + a * .1)} {n(c)}"
+                f"L{n(c - a * .7)} {n(c + a * .85)}H{n(c + a * .75)}")
     if mark == "play":
         return f"M{n(c - a * 0.6)} {n(c - a * 0.9)}L{n(c + a * 0.9)} {n(c)}L{n(c - a * 0.6)} {n(c + a * 0.9)}Z"
     if mark == "bolt":
@@ -2090,7 +2102,7 @@ COLOR_RECIPES.update({
     "hexagons": ("green!",),
     "grain": ("blueS~",), "grid-dots": ("blueS~",),
     "slice": ("gray!",),
-    "puzzle": ("green",),
+    "puzzle": ("leaf",),
     "lock-open": ("goldS", "dark/", "grayS/"),
 })
 # The Zoom In magnifier: flat light glass, a solid handle at 45 degrees.
@@ -2170,9 +2182,10 @@ _COLOR_DRAWINGS = {
     # whole-pixel discs, which never turn into crosses).
     "palette": ('<path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 '
                 '-1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/>'
-                + "".join(f'<path d="M{x - 1} {y}a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" class="disc"/>'
-                          for x, y in ((6.5, 14.5), (7, 9.5), (11, 6.2), (16, 7), (18.2, 11.2))),
-                ("paper!", "redS", "yellowS", "greenS", "blueS", "purpleS")),
+                + "".join(f'<path d="M{x - 1} {y}a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" class="disc" fill="{color}"/>'
+                          for (x, y), color in zip(((6.5, 14.5), (7, 9.5), (11, 6.2), (16, 7), (18.2, 11.2)),
+                                                   ("#e5463c", "#f2b705", "#36a447", "#2f7fe0", "#9550d8"))),
+                ("sheet!", "redS", "yellowS", "greenS", "blueS", "purpleS")),
     # A shield, the base of shield-check (a badge since 1.6).
     "shield": ('<path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3z"/>',
                ("blue",)),
@@ -2212,9 +2225,19 @@ _COLOR_DRAWINGS = {
     "tool": ('<path d="M6.28 19.67L14.95 11L13 9.05L4.33 17.72A1.43 1.43 0 0 0 6.28 19.67z"/>'
              '<path d="M20.19 10.76L17.28 13.66L12.24 8.62L10.96 6.11L12.63 4.44L15.16 5.72z"/>',
              ("woodS~", "steel")),
-    # About: a square sign with the i of the round info sign.
-    "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>',
-                            ("blueS", "white/", "white/")),
+    # About: a square sign with a bold i on whole pixels (a 1 px i was
+    # barely seen on the ribbon).
+    "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 7.6v.01" class="bolddot"/>'
+                            '<path d="M12 10.6v6.9" class="bold"/>', ("blueS", "white/", "white/")),
+    # Report Issue: a green bug with thin grey legs (ink legs read heavy).
+    "bug": ('<path d="M9 8a3 3 0 0 1 6 0z"/><path d="M7 13a5 5 0 0 1 10 0v3a5 5 0 0 1 -10 0z"/>'
+            '<path d="M12 9.5v11"/>'
+            '<path d="M7 12.5h-3M7 16h-3.5M7.6 19.5l-2.6 2.2M17 12.5h3M17 16h3.5M16.4 19.5l2.6 2.2'
+            'M10 6l-2 -2.5M14 6l2 -2.5"/>', ("greenS", "greenS", "dark/", "grayS/")),
+    # Globes: Tabler's line globe at every size, its latitude lines kept
+    # inside the circle (square line ends reach further).
+    "world": ('<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M4.4 9h15.2"/><path d="M4.4 15h15.2"/>'
+              '<path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/>', ("blue", "blueS/")),
     # Labels: a small abc on a yellow label pointed at its right end, like
     # QGIS's own, with a margin of yellow around the letters.
     "abc": ('<path d="M1.5 6h18l3 6l-3 6h-18z"/><path d="M7.25 12v3"/>'
@@ -2351,18 +2374,33 @@ def _flat_funnel(k=1.0):
             f'fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>')
 
 
-def _tree_arrows(outward):
-    """Expand All (outward) and Collapse All (inward): a solid arrow up and
-    a solid arrow down about a centre bar."""
-    if outward:
-        up, down = "M16 2.5L23.5 10H19V13H13V10H8.5Z", "M16 29.5L23.5 22H19V19H13V22H8.5Z"
-    else:
-        up, down = "M16 13.5L23.5 6H19V2.5H13V6H8.5Z", "M16 18.5L23.5 26H19V29.5H13V26H8.5Z"
-    return (f'<path d="{up}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
-            f'<path d="{down}" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
-            f'<rect x="4.5" y="15" width="23" height="2" fill="{SLATE_BAR}"/>')
+def _tree(expand):
+    """Expand All (+) and Collapse All (-): a node box with its mark, its
+    row and one child row on a tree line; near-black edges, a mid slate
+    line that reads on dark themes."""
+    edge = "#262d34"
+    mark = ('<rect x="5.5" y="8.75" width="8" height="1.5" fill="#1f262d"/>'
+            + ('<rect x="8.75" y="5.5" width="1.5" height="8" fill="#1f262d"/>' if expand else ""))
+    return ('<path d="M9.5 15.5V23.5H16.5" stroke="#8792a0" stroke-width="1.5" class="bg"/>'
+            f'<rect x="3.5" y="3.5" width="12" height="12" fill="#ffffff" stroke="{edge}"/>' + mark
+            + f'<rect x="18.5" y="7.5" width="10" height="4" fill="{SLATE_FILL}" stroke="{edge}"/>'
+            f'<rect x="16.5" y="21.5" width="12" height="4" fill="#dfe5eb" stroke="{edge}"/>')
 
 
+def _sector(cx, cy, r_out, r_in, a1, a2):
+    """A ring's sector from angle `a1` to `a2` (degrees), as a path."""
+    f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")  # noqa: E731
+    p = lambda r, a: (cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))  # noqa: E731
+    (x1, y1), (x2, y2), (x3, y3), (x4, y4) = p(r_out, a1), p(r_out, a2), p(r_in, a2), p(r_in, a1)
+    return (f"M{f(x1)} {f(y1)}A{r_out} {r_out} 0 0 1 {f(x2)} {f(y2)}L{f(x3)} {f(y3)}"
+            f"A{r_in} {r_in} 0 0 0 {f(x4)} {f(y4)}Z")
+
+
+QUERY = ('<path d="M11.5 9.5V25A8.5 3 0 0 0 28.5 25V9.5" fill="#8f7ac8" stroke="#4b3a80"/>'
+         '<path d="M11.5 15A8.5 3 0 0 0 28.5 15M11.5 20A8.5 3 0 0 0 28.5 20" stroke="#4b3a80"/>'
+         '<ellipse cx="20" cy="9.5" rx="8.5" ry="3" fill="#cbc0ef" stroke="#4b3a80"/>'
+         '<path d="M7.75 15.45L4.78 18.42L3.08 16.72L6.05 13.75Z" fill="#7d8792" stroke="#3d4650"/>'
+         f'<path d="{_circle(11, 10.5, 5.5)}" fill="#dcebf8" stroke="#3d4650"/>')
 EYE = ('<path d="M2.5 16C7 9.5 11 7.5 16 7.5S25 9.5 29.5 16C25 22.5 21 24.5 16 24.5S7 22.5 2.5 16Z" '
        'fill="#ffffff" stroke="#4f5a66"/>'
        '<circle cx="16" cy="16" r="6" fill="#6f8296" stroke="#3f4b57"/>'
@@ -2432,19 +2470,6 @@ DETAILED = {
         '<path d="M6 12L11.5 14L17 10.5L24 12.5" stroke="#c9443a" stroke-dasharray="2 1"/>'
         '<circle cx="24" cy="12.5" r="1.6" fill="#c9443a" stroke="#ffffff" stroke-width=".7"/>',
     ),
-    "world": (
-        _lg("o", (0, "#4d8fd6"))
-        + _lg("c", (0, "#8fd07a"), (1, "#3f8a3a")) + '<clipPath id="k"><circle cx="16" cy="16" r="12.5"/></clipPath>',
-        '<circle cx="16" cy="16" r="12.5" fill="url(#o)"/><g clip-path="url(#k)">'
-        '<path d="M8.5 6C12 5 14.5 7.5 13.5 10S9 12.5 10 15.5S13.5 18.5 12.5 22S9.5 26 8 24S6.5 18 5 15.5S5.5 8 8.5 6Z" '
-        'fill="url(#c)" stroke="#2f6e2b" stroke-width=".75"/>'
-        '<path d="M18.5 8C21.5 7 24.5 8 25.5 10.5S23 13 23.5 15.5S23.5 20.5 21.5 23S19 22 19 20S16.5 17 17 15S16 10 18.5 8Z" '
-        'fill="url(#c)" stroke="#2f6e2b" stroke-width=".75"/>'
-        '<ellipse cx="16" cy="16" rx="5.5" ry="12.5" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/>'
-        '<path d="M3.5 16H28.5M5 10H27M5 22H27" stroke="#e3f1fd" stroke-width=".6" opacity=".55"/></g>'
-        ''
-        '<circle cx="16" cy="16" r="12.5" stroke="#1d4677"/>',
-    ),
     "photo": (
         _lg("s", (0, "#a9d3f6"), (1, "#e8f4fe")) + _lg("m", (0, "#86c874"), (1, "#478f3f"))
         + _lg("n", (0, "#b5c9b0"), (1, "#7d9878")) + '<clipPath id="k"><rect x="5" y="7" width="22" height="18"/></clipPath>',
@@ -2513,18 +2538,9 @@ DETAILED = {
         f'<path d="{_gear(16, 16, 13.5, 10.2, 8)}{_circle(16, 16, 4.5)}" fill="url(#a)" fill-rule="evenodd" '
         'stroke="#4f5a66" stroke-linejoin="round"/>',
     ),
-    # A plain slate funnel; filter by expression adds a white tag with
-    # < > (class "bg": kept as drawn, not deepened like an edge).
+    # A plain slate funnel (filter by expression adds a sigma badge,
+    # COLOR_BADGED).
     "filter": ("", _flat_funnel()),
-    "filter-code": (
-        "",
-        _flat_funnel(0.82)
-        # The tag 1 unit in and narrower: enlarged (DETAIL_GROW), its right
-        # edge fell outside the icon.
-        + f'<rect x="13.5" y="16.5" width="14" height="11" rx="1" fill="#ffffff" stroke="{SLATE_EDGE}"/>'
-        f'<path d="M18.5 19.5L16.5 22L18.5 24.5M22.5 19.5L24.5 22L22.5 24.5" stroke="{SLATE_EDGE}" '
-        'stroke-width="1.6" class="bg"/>',
-    ),
     # An eye: white, a slate iris and a dark pupil with a glint.
     "eye": ("", EYE),
     # Hide All Layers: the same eye with a red slash in a cut-out gap, as
@@ -2547,8 +2563,44 @@ DETAILED = {
         'stroke="#7d2620"/>'
         '<circle cx="16" cy="15.5" r="1.3" fill="#3d4650"/>',
     ),
-    "tree-expand": ("", _tree_arrows(True)),
-    "tree-collapse": ("", _tree_arrows(False)),
+    # Shapefile: a green page with a green polygon (a vector file).
+    "shp-raised": (
+        "",
+        '<path d="M6.5 3.5H18.5L24.5 9.5V28.5H6.5Z" fill="#c4e5b5" stroke="#3b7a32"/>'
+        '<path d="M18.5 3.5V9.5H24.5Z" fill="#8fc87e" stroke="#3b7a32"/>'
+        '<path d="M9.5 19.5L11.5 12.5L17.5 11L21.5 15.5L17 20.5Z" fill="#6fb85e" stroke="#2f6a28"/>'
+        '<circle cx="11.5" cy="12.5" r="1.3" fill="#c9443a"/>',
+    ),
+    # Virtual layers (an SQL query): a violet database with a magnifier on
+    # its left, the handle to the lower left, clear of any badge.
+    "sql-raised": ("", QUERY), "sql": ("", QUERY),
+    # Documentation: a closed blue book, its spine, page block and label.
+    "book": (
+        "",
+        '<rect x="9.5" y="24.5" width="16" height="4" fill="#ffffff" stroke="#7d8792"/>'
+        '<path d="M27 26H10M27 27.5H10" stroke="#c6ccd3" stroke-width=".6"/>'
+        '<rect x="6.5" y="3.5" width="19" height="21" fill="#4a86c8" stroke="#1d4677"/>'
+        '<rect x="6.5" y="3.5" width="3.5" height="25" fill="#2f659f" stroke="#1d4677"/>'
+        '<rect x="13" y="8" width="9.5" height="4" fill="#ffffff"/>',
+    ),
+    # Support: a lifebuoy, four red bands on a white ring.
+    "lifebuoy": (
+        "",
+        f'<path d="{_circle(16, 16, 12.5)}{_circle(16, 16, 5.5)}" fill="#ffffff" fill-rule="evenodd"/>'
+        + "".join(f'<path d="{_sector(16, 16, 12.5, 5.5, a - 24, a + 24)}" fill="#d9473d"/>'
+                  for a in (-45, 45, 135, 225))
+        + f'<path d="{_circle(16, 16, 12.5)}{_circle(16, 16, 5.5)}" fill="none" stroke="#7d2620"/>',
+    ),
+    # Get Involved: two people, the one behind lighter.
+    "users": (
+        "",
+        '<circle cx="20.5" cy="9.5" r="3.5" fill="#d7dbe0" stroke="#5d6873"/>'
+        '<path d="M14 24.5V21L16.5 16.5H24.5L27 21V24.5Z" fill="#a9c7e8" stroke="#2f5f93"/>'
+        '<circle cx="12" cy="11.5" r="4.5" fill="#e6e9ed" stroke="#5d6873"/>'
+        '<path d="M4 28.5V24L7 18.5H17L20 24V28.5Z" fill="#5b93cf" stroke="#24548c"/>',
+    ),
+    "tree-expand": ("", _tree(True)),
+    "tree-collapse": ("", _tree(False)),
     # List by Data Source: a file beside a database (the database's colours).
     "layers-source": (
         _lg("d", (0, "#3f78b8"), (.45, "#5d95d1"), (1, "#3a6ea8"), x2=1, y2=0)
@@ -2571,10 +2623,11 @@ DETAILED = {
     ),
 }
 # Sharper corners since 1.6: miter joins everywhere, half the rounding of
-# rounded rectangles.
+# rounded rectangles (rectangles only: an ellipse's rx is its size).
 for _glyph, (_defs, _body) in list(DETAILED.items()):
     _body = _body.replace(' stroke-linejoin="round"', "")
-    DETAILED[_glyph] = (_defs, re.sub(r'rx="([\d.]+)"', lambda m: f'rx="{float(m.group(1)) / 2:g}"', _body))
+    DETAILED[_glyph] = (_defs, re.sub(r'(<rect\b[^>]*?)rx="([\d.]+)"',
+                                      lambda m: f'{m.group(1)}rx="{float(m.group(2)) / 2:g}"', _body))
 # Since 1.6 every detailed drawing is used at every size, so an icon looks
 # the same in a menu as on the ribbon (the simpler drawings differed: a
 # grey lock, a globe of blue lines), except those that turn faint small.
@@ -2792,6 +2845,7 @@ COLOR_BADGED = {
     "photo-down": "photo+down", "map-pin-search": "map-pin+search",
     "pointer-plus": "pointer+plus", "pointer-minus": "pointer+minus",
     "cloud-download": "cloud+down", "cloud-upload": "cloud+up", "table-options": "table+cog",
+    "filter-code": "filter+expr",
 }
 
 
@@ -2807,7 +2861,9 @@ def _color_spec(spec):
 # Marks (class "mark": a zoom plus or minus) are drawn MARK_GROW-th of the
 # icon wide in whole pixels with square ends, the centre snapped once so
 # every arm has the same length; dots (class "dot") are DOT_PX squares;
-# discs (class "disc") filled circles with a whole-pixel box.
+# discs (class "disc") filled circles with a whole-pixel box; bold strokes
+# and dots (class "bold", "bolddot": the About i) are solid bars and
+# squares at least 2 px wide.
 MARK_GROW, DOT_PX = 20, 2
 
 
@@ -2826,6 +2882,16 @@ def _mark_drawer(size, place):
             cy = math.floor((y1 + y2) / 2 - off + 0.5) + off
             r = _num(dia / 2)
             return f"M{_num(cx - dia / 2)} {_num(cy)}a{r} {r} 0 1 0 {dia} 0a{r} {r} 0 1 0 -{dia} 0z", dia
+        if kind in ("bold", "bolddot"):
+            w = max(2, round(size / 11))
+            off = 0.5 if w % 2 else 0.0
+            (x1, y1), (x2, y2) = place(*segments[0][1:3]), place(*segments[-1][-2:])
+            cx = math.floor((x1 + x2) / 2 - off + 0.5) + off
+            if kind == "bolddot":
+                cy = math.floor(y1 - off + 0.5) + off
+                return f"M{_num(cx - w / 2)} {_num(cy - w / 2)}h{w}v{w}h-{w}z", w
+            top, bottom = round(min(y1, y2)), round(max(y1, y2))
+            return f"M{_num(cx - w / 2)} {top}h{w}V{bottom}h-{w}z", w
         w = max(1, round(size / MARK_GROW)) if kind == "mark" else DOT_PX
         off = 0.5 if w % 2 else 0.0
 
@@ -2905,8 +2971,10 @@ def _material(name, mode, sign):
         return (None if line_only else "#ffffff"), "#ffffff", whole
     if hue == "dark":
         return None, DARK_MARK, whole
-    if hue == "paper":
+    if hue in ("paper", "sheet"):
         fill, edge = PAPER[mode]
+        if hue == "sheet" and mode == "dark":
+            fill = SHEET_DARK
         return (None if line_only else fill), edge, whole
     if hue == "glass":
         return (None if line_only else GLASS), None, whole
@@ -2991,7 +3059,7 @@ def _color_body(glyph, mode, ink, draw, mark=None):
     fills, colored, inked = [], [], []
     for i, (segments, attrs) in enumerate(paths):
         fill, line, whole = parts[i]
-        kind = next((k for k in ("mark", "dot", "disc") if f'class="{k}"' in attrs), None)
+        kind = next((k for k in ("mark", "dot", "disc", "bolddot", "bold") if f'class="{k}"' in attrs), None)
         # Signs keep their designed marks (white on the disc).
         if not sign and (fill is None or "fill=" in attrs) and kind != "disc":
             line = _on_fill(segments, line, areas, mode, recipe[min(i, len(recipe) - 1)])
@@ -2999,8 +3067,13 @@ def _color_body(glyph, mode, ink, draw, mark=None):
         if kind and mark is not None:
             d, width = mark(segments, kind)
             if kind == "disc":
-                # A filled dot, a little deeper than its hue's body.
-                colored.append(f'<path d="{d}" fill="{_mix(fill, "#000000", 0.12)}" stroke="none" class="bg"/>')
+                # A filled dot: its own colour, else a little deeper than
+                # its hue's body.
+                own = re.search(r'fill="(#[0-9a-fA-F]{6})"', attrs)
+                color = own.group(1) if own else _mix(fill, "#000000", 0.12)
+                colored.append(f'<path d="{d}" fill="{color}" stroke="none" class="bg"/>')
+            elif kind in ("bold", "bolddot"):
+                lines.append(f'<path d="{d}" fill="{line or ink}" stroke="none" class="bg"/>')
             elif kind == "dot":
                 lines.append(f'<path d="{d}" fill="{line or ink}" stroke="none" class="bg"/>')
             else:
