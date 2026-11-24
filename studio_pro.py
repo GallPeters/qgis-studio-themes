@@ -2,14 +2,18 @@
 
 The Colourful drawings (studio_icons) with a softer, more finished look:
 - fills a little softer (less saturated, a touch lighter);
-- every outline a deep shade of its own object's colour instead of black,
-  deeper on small icons (20 px and under) so they keep their contrast, and
-  always at least 3:1 on the fill and readable on the window;
+- every outline a greyish shade of its own object's colour (blue for blue
+  objects, green for green, grey for grey), never near-black: a little
+  deeper on small icons (20 px and under), always readable on the fill
+  and on the window;
 - lines drawn inside a fill (a globe's meridians, a table's grid) a step
   softer than the outline;
-- from 24 px: a sharp inner shadow along each shape's lower right (as if
-  lit from the top left) and a 1 px highlight inside its top left edge.
-  Both are hard edged, whole pixels, so the icons stay crisp.
+- from 24 px: a soft, sharp-edged inner shadow along each shape's lower
+  right (as if lit from the top left) and a 1 px highlight inside its top
+  left edge, in whole pixels so the icons stay crisp;
+- each drawing fills its whole square: drawn natively at a larger size
+  and cropped around it (badged icons keep their place, as their badge
+  masks are drawn separately).
 
 It works on the SVG studio_icons draws (outlines black, the "crisp" look)
 and paints the shading in device pixels with numpy, so every edge falls
@@ -94,32 +98,32 @@ def soften(color):
 
 
 def outline_for(fill, size):
-    """The outline of a shape filled `fill`: a deep shade of its own hue,
-    deeper on small icons; at least 3.2:1 on the fill and dark enough to
-    read on a light window."""
+    """The outline of a shape filled `fill`: a greyish mid-dark shade of
+    its own hue, a little deeper on small icons; at least 2.3:1 on the
+    fill and readable on a light window."""
     h, l, s = _hls(fill)  # noqa: E741
-    target = 0.19 if size <= 20 else 0.25
-    color = _from_hls(h, target - 0.03, s * 0.6) if s < 0.12 else _from_hls(h, target, min(s, 0.55))
-    on_window = 9.0 if size <= 20 else 7.0
-    return _darken_until(color, lambda c: _contrast(c, fill) >= 3.2 and _contrast(c, "#ffffff") >= on_window)
+    target = 0.33 if size <= 20 else 0.40
+    color = _from_hls(h, target, s * 0.5) if s < 0.12 else _from_hls(h, target, min(s * 0.6, 0.34))
+    on_window = 5.0 if size <= 20 else 4.0
+    return _darken_until(color, lambda c: _contrast(c, fill) >= 2.3 and _contrast(c, "#ffffff") >= on_window)
 
 
 def inner_line_for(fill, size):
     """A line drawn inside a fill: a step softer than its outline."""
     h, l, s = _hls(outline_for(fill, size))  # noqa: E741
-    return _darken_until(_from_hls(h, l + 0.07, s), lambda c: _contrast(c, fill) >= 3.0)
+    return _darken_until(_from_hls(h, l + 0.06, s), lambda c: _contrast(c, fill) >= 2.0)
 
 
 def shadow_for(fill):
     h, l, s = _hls(fill)  # noqa: E741
     if s < 0.06:
-        return _from_hls(h, l - 0.15, s)
-    return _from_hls(h, l - 0.14, s * 1.08)
+        return _from_hls(h, l - 0.085, s)
+    return _from_hls(h, l - 0.08, s * 1.04)
 
 
 def highlight_for(fill):
     h, l, s = _hls(fill)  # noqa: E741
-    return _from_hls(h, l + (1 - l) * 0.55, s)
+    return _from_hls(h, l + (1 - l) * 0.4, s)
 
 
 def _badge_edge(fill):
@@ -201,13 +205,55 @@ def _png_svg(rgba):
 
 
 # ---- The Pro look ------------------------------------------------------------
-def upgrade(svg, size, ink):
-    """A Colourful icon (studio_icons SVG, black outlines, ink parts drawn
-    in `ink`) at `size` px in the Pro look, as an SVG of the same size."""
+# A drawing is enlarged until it fills its square, by at most this much.
+FILL_GROW = 1.4
+
+
+def upgrade(draw, size, ink, fill=True):
+    """A Colourful icon at `size` px in the Pro look, as an SVG of that
+    size. draw(px) is its studio_icons SVG at px (black outlines, ink parts
+    in `ink`). With `fill`, drawn at the largest size whose drawing still
+    fits `size` px and cropped around it, so it fills the whole square."""
+    svg = draw(size)
     if np is None:
         return svg
-    rgba = (_upgrade(svg, size, ink).clip(0, 1) * 255 + 0.5).astype(np.uint8)
-    return _png_svg(rgba)
+    big, box = size, None
+    if fill:
+        big, svg, box = _filling(draw, size, svg)
+    image = _upgrade(svg, big, ink)
+    if box is not None and big > size:
+        x0, y0, x1, y1 = box
+        left = min(max(0, (x0 + x1 - size) // 2), big - size)
+        top = min(max(0, (y0 + y1 - size) // 2), big - size)
+        image = image[top:top + size, left:left + size]
+    return _png_svg((image.clip(0, 1) * 255 + 0.5).astype(np.uint8))
+
+
+def _extent(svg, px):
+    """(left, top, right, bottom) of what `svg` draws at `px` px, or None."""
+    ys, xs = np.nonzero(_raster(svg, px)[..., 3] > 0.15)
+    if not len(xs):
+        return None
+    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+
+
+def _filling(draw, size, svg):
+    """(px, SVG at px, its extent): the largest px up to FILL_GROW times
+    `size` whose drawing is at most `size` px wide and high; `size`
+    itself when nothing larger fits."""
+    box = _extent(svg, size)
+    if box is None:
+        return size, svg, None
+    span = max(box[2] - box[0], box[3] - box[1])
+    # A first guess from the drawing's span, then down until it fits.
+    big = min(int(size * FILL_GROW), size * size // max(1, span))
+    while big > size:
+        candidate = draw(big)
+        found = _extent(candidate, big)
+        if found is not None and max(found[2] - found[0], found[3] - found[1]) <= size:
+            return big, candidate, found
+        big -= 1
+    return size, svg, box
 
 
 def _upgrade(svg, size, ink):

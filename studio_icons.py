@@ -110,7 +110,9 @@ ICON_MAP = {
     "symbologyAdd.svg": "plus",
     "symbologyRemove.svg": "minus",
     "processingResult.svg": "list-check",
-    "processingModel.svg": "hierarchy-2",
+    # Models: the boxes of the ribbon's Project Models (the Processing
+    # Toolbox's models button, the Model Designer).
+    "processingModel.svg": "sitemap",
     "processingScript.svg": "file-code",
     "processingAlgorithm.svg": "tool",
     # Not a QGIS icon: the plugin's own for the Processing Toolbox's groups
@@ -3343,9 +3345,14 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         except ImportError:  # imported on its own (tools/)
             import studio_pro  # pylint: disable=import-outside-toplevel
         pro_ink = THEME_INK.get(mode, THEME_INK["light"])
-        # Badge dots in the accent and danger colours stay in their masks.
-        svg = render_icon_color_px(spec, size, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
-        return studio_pro.upgrade(svg, size, pro_ink)
+
+        def draw(px):
+            # Badge dots in the accent and danger colours stay in their
+            # masks; the screen's line width is kept at every px.
+            return render_icon_color_px(spec, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
+        # Badged icons are not enlarged: their badge masks (drawn apart)
+        # would no longer line up.
+        return studio_pro.upgrade(draw, size, pro_ink, fill=not _color_spec(spec)[1])
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 
