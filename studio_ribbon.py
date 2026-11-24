@@ -174,6 +174,14 @@ LABELLED_SMALL = frozenset(("mActionZoomIn", "mActionZoomOut", "mActionZoomFullE
 # buttons. Rows: explicit rows of small buttons (lists of objectNames)
 # instead of columns of ROWS. Every command of QGIS's menus is on some tab,
 # so the menu bar is folded away (set_menu_bar_folded).
+# QGIS's Select and Deselect tool buttons, as large split buttons: a click
+# runs the tool last chosen, the arrow picks another; and Reselect, only in
+# Edit > Select otherwise (that menu is left out, SKIPPED_MENU_ITEMS). On
+# Home and also on Edit and Modify, whose tools work on selected features.
+SELECT_TOOLS = ("mSelectionToolBar", ("ActionSelect", "ActionDeselection"))
+RESELECT = ("@", ("mActionReselect",))
+SELECT_LARGE = ("ActionSelect", "ActionDeselection")
+SELECT_GROUP = ("Select", (SELECT_TOOLS, RESELECT), SELECT_LARGE, LABELS)
 TABS = (
     ("Project", (
         ("Project", (("@", (
@@ -196,7 +204,7 @@ TABS = (
             "mActionPan", "mActionPanToSelected", "mActionZoomIn", "mActionZoomOut", "mActionZoomFullExtent",
             "mActionZoomToSelected", "mActionZoomToLayers", "mActionZoomActualSize", "mActionZoomLast",
             "mActionZoomNext", "mActionDraw")),), ("mActionPan",), ICONS),
-        ("Select", (("mSelectionToolBar", None),), ("ActionSelect",), ICONS),
+        ("Select", (SELECT_TOOLS, ("mSelectionToolBar", None), RESELECT), SELECT_LARGE, ICONS),
         ("Inspect", (("mAttributesToolBar", None),), ("mActionIdentify", "ActionOpenTable"), LABELS),
     )),
     ("Data", (
@@ -227,6 +235,7 @@ TABS = (
          ("mActionToggleEditing",), LABELS),
         ("Digitize", (("mDigitizeToolBar", ("mActionAddFeature", "ActionVertexTool", "mDigitizeModeToolButton")),),
          ("mActionAddFeature", "ActionVertexTool"), LABELS),
+        SELECT_GROUP,
         ("Features", (("mDigitizeToolBar", (
             "mActionMultiEditAttributes", "mActionDeleteSelected", "mActionCutFeatures", "mActionCopyFeatures",
             "mActionPasteFeatures")), ("@", ("mMenuPasteAs",))), (), LABELS),
@@ -241,6 +250,7 @@ TABS = (
         ("More", (("menu", ("mEditMenu",)),), (), LABELS),
     )),
     ("Modify", (
+        SELECT_GROUP,
         ("Advanced", (("mAdvancedDigitizeToolBar", ("mEnableAction",)),), ("mEnableAction",), LABELS),
         ("Transform", (("mAdvancedDigitizeToolBar", (
             "ActionMoveFeatureTool", "mActionRotateFeature", "mActionScaleFeature", "mActionSimplifyFeature",
@@ -361,7 +371,7 @@ PREBUILD_STEP = 60
 # the toolbars) and submenus whose commands QGIS's tool buttons on the
 # ribbon already offer (Measure, Select...).
 SKIPPED_MENU_ITEMS = (
-    "mToolbarMenu", "menuData_Filtering", "mMenuMeasure", "mMenuEditAttributes", "m3DMapViewsMenu",
+    "mToolbarMenu", "menuData_Filtering", "mMenuMeasure", "mMenuSelect", "mMenuEditAttributes", "m3DMapViewsMenu",
     "mMenuElevationProfiles", "menuImport_Export",
     # Web > MetaSearch: its button is on the Web toolbar, its help in Help >
     # Plugins.
@@ -372,6 +382,7 @@ SKIPPED_MENU_ITEMS = (
 ICON_FALLBACKS = {
     "mActionCloseProject": "ribbon/close.svg", "mActionExit": "ribbon/exit.svg",
     "mActionRevertProject": "ribbon/revert.svg", "mActionSnappingOptions": "ribbon/snapping.svg",
+    "mActionReselect": "ribbon/reselect.svg",
     "mActionDxfExport": "ribbon/export.svg", "mActionDwgImport": "ribbon/import.svg",
     "mProjectFromTemplateMenu": "ribbon/template.svg", "mRecentProjectsMenu": "ribbon/recent.svg",
     "mProjectFromStorageMenu": "ribbon/open-from.svg", "mProjectToStorageMenu": "ribbon/save-to.svg",
@@ -407,7 +418,7 @@ LABELS_BY_NAME = {
     "mActionNewProject": "New", "mActionOpenProject": "Open", "mActionSaveProject": "Save",
     "mActionNewPrintLayout": "New Layout", "mActionShowLayoutManager": "Layouts",
     "mActionStyleManager": "Style Manager",
-    "ActionSelect": "Select",
+    "ActionSelect": "Select", "ActionDeselection": "Deselect", "mActionReselect": "Reselect",
     "mActionZoomIn": "Zoom In", "mActionZoomOut": "Zoom Out", "mActionZoomFullExtent": "Full Extent",
     "mActionIdentify": "Identify", "ActionOpenTable": "Attribute Table", "mActionOpenFieldCalc": "Field Calculator",
     "mActionStatisticalSummary": "Statistics", "mActionShowProcessingToolbox": "Toolbox",
@@ -556,6 +567,24 @@ class _Button(QToolButton):
         self._label = label
         if label:
             self.setText(label)
+
+    def follow(self, source):
+        """As a clone of QGIS's tool button `source`: show the tool it holds
+        whenever another is chosen, also on another tab's clone of it."""
+        self._source = source
+        source.triggered.connect(self.sync)
+
+    def sync(self, *_args):
+        source = getattr(self, "_source", None)
+        if source is None or sip.isdeleted(source):
+            return
+        current = source.defaultAction()
+        if current is None:
+            return
+        mine = self.defaultAction()
+        if mine is None or sip.unwrapinstance(mine) != sip.unwrapinstance(current):
+            self.setDefaultAction(current)
+            self.set_label(self._label)
 
 
 class _BorrowingMenu(QMenu):
@@ -1548,6 +1577,7 @@ class StudioRibbon(QObject):
         default = source.defaultAction()
         if default is not None:
             button.setDefaultAction(default)
+            button.follow(source)
         else:
             button.setIcon(source.icon())
             button.setToolTip(source.toolTip())
@@ -1558,10 +1588,7 @@ class StudioRibbon(QObject):
                 return
             if picked is not source.defaultAction():
                 source.triggered.emit(picked)
-            current = source.defaultAction()
-            if current is not None and button.defaultAction() is not current:
-                button.setDefaultAction(current)
-                button.set_label(button._label)  # pylint: disable=protected-access
+            button.sync()
 
         button.triggered.connect(chosen)
         label = LABELS_BY_NAME.get(action.objectName()) or clean(default.text() if default else source.toolTip())

@@ -912,6 +912,7 @@ ICON_MAP = {
     "ribbon/close.svg": "file-x",
     "ribbon/exit.svg": "logout",
     "ribbon/revert.svg": "arrow-back-up",
+    "ribbon/reselect.svg": "history",
     "ribbon/snapping.svg": "magnet",
     "ribbon/export.svg": "file-export",
     "ribbon/import.svg": "file-import",
