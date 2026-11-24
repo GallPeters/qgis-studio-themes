@@ -20,7 +20,8 @@ changelog=
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful icons, compact ribbon density, group names auto, 9 px names.
           - Colourful icons redesigned: thin black outlines and details, sharper corners, vivid small markers, the same drawing at every size.
-          - New Outlines setting for Colourful icons: Crisp (black, default), Medium or Soft (in each object's own colour); softer outlines suit large desktop monitors.
+          - New Colourful Pro icons: softer colours, outlines in each object's own colour (deeper on small icons) and sharp shading on large icons.
+          - Colourful icons have dark outlines in each object's own colour.
           - The current ribbon tab's underline no longer touches its name in compact density.
           - Ribbon: Select and Deselect are separate large buttons, also on the Edit and Modify tabs; a click runs the last tool used, the arrow picks another. Reselect has a button of its own.
           - Colourful badges are small dots in the corner: green to add, red to remove, blue for other actions; icons with a symbol in one corner (download, export, settings...) are drawn whole with a dot.

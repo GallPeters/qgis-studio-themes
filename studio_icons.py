@@ -2956,24 +2956,25 @@ def _color_reach(glyph):
 
 # Since 1.6 the outline of every filled shape, and every detail drawn on a
 # fill, is 1 px and dark: sharp and clear on light bodies, like the
-# database's thin edge. How dark is a setting (Plugins > QGIS Studio Themes >
-# Settings > Outlines), as the same 1 px line looks finer on a laptop's
-# small pixels than on a desktop monitor's large ones:
-#   crisp:  pure black (the default);
+# database's thin edge. Its looks:
+#   crisp:  pure black;
 #   medium: a deep shade of each object's own colour, 65 percent of the
-#           way to black;
+#           way to black (Colourful icons);
 #   soft:   each object's own edge colour, only 20 percent of the way to
-#           black: light, but still clearly outlined and in the object's
-#           colour.
+#           black;
+#   pro:    Colourful Pro (studio_pro): drawn crisp, then given outlines in
+#           each object's own colour, soft fills and sharp shading.
 OUTLINE = "#000000"
-OUTLINE_STYLES = ("crisp", "medium", "soft")
-DEFAULT_OUTLINE = "crisp"
+OUTLINE_STYLES = ("crisp", "medium", "soft", "pro")
+DEFAULT_OUTLINE = "medium"
+PRO_OUTLINE = "pro"
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
     "crisp": (None, 0.0, 1.0),
     "medium": (0.65, 0.0, 1.0),
     "soft": (0.2, 0.0, 1.0),
+    "pro": (None, 0.0, 1.0),
 }
 # The outline style of the icon being drawn, per thread (masks are drawn in
 # worker threads while the GUI thread may draw an icon of another style).
@@ -3223,7 +3224,9 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light", outline=None):
     badges) for a `mode` theme, its outlines in the style `outline`: ink
     parts in colors["icon"]. Detailed glyphs are drawn detailed: this SVG
     serves the large sizes without a pre-rendered PNG."""
-    with _outlined(outline):
+    # Colourful Pro is drawn in device pixels only: the scalable fallback
+    # (shown until the pre-rendered PNGs are ready) is plain Colourful.
+    with _outlined(DEFAULT_OUTLINE if outline == PRO_OUTLINE else outline):
         return _render_color(spec, colors, scale, mode)
 
 
@@ -3327,7 +3330,22 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     same pixel grid, its outlines in the style `outline` (OUTLINE_STYLES).
     `layer`: "color" draws the coloured parts and the badge marks (fixed
     colours), "ink" the ink parts in `ink` (a mask the theme tints), "all"
-    everything (badge dots in `accent` and `danger`)."""
+    everything (badge dots in `accent` and `danger`).
+    Colourful Pro (`outline` PRO_OUTLINE) draws everything in the colour
+    layer, its ink in the theme's usual ink (THEME_INK), and nothing in the
+    ink layer: its shading covers ink lines too."""
+    if outline == PRO_OUTLINE:
+        if layer == "ink":
+            return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+                    f'viewBox="0 0 {size} {size}"/>')
+        try:
+            from . import studio_pro  # pylint: disable=import-outside-toplevel
+        except ImportError:  # imported on its own (tools/)
+            import studio_pro  # pylint: disable=import-outside-toplevel
+        pro_ink = THEME_INK.get(mode, THEME_INK["light"])
+        # Badge dots in the accent and danger colours stay in their masks.
+        svg = render_icon_color_px(spec, size, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
+        return studio_pro.upgrade(svg, size, pro_ink)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 

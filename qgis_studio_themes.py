@@ -41,7 +41,7 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from . import studio_icons, studio_toolbars
+from . import studio_icons, studio_pro, studio_toolbars
 from .studio_events import EventHub, menu_of
 from .studio_layers import LayersPanel
 from .studio_ribbon import CAPTION_NAMES, CAPTION_POSITION, DEFAULT_DENSITY, DENSITIES, RIBBON_SIZES, StudioRibbon
@@ -233,13 +233,11 @@ MASK_LAYERS = {
     "ink": None,
 }
 # Icon styles (Settings > Icons): the theme's single-colour icons, the same
-# icons in their objects' colours (studio_icons.COLOR_RECIPES), or QGIS's
-# own icons.
-ICON_STYLES = ("mono", "color", "classic")
+# icons in their objects' colours (studio_icons.COLOR_RECIPES), those with
+# the Pro look (studio_pro), or QGIS's own icons.
+ICON_STYLES = ("mono", "color", "color_pro", "classic")
+COLOR_STYLES = ("color", "color_pro")
 ICON_STYLE_SETTING = "studio_themes/iconStyle"
-# How dark Colourful icons' outlines are (Settings > Outlines;
-# studio_icons.OUTLINE_STYLES).
-OUTLINE_SETTING = "studio_themes/iconOutline"
 # A disabled Colourful icon: its colours faded, its ink in the theme's
 # disabled icon colour.
 DISABLED_COLOR_OPACITY = 0.5
@@ -264,7 +262,8 @@ def masks_key():
     """Names the masks of these drawings, as studio_icons draws them: masks
     of another plugin version are never used."""
     digest = hashlib.sha1(f"{MASK_FORMAT}|{ATLAS_COLUMNS}|{'|'.join(atlas_specs())}".encode())
-    digest.update(Path(studio_icons.__file__).read_bytes().replace(b"\r\n", b"\n"))
+    for module in (studio_icons, studio_pro):
+        digest.update(Path(module.__file__).read_bytes().replace(b"\r\n", b"\n"))
     return digest.hexdigest()[:16]
 
 
@@ -638,7 +637,7 @@ def build_theme(folder, target, shared_stamp, active, extra_tokens=None,
     colors = dict(zip((state for state, _mode in ICON_STATES), icon_colors(tokens)))
     folders = set()
     svgs = {}
-    color = icon_style == "color"
+    color = icon_style in COLOR_STYLES
     mode = "dark" if is_dark(tokens["@bg_window"]) else "light"
 
     def drawing(spec, state):
@@ -1795,7 +1794,7 @@ class IconSwapper(QObject):
                 masks = render_one(spec, size, width, self._scale, self._outline)
                 self._one_masks[mask_key] = masks
             colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
-            pixmap = compose_atlas(masks, colors, self._style == "color", state == "disabled")
+            pixmap = compose_atlas(masks, colors, self._style in COLOR_STYLES, state == "disabled")
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
         return pixmap
@@ -1812,7 +1811,7 @@ class IconSwapper(QObject):
                 masks = self._load_masks(size, width)
                 colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
                 self._atlases[atlas_key] = None if masks is None else compose_atlas(
-                    masks, colors, self._style == "color", state == "disabled")
+                    masks, colors, self._style in COLOR_STYLES, state == "disabled")
             atlas = self._atlases[atlas_key]
             if not self._atlas_index:
                 self._atlas_index = atlas_index()
@@ -2571,12 +2570,8 @@ class SettingsDialog(QDialog):
     ICON_STYLES = (
         ("mono", "Monochrome"),
         ("color", "Colourful"),
+        ("color_pro", "Colourful Pro"),
         ("classic", "QGIS classic"),
-    )
-    OUTLINES = (
-        ("crisp", "Crisp: black (default)"),
-        ("medium", "Medium: dark, in each object's colour"),
-        ("soft", "Soft: lighter, in each object's colour"),
     )
     RIBBON_SIZES = (
         ("auto", "Follow QGIS icon size"),
@@ -2620,12 +2615,8 @@ class SettingsDialog(QDialog):
         self._icon_style = self._combo(self.ICON_STYLES, plugin.icon_style())
         self._icon_style.setToolTip(
             "Monochrome: the theme's single-colour icons. Colourful: the same icons in their objects' "
-            "own colours. QGIS classic: QGIS's own icons."
-        )
-        self._outline = self._combo(self.OUTLINES, plugin.icon_outline())
-        self._outline.setToolTip(
-            "How dark the outlines of Colourful icons are. The same thin line looks heavier on a "
-            "desktop monitor's large pixels than on a laptop's: Medium or Soft may suit large screens."
+            "own colours. Colourful Pro: softer colours, outlines in each object's colour and sharp "
+            "shading. QGIS classic: QGIS's own icons."
         )
         self._ribbon_size = self._combo(self.RIBBON_SIZES, ribbon_size)
         self._ribbon_size.setToolTip(
@@ -2647,7 +2638,6 @@ class SettingsDialog(QDialog):
         self._form = form = QFormLayout()
         form.addRow("Interface", self._interface)
         form.addRow("Icons", self._icon_style)
-        form.addRow("Outlines", self._outline)
         form.addRow("Ribbon size", self._ribbon_size)
         form.addRow("Ribbon density", self._density)
         form.addRow("Toolbar name position", self._position)
@@ -2672,7 +2662,6 @@ class SettingsDialog(QDialog):
             combo.currentIndexChanged.connect(self._changed)
         self._interface.currentIndexChanged.connect(self._interface_changed)
         self._icon_style.currentIndexChanged.connect(self._icon_style_changed)
-        self._outline.currentIndexChanged.connect(self._outline_changed)
 
     @staticmethod
     def _combo(choices, current):
@@ -2704,9 +2693,6 @@ class SettingsDialog(QDialog):
     def _icon_style_changed(self, _index=None):
         self._plugin.set_icon_style(self._icon_style.currentData())
         self._fit_names()
-
-    def _outline_changed(self, _index=None):
-        self._plugin.set_icon_outline(self._outline.currentData())
 
     def _interface_changed(self, _index=None):
         self._plugin.set_interface(self._interface.currentData())
@@ -2742,8 +2728,6 @@ class SettingsDialog(QDialog):
             self._position.findData("bottom"), self.RIBBON_BOTTOM if ribbon else dict(self.POSITIONS)["bottom"])
         self._ribbon_size.setEnabled(ribbon)
         self._density.setEnabled(ribbon)
-        # Outlines are those of Colourful icons.
-        self._outline.setEnabled(self._icon_style.currentData() == "color")
         self._names.setEnabled(position != "off")
         for combo in (self._size, self._weight):
             combo.setEnabled(position != "off")
@@ -3310,12 +3294,11 @@ class QgisStudioThemesPlugin:
             value = "color"  # its name in early 1.3 builds
         return value if value in ICON_STYLES else "color"
 
-    @staticmethod
-    def icon_outline():
-        """The Colourful outline style set in the settings dialog
-        (studio_icons.OUTLINE_STYLES)."""
-        value = QgsSettings().value(OUTLINE_SETTING, studio_icons.DEFAULT_OUTLINE, type=str)
-        return value if value in studio_icons.OUTLINE_STYLES else studio_icons.DEFAULT_OUTLINE
+    @classmethod
+    def icon_outline(cls):
+        """The outline look of the coloured icons (studio_icons.OUTLINE_STYLES):
+        Colourful Pro's own, else Medium (Colourful)."""
+        return studio_icons.PRO_OUTLINE if cls.icon_style() == "color_pro" else studio_icons.DEFAULT_OUTLINE
 
     def _icons_stamp(self, style):
         """The build stamp of the themes' icons in `style` and the outline
@@ -3330,14 +3313,6 @@ class QgisStudioThemesPlugin:
         if style not in ICON_STYLES or style == previous:
             return
         self._change_icons(ICON_STYLE_SETTING, style, previous, "icon style")
-
-    def set_icon_outline(self, outline):
-        """Show Colourful icons with `outline`'s outlines at once, as
-        set_icon_style shows another style."""
-        previous = self.icon_outline()
-        if outline not in studio_icons.OUTLINE_STYLES or outline == previous:
-            return
-        self._change_icons(OUTLINE_SETTING, outline, previous, "outlines")
 
     def _change_icons(self, setting, value, previous, what):
         """Store an icon setting and show it at once (set_icon_style)."""

@@ -21,6 +21,9 @@ v1.5:
 - Measured at QGIS icon size 24, UI font 12 px (Linux, offscreen probe): compact 125 px (121 before the margin change), others about 4 px more than measured then: compact + names off/left 105, small compact 112, large compact 145, standard 143. ArcGIS Pro is ~118 px (estimate, not measured).
 - A user screenshot showed "Qt: QMetaEnum::keysToValue: empty keys string" in the message bar; not reproducible here (no plugin code sets an empty enum value). If it comes back, find which setting/stylesheet triggers it.
 
+### Side branch `colourful-pro` (24.11.2026, for the user to check)
+Based on v1.6. Adds a 4th icon style **Colourful Pro** (`color_pro`, `studio_pro.py`): the Colourful drawing rendered crisp, then restyled in device pixels with numpy (soft fills, outlines in each object's own hue, deeper at 20 px and under, inner lines a step softer, from 24 px a sharp lower-right inner shadow and a 1 px top-left highlight). The colour layer holds everything (ink baked in `THEME_INK`), the ink layer is empty. Internally it is the outline look `"pro"` (own mask folder and build stamp). The Outlines setting is removed: Colourful is fixed at Medium (`DEFAULT_OUTLINE`). Zip: `releases/qgis_studio_themes-1.6-colourful-pro.zip`. Not merged into `main`.
+
 ## 3. Open ideas (not approved, not built)
 Previewed to the user but not requested for building:
 - Redesigned Colourful drawings for weak icons (SQL/SHP/CSV letter icons, slate funnel, expand/collapse, edit-in-place, About, deselect, select-by-rectangle, copy, forms, SpatiaLite, scratch layer, vector, mesh). Preview script: `redesign.py` (see §5).
