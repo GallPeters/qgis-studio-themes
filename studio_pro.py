@@ -15,10 +15,11 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards, so the icon keeps its size, in one darker
-  shade of the fill it surrounds per shape (not the greyish outline),
-  painted solid over the whole band so it reads as one line; lines inside
-  the drawing keep their width and colour;
+  pixel thicker, inwards (that pixel half outline, half fill: about 1.5
+  px), so the icon keeps its size, in one darker, richer shade of the
+  fill it surrounds per shape (not the greyish outline), painted evenly
+  over the whole band so it reads as one line; lines inside the drawing
+  keep their width and colour;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -72,8 +73,13 @@ DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
-# the brightest channel at most EXTERIOR_MAX.
+# the brightest channel at most EXTERIOR_MAX, then more saturated
+# (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
 EXTERIOR_DARKER, EXTERIOR_MAX = 0.8, 0.68
+EXTERIOR_SATURATE, GREY = 1.35, 0.1
+# The pixel added inside the outline: how far it takes the outline's
+# colour (the rest stays fill), so the line reads about 1.5 px.
+EXTERIOR_INNER = 0.5
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -426,7 +432,7 @@ def _exterior(out, size, top, fills, badges, line_px=1):
             continue
         where = top == i
         if where.any():
-            colour[where] = _exterior_color(np.array(_rgb(fill), np.float32))
+            colour[where] = np.array(_rgb(_exterior_color(fill)), np.float32)
             known |= where
     known &= ~badges
     if not known.any():
@@ -463,18 +469,24 @@ def _exterior(out, size, top, fills, badges, line_px=1):
     for _step in range(max(1, line_px) + 1):
         near = _dilated(near)
     band &= known & near
-    paint = ring | band
-    out[..., :3][paint] = colour[paint]
+    out[..., :3][band] = colour[band]
+    inner_only = ring & ~band
+    out[..., :3][inner_only] = (out[..., :3][inner_only] * (1 - EXTERIOR_INNER)
+                                + colour[inner_only] * EXTERIOR_INNER)
     return out
 
 
-def _exterior_color(rgb):
-    """The exterior outline on a fill `rgb` (float, per pixel): the fill's
-    own colour, darker (EXTERIOR_DARKER), its brightest channel at most
-    EXTERIOR_MAX so white and pale fills still get a visible edge."""
-    top = np.maximum(rgb.max(axis=-1), 1e-3)
-    factor = np.minimum(EXTERIOR_DARKER, EXTERIOR_MAX / top)
-    return rgb * factor[..., None]
+def _exterior_color(fill):
+    """The exterior outline on a shape filled `fill` (hex): the fill's own
+    colour darker (EXTERIOR_DARKER, the brightest channel at most
+    EXTERIOR_MAX so white and pale fills still get a visible edge), then
+    more saturated at that lightness (greys stay grey)."""
+    rgb = _rgb(fill)
+    factor = min(EXTERIOR_DARKER, EXTERIOR_MAX / max(max(rgb), 1e-3))
+    h, l, sat = colorsys.rgb_to_hls(*(v * factor for v in rgb))  # noqa: E741
+    if sat >= GREY:
+        sat = min(1.0, sat * EXTERIOR_SATURATE)
+    return _from_hls(h, l, sat)
 
 
 def _shade(out, size, fills, fill_masks, stroke_masks):
