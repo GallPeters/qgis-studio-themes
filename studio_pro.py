@@ -89,8 +89,12 @@ EXTERIOR_INNER = 1.0
 # 2 px wide, moved half a pixel so the even width covers whole pixels
 # (crisp, not a 1 px line with a faint second pixel beside it).
 FREE_LINE_FROM = 20
-# All lines 2 px (inner ones too) from this size (_upgrade).
+# All lines 2 px (inner ones too) from this size (_upgrade), but small
+# details (under DETAIL_SHARE of the icon wide and high) keep 1 px.
 INNER_LINE_FROM = 20
+DETAIL_SHARE = 0.45
+# Small filled details' outlines: this much darker (lightness).
+DETAIL_DARKER = 0.1
 # Their smoothed edges: coverage below this cleared, above 1 - it solid.
 FIRM_LOW = 0.15
 
@@ -383,6 +387,16 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
     # the lines inside a drawing (bands, folds, meridians) were barely seen
     # at 1 px; fine details drawn thinner than a pixel keep their width.
     bold = set(free)
+    # Small details (a gear on a page, a lock's plate): kept 1 px below,
+    # their lines a touch darker so they stay readable.
+    details = set()
+    for i in range(count):
+        if fills[i] not in BADGES and stroke_masks[i] is not None and i not in free:
+            drawn = stroke_masks[i] > 0.4
+            if drawn.any():
+                ys, xs = np.nonzero(drawn)
+                if max(xs.max() - xs.min(), ys.max() - ys.min()) + 1 < DETAIL_SHARE * size:
+                    details.add(i)
     if size >= INNER_LINE_FROM and line_px == 1:
         solid = np.zeros((size, size), bool)
         for mask in fill_masks:
@@ -393,9 +407,15 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
             if stroke_masks[i] is None or fills[i] in BADGES or (width is not None and _number(width) < 1):
                 continue
             # A shape's own outline, or a line well inside a fill; not a
-            # frame drawn along a shape's edge (it turned the edge heavy).
+            # frame drawn along a shape's edge (it turned the edge heavy),
+            # nor a small detail (a gear, a mark: 2 px filled it in).
             drawn = stroke_masks[i] > 0.4
-            if fills[i] is not None or (drawn.any() and solid[drawn].mean() > 0.7):
+            if not drawn.any():
+                continue
+            ys, xs = np.nonzero(drawn)
+            if max(xs.max() - xs.min(), ys.max() - ys.min()) + 1 < DETAIL_SHARE * size:
+                continue
+            if fills[i] is not None or solid[drawn].mean() > 0.7:
                 bold.add(i)
     shift = [".5", ".5"]
     if bold:
@@ -412,7 +432,11 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
             if fills[i] in BADGES:
                 tag = _set(tag, "stroke", _badge_edge(fills[i]))
             elif fills[i]:
-                tag = _set(tag, "stroke", outline_for(fills[i], size, bright))
+                edge = outline_for(fills[i], size, bright)
+                if i in details:
+                    h, l, s = _hls(edge)  # noqa: E741
+                    edge = _from_hls(h, l - DETAIL_DARKER, s)
+                tag = _set(tag, "stroke", edge)
             elif stroke_masks[i] is not None:
                 line = stroke_masks[i] > 0.4
                 under = [j for j in top[line].tolist() if j >= 0 and j != i]
@@ -421,7 +445,11 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
                     inside = (fill_masks[j] > 0.99)[line].mean()
                     # Lines on a fill in the full outline shade at every
                     # size (the softer inner shade vanished in the fill).
-                    tag = _set(tag, "stroke", outline_for(fills[j], size, bright))
+                    edge = outline_for(fills[j], size, bright)
+                    if i in details:
+                        h, l, s = _hls(edge)  # noqa: E741
+                        edge = _from_hls(h, l - DETAIL_DARKER, s)
+                    tag = _set(tag, "stroke", edge)
                 else:
                     tag = _set(tag, "stroke", ink)
         if i in bold:
