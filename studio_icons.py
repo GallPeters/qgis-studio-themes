@@ -3384,7 +3384,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
         # Badged icons are not enlarged: their badge masks (drawn apart)
         # would no longer line up.
         glyph, badge = _color_spec(spec)
-        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT)
+        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT,
+                                  line=stroke_px(size) if width is None else width)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 

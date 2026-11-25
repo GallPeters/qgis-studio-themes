@@ -5,7 +5,7 @@ qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Modern themes that enhance QGIS UI and reflect its true power through a clean, professional design.
 about=Modern UI themes for QGIS that give the interface a clean, studio-grade look and reflect the real strength of QGIS through a refined visual experience.
-version=1.6
+version=1.7
 author=Jossef Kanter
 email=jossefkan@gmail.com
 experimental=False
@@ -16,6 +16,9 @@ tracker=https://github.com/GallPeters/qgis-studio-themes/issues
 tags=qss, gui, theme, themes, style, ui
 icon=icon.png
 changelog=
+
+     ** v1.7 (25.11.2026):
+          - Colourful Pro: thicker outlines around each icon's outer edge (inner lines unchanged), so icons read firmer at a glance.
 
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.

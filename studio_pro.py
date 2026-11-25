@@ -14,6 +14,10 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   (as if lit from the top left): one flat colour, no gradient, no
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
+- the exterior outline (where the drawing meets the background) one
+  pixel thicker, inwards, so the icon keeps its size: blended part way
+  (EXTERIOR_STRENGTH) so it reads firmer without turning heavy; lines
+  inside the drawing keep their width;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -66,6 +70,10 @@ SHADOW_DARKER = 0.13
 DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
+# The exterior outline's extra inner pixel: how far it takes the outline's
+# colour, on icons of SMALL_ICON px and under and on larger ones.
+SMALL_ICON = 18
+EXTERIOR_STRENGTH = {"small": 0.6, "large": 1.0}
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -217,20 +225,20 @@ def _png_svg(rgba):
 FILL_GROW = 1.4
 
 
-def upgrade(draw, size, ink, fill=True, bright=False):
+def upgrade(draw, size, ink, fill=True, bright=False, line=1):
     """A Colourful icon at `size` px in the Pro look, as an SVG of that
     size. draw(px) is its studio_icons SVG at px (black outlines, ink parts
     in `ink`). With `fill`, drawn at the largest size whose drawing still
     fits `size` px and cropped around it, so it fills the whole square.
     With `bright`, lighter outlines at every size (a small drawing of
-    small shapes turned dark)."""
+    small shapes turned dark). `line`: the drawing's line width in px."""
     svg = draw(size)
     if np is None:
         return svg
     big, box = size, None
     if fill:
         big, svg, box = _filling(draw, size, svg)
-    image = _upgrade(svg, big, ink, bright)
+    image = _upgrade(svg, big, ink, bright, line)
     if box is not None and big > size:
         x0, y0, x1, y1 = box
         left = min(max(0, (x0 + x1 - size) // 2), big - size)
@@ -266,7 +274,7 @@ def _filling(draw, size, svg):
     return size, svg, box
 
 
-def _upgrade(svg, size, ink, bright=False):
+def _upgrade(svg, size, ink, bright=False, line_px=1):
     gradients = dict(GRADIENT.findall(svg))
     # Each gradient as one flat colour: the average of its stops.
     flat = {}
@@ -352,8 +360,84 @@ def _upgrade(svg, size, ink, bright=False):
         tags.append(tag)
     svg = _rebuild(svg, leaves, tags)
     out = _raster(svg, size)
-    if size < EFFECTS_FROM:
+    badges = np.zeros((size, size), bool)
+    for i, mask in enumerate(fill_masks):
+        if mask is not None and fills[i] in BADGES:
+            badges |= mask > 0.25
+    if size >= EFFECTS_FROM:
+        _shade(out, size, fills, fill_masks, stroke_masks)
+    return _exterior(out, size, badges, line_px)
+
+
+def _neighbours(mask):
+    """The four shifted copies of `mask` (False beyond its border), as
+    (copy, dy, dx): copy[y, x] is mask[y + dy, x + dx]."""
+    result = []
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        shifted = np.zeros_like(mask)
+        ys = slice(max(0, -dy), mask.shape[0] - max(0, dy))
+        xs = slice(max(0, -dx), mask.shape[1] - max(0, dx))
+        yt = slice(max(0, dy), mask.shape[0] - max(0, -dy))
+        xt = slice(max(0, dx), mask.shape[1] - max(0, -dx))
+        shifted[ys, xs] = mask[yt, xt]
+        result.append((shifted, dy, dx))
+    return result
+
+
+def _shifted(values, dy, dx):
+    """values[y + dy, x + dx] at each pixel (edge pixels repeated)."""
+    h, w = values.shape[:2]
+    ys = np.clip(np.arange(h) + dy, 0, h - 1)
+    xs = np.clip(np.arange(w) + dx, 0, w - 1)
+    return values[ys][:, xs]
+
+
+def _eroded(mask):
+    result = mask.copy()
+    for shifted, _dy, _dx in _neighbours(mask):
+        result &= shifted
+    return result
+
+
+def _exterior(out, size, badges, line_px=1):
+    """The exterior outline (`line_px` wide) one pixel thicker, inwards:
+    each pixel just inside it takes part of the colour of the outline
+    pixel next to it, where the shape is thick enough to keep a fill
+    beyond it. Badge dots are left as drawn."""
+    solid = out[..., 3] > 0.5
+    inner = solid
+    for _step in range(max(1, line_px)):
+        inner = _eroded(inner)
+    edge = solid & ~inner
+    core = _eroded(inner)
+    # The ring: just inside the edge, next to a pixel deeper still, so thin
+    # parts (lines, narrow bars) are not filled with outline.
+    deeper = np.zeros_like(core)
+    for shifted, _dy, _dx in _neighbours(core):
+        deeper |= shifted
+    ring = inner & ~core & deeper & ~badges
+    if not ring.any():
         return out
+    # The darkest outline pixel next to it (lighter edge pixels are a
+    # curve's smoothing).
+    color = np.zeros((size, size, 3), np.float32)
+    darkest = np.full((size, size), np.inf, np.float32)
+    weights = np.array((0.2126, 0.7152, 0.0722), np.float32)
+    for shifted, dy, dx in _neighbours(edge):
+        rgb = _shifted(out[..., :3], dy, dx)
+        light = rgb @ weights
+        take = ring & shifted & (light < darkest)
+        color[take] = rgb[take]
+        darkest[take] = light[take]
+    found = ring & np.isfinite(darkest)
+    strength = EXTERIOR_STRENGTH["small" if size <= SMALL_ICON else "large"]
+    blend = (found * strength)[..., None]
+    out[..., :3] = out[..., :3] * (1 - blend) + color * blend
+    return out
+
+
+def _shade(out, size, fills, fill_masks, stroke_masks):
+    """The flat curved shadow (see the module docstring), in place."""
 
     # A flat shadow on each coloured shape where it shows (not under a
     # later shape, not on a line), beyond one arc across the whole drawing.
@@ -367,7 +451,7 @@ def _upgrade(svg, size, ink, bright=False):
             drawn |= mask > 0.5
     gy, gx = np.nonzero(drawn)
     if not len(gx):
-        return out
+        return
     x0, y0 = gx.min(), gy.min()
     width, height = gx.max() + 1 - x0, gy.max() + 1 - y0
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) + 0.5
@@ -393,4 +477,3 @@ def _upgrade(svg, size, ink, bright=False):
         if cover.any():
             color = np.array(_rgb(shadow_for(fill)), np.float32)
             out[..., :3] = out[..., :3] * (1 - cover[..., None]) + color * cover[..., None]
-    return out
