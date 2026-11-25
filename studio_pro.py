@@ -15,7 +15,8 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards (a full 2 px line), so the icon keeps its size, in one darker, richer shade of the
+  pixel thicker, inwards (a full 2 px line, the next
+  pixel inwards part way), so the icon keeps its size, in one darker, richer shade of the
   fill it surrounds per shape (not the greyish outline), painted evenly
   over the whole band so it reads as one line; lines inside the drawing
   keep their width and colour;
@@ -74,17 +75,19 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.84, 0.72
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.87, 0.75
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
 # The pixel added inside the outline: how far it takes the outline's
 # colour (the rest stays fill): all of it, a full 2 px line.
 EXTERIOR_INNER = 1.0
+# And the next pixel inwards, this much of it (about 2.4 px in all).
+EXTERIOR_SECOND = 0.4
 # Free lines (no fill of their own and none under them: a clock, arrows, a
-# sigma, in the theme's ink or a colour) from INK_BOLD_FROM px: a pixel added below and right of them, this much
-# of it at INK_BOLD_FULL px and up and part of it below, so they are no
-# longer hairlines on large icons.
-INK_BOLD_FROM, INK_BOLD_FULL = 20, 28
-INK_BOLD = {"partial": 0.45, "full": 0.75}
+# sigma, in the theme's ink or a colour) from INK_BOLD_FROM px: a pixel
+# added below and right of them, so they are no longer hairlines; its
+# share by size in INK_BOLD, (from px, share), largest first.
+INK_BOLD_FROM = 16
+INK_BOLD = ((28, 1.0), (20, 0.85), (16, 0.6))
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -379,7 +382,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
         _shade(out, size, fills, fill_masks, stroke_masks)
     out = _exterior(out, size, top, fills, badges, line_px)
     if size >= INK_BOLD_FROM:
-        strength = INK_BOLD["full" if size >= INK_BOLD_FULL else "partial"]
+        strength = next(share for start, share in INK_BOLD if size >= start)
         filled = top >= 0
         near_fill = _dilated(filled)
         for i, (_s, _e, tag) in enumerate(leaves):
@@ -486,6 +489,8 @@ def _exterior(out, size, top, fills, badges, line_px=1):
     # beyond it within two pixels (corners included), so a bar a few pixels
     # wide is not all outline.
     ring = inner & ~core & known & _dilated(_dilated(core))
+    deep = _eroded(core)
+    second = core & ~deep & known & ~badges & _dilated(_dilated(deep))
     # The outline band and the smoothed pixels outside it.
     fringe = (alpha > 0.02) & ~solid & _dilated(solid, _FOUR)
     band = (edge | fringe) & ~_dilated(badges)
@@ -511,6 +516,10 @@ def _exterior(out, size, top, fills, badges, line_px=1):
     inner_only = ring & ~band
     out[..., :3][inner_only] = (out[..., :3][inner_only] * (1 - EXTERIOR_INNER)
                                 + colour[inner_only] * EXTERIOR_INNER)
+    # The second pixel only along the drawn ring, so it follows the line.
+    second &= _dilated(inner_only)
+    out[..., :3][second] = (out[..., :3][second] * (1 - EXTERIOR_SECOND)
+                            + colour[second] * EXTERIOR_SECOND)
     return out
 
 

@@ -12,6 +12,8 @@
   the button off shows QGIS's tree again.
 - Layer names in the regular weight (QGIS draws them bold); groups stay
   bold.
+- Filter Legend by Expression moves into the Filter Legend button's menu
+  (its own button is hidden), so the row has one filter button.
 
 QGIS's toolbar keeps its own buttons in its own order; everything is
 removed and QGIS's look restored with the theme.
@@ -24,7 +26,7 @@ from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QCoreApplication, Qt, QTimer
 from qgis.PyQt.QtGui import QAction, QFont, QIcon
-from qgis.PyQt.QtWidgets import QDockWidget, QToolBar, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QDockWidget, QToolBar, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
 
 def tr(text):
@@ -108,6 +110,9 @@ class LayersPanel:
         self._connections = []
         self._collapsed = set()
         self._building = False
+        # The merged filter: (expression button's toolbar action, filter
+        # menu, actions added to it, the menu's sync slot).
+        self._merged = None
         self._timer = QTimer()
         self._timer.setSingleShot(True)
         self._timer.setInterval(60)
@@ -176,8 +181,66 @@ class LayersPanel:
             toolbar.addAction(action)
             self._toolbar = toolbar
         self._action = action
+        self._merge_filters(toolbar)
         self._theme_icons()
         self._regular_names(view)
+
+    def _merge_filters(self, toolbar):
+        """Filter Legend by Expression (QGIS's QgsLegendFilterButton) as an
+        entry in the Filter Legend button's menu, the button just before it
+        in the row; its own button hidden. Left alone if either is missing."""
+        if toolbar is None or self._merged is not None:
+            return
+        actions = toolbar.actions()
+        for index, holder in enumerate(actions):
+            button = toolbar.widgetForAction(holder)
+            if button is None or button.metaObject().className() != "QgsLegendFilterButton":
+                continue
+            if index == 0:
+                return
+            filters = toolbar.widgetForAction(actions[index - 1])
+            menu = filters.menu() if isinstance(filters, QToolButton) else None
+            if menu is None:
+                return
+            entry = QAction(tr("Filter Legend by Expression…"), menu)
+            entry.setCheckable(True)
+            entry.triggered.connect(lambda _checked=False: button.click())
+            added = [menu.addSeparator(), entry]
+            menu.addAction(entry)
+            # Its own Edit and Clear entries, after it.
+            own = button.menu()
+            for extra in own.actions() if own is not None else ():
+                menu.addAction(extra)
+                added.append(extra)
+
+            def sync():
+                entry.setEnabled(button.isEnabled())
+                entry.setChecked(button.isChecked())
+                entry.setIcon(button.icon())
+            menu.aboutToShow.connect(sync)
+            holder.setVisible(False)
+            self._merged = (holder, menu, added, sync)
+            return
+
+    def _split_filters(self):
+        """QGIS's own two filter buttons again."""
+        if self._merged is None:
+            return
+        holder, menu, added, sync = self._merged
+        self._merged = None
+        if not sip.isdeleted(menu):
+            try:
+                menu.aboutToShow.disconnect(sync)
+            except (TypeError, RuntimeError):
+                pass
+            for action in added:
+                if not sip.isdeleted(action):
+                    menu.removeAction(action)
+            for action in added[:2]:
+                if not sip.isdeleted(action):
+                    action.deleteLater()
+        if not sip.isdeleted(holder):
+            holder.setVisible(True)
 
     def _theme_icons(self):
         if self._action is None:
@@ -379,6 +442,7 @@ class LayersPanel:
     def detach(self):
         self._timer.stop()
         self._disconnect()
+        self._split_filters()
         if self._action is not None:
             if self._toolbar is not None and not sip.isdeleted(self._toolbar):
                 self._toolbar.removeAction(self._action)

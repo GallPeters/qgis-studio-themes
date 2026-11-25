@@ -1461,14 +1461,14 @@ CUSTOM_GLYPHS = {
 }
 
 
-# The Layers panel's own drawings in the single-colour style (the
-# Colourful style draws them detailed, see DETAILED): Expand All arrows
-# pointing apart from a centre line, Collapse All towards it, and List by
-# Data Source a file beside a database.
+# The Layers panel's own drawings: Expand All, line arrows (a tall thin
+# body, a two-line head) pointing apart from a centre line, Collapse All
+# towards it (blue lines in the Colourful style, COLOR_RECIPES); List by
+# Data Source a file beside a database (Colourful: DETAILED).
 CUSTOM_GLYPHS.update({
-    "tree-expand": ('<path d="M12 3v6"/><path d="M9 6l3 -3l3 3"/><path d="M12 21v-6"/><path d="M9 18l3 3l3 -3"/>'
+    "tree-expand": ('<path d="M12 2.5v7"/><path d="M9 5.5l3 -3l3 3"/><path d="M12 21.5v-7"/><path d="M9 18.5l3 3l3 -3"/>'
                     '<path d="M5 12h14"/>'),
-    "tree-collapse": ('<path d="M12 3v6"/><path d="M9 6l3 3l3 -3"/><path d="M12 21v-6"/><path d="M9 18l3 -3l3 3"/>'
+    "tree-collapse": ('<path d="M12 2.5v7"/><path d="M9 6.5l3 3l3 -3"/><path d="M12 21.5v-7"/><path d="M9 17.5l3 -3l3 3"/>'
                       '<path d="M5 12h14"/>'),
     "layers-source": ('<path d="M4 4h6l3 3v13h-9z"/><path d="M7 11h3"/><path d="M7 14h3"/>'
                       '<path d="M14 9a3 1.5 0 1 0 6 0a3 1.5 0 1 0 -6 0"/><path d="M14 9v9a3 1.5 0 0 0 6 0v-9"/>'
@@ -1939,6 +1939,8 @@ COLOR_RECIPES = {
     
     "terminal-2": ("greenS/", "greenS/", "grayS"), "code": ("blueS/", "blueS/", "grayS/"),
     "filter": ("grayS",), "filter-code": ("grayS", "blueS/"),
+    "tree-expand": ("blueS/", "blueS/", "blueS/", "blueS/", "grayS/"),
+    "tree-collapse": ("blueS/", "blueS/", "blueS/", "blueS/", "grayS/"),
     # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
     "eye": ("blueS", "paper!"), "eye-off": ("blueS/", "ink", "redS/"),
     "eye-check": ("blueS", "paper!", "greenS/"), "eye-minus": ("blueS", "paper!", "redS/"),
@@ -2373,21 +2375,6 @@ def _flat_funnel(k=1.0):
             f'fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>')
 
 
-def _tree(expand):
-    """Expand All (two block arrows pointing away from a bar) and Collapse
-    All (pointing towards it): blue arrows, a slate bar; simple enough for
-    a panel's 16 px tool row (the earlier tree with rows was too busy)."""
-    arrow = 'fill="#5d95d1" stroke="#24548c" stroke-linejoin="round"'
-    bar = f'<rect x="3.5" y="14" width="25" height="4" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
-    if expand:
-        top = f'<path d="M16 2.5L24.5 10.5H19.5V12.5H12.5V10.5H7.5Z" {arrow}/>'
-        bottom = f'<path d="M16 29.5L7.5 21.5H12.5V19.5H19.5V21.5H24.5Z" {arrow}/>'
-    else:
-        top = f'<path d="M16 12.5L7.5 4.5H12.5V2.5H19.5V4.5H24.5Z" {arrow}/>'
-        bottom = f'<path d="M16 19.5L24.5 27.5H19.5V29.5H12.5V27.5H7.5Z" {arrow}/>'
-    return top + bar + bottom
-
-
 def _sector(cx, cy, r_out, r_in, a1, a2):
     """A ring's sector from angle `a1` to `a2` (degrees), as a path."""
     f = lambda v: f"{v:.2f}".rstrip("0").rstrip(".")  # noqa: E731
@@ -2598,8 +2585,6 @@ DETAILED = {
         '<circle cx="12" cy="11.5" r="4.5" fill="#e6e9ed" stroke="#5d6873"/>'
         '<path d="M4 28.5V24L7 18.5H17L20 24V28.5Z" fill="#5b93cf" stroke="#24548c"/>',
     ),
-    "tree-expand": ("", _tree(True)),
-    "tree-collapse": ("", _tree(False)),
     # List by Data Source: one plain database cylinder (a page beside a
     # database was too busy for a panel's tool row).
     "layers-source": (
@@ -2609,11 +2594,13 @@ DETAILED = {
         '<ellipse cx="16" cy="7.5" rx="9.5" ry="3.5" fill="#9cc4ec" stroke="#1d4677"/>',
     ),
     # The layer stack at small sizes (SMALL_VARIANTS): two flat blue
-    # layers, as three coloured ones were too busy in panel tool rows.
+    # layers, as three coloured ones were too busy in panel tool rows;
+    # drawn to the top left so, enlarged for its badge (BADGED_SCALE), it
+    # fills the whole square like the row's other icons.
     "stack-2-small": (
         "",
-        '<path d="M2.5 19.5L16 11.5L29.5 19.5L16 27.5Z" fill="#3f78b8" stroke="#1d4677" stroke-linejoin="round"/>'
-        '<path d="M2.5 12.5L16 4.5L29.5 12.5L16 20.5Z" fill="#8cc0f0" stroke="#204f86" stroke-linejoin="round"/>',
+        '<path d="M0.5 19.25L14.5 10.5L28.5 19.25L14.5 28Z" fill="#3f78b8" stroke="#1d4677" stroke-linejoin="round"/>'
+        '<path d="M0.5 9.25L14.5 0.5L28.5 9.25L14.5 18Z" fill="#8cc0f0" stroke="#204f86" stroke-linejoin="round"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
