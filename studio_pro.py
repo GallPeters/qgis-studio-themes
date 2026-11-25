@@ -15,8 +15,8 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards (that pixel half outline, half fill: about 1.5
-  px), so the icon keeps its size, in one darker, richer shade of the
+  pixel thicker, inwards (that pixel mostly outline, a quarter fill:
+  about 1.75 px), so the icon keeps its size, in one darker, richer shade of the
   fill it surrounds per shape (not the greyish outline), painted evenly
   over the whole band so it reads as one line; lines inside the drawing
   keep their width and colour;
@@ -78,8 +78,8 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 EXTERIOR_DARKER, EXTERIOR_MAX = 0.8, 0.68
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
 # The pixel added inside the outline: how far it takes the outline's
-# colour (the rest stays fill), so the line reads about 1.5 px.
-EXTERIOR_INNER = 0.5
+# colour (the rest stays fill), so the line reads about 1.75 px.
+EXTERIOR_INNER = 0.75
 
 
 # ---- Colours -----------------------------------------------------------------
