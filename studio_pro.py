@@ -75,7 +75,7 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.87, 0.75
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.82, 0.7
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
 # The pixel added inside the outline: how far it takes the outline's
 # colour (the rest stays fill): all of it, a full 2 px line.
@@ -83,11 +83,10 @@ EXTERIOR_INNER = 1.0
 # And the next pixel inwards, this much of it (about 2.4 px in all).
 EXTERIOR_SECOND = 0.4
 # Free lines (no fill of their own and none under them: a clock, arrows, a
-# sigma, in the theme's ink or a colour) from INK_BOLD_FROM px: a pixel
-# added below and right of them, so they are no longer hairlines; its
-# share by size in INK_BOLD, (from px, share), largest first.
-INK_BOLD_FROM = 16
-INK_BOLD = ((28, 1.0), (20, 0.85), (16, 0.6))
+# sigma, in the theme's ink or a colour) from FREE_LINE_FROM px: drawn
+# 2 px wide, moved half a pixel so the even width covers whole pixels
+# (crisp, not a 1 px line with a faint second pixel beside it).
+FREE_LINE_FROM = 20
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -354,6 +353,16 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
         if mask is not None:
             top[mask > 0.5] = i
 
+    # Free lines (FREE_LINE_FROM): no fill, none within a pixel of them.
+    free = set()
+    if size >= FREE_LINE_FROM:
+        near_fill = _dilated(top >= 0)
+        for i in range(count):
+            if fills[i] is None and stroke_masks[i] is not None:
+                drawn = stroke_masks[i] > 0.4
+                if drawn.any() and (near_fill & drawn).sum() < 0.3 * drawn.sum():
+                    free.add(i)
+
     # Outlines in each object's own colour; lines on a fill from that fill.
     tags = []
     for i, (_s, _e, tag) in enumerate(leaves):
@@ -371,6 +380,10 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
                     tag = _set(tag, "stroke", (inner_line_for if inside > 0.7 else outline_for)(fills[j], size, bright))
                 else:
                     tag = _set(tag, "stroke", ink)
+        if i in free:
+            moved = _attr(tag, "transform")
+            tag = _set(tag, "stroke-width", "2")
+            tag = _set(tag, "transform", "translate(.5 .5)" + (f" {moved}" if moved else ""))
         tags.append(tag)
     svg = _rebuild(svg, leaves, tags)
     out = _raster(svg, size)
@@ -381,39 +394,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
     if size >= EFFECTS_FROM:
         _shade(out, size, fills, fill_masks, stroke_masks)
     out = _exterior(out, size, top, fills, badges, line_px)
-    if size >= INK_BOLD_FROM:
-        strength = next(share for start, share in INK_BOLD if size >= start)
-        filled = top >= 0
-        near_fill = _dilated(filled)
-        for i, (_s, _e, tag) in enumerate(leaves):
-            line, color = stroke_masks[i], (_attr(tag, "stroke") or "").lower()
-            if fills[i] is not None or line is None or not HEX.fullmatch(color):
-                continue
-            drawn = line > 0.4
-            # Free lines only: not edges or details drawn on a fill.
-            if drawn.any() and (near_fill & drawn).sum() < 0.3 * drawn.sum():
-                _bolder(out, line * ~filled, color, strength, filled)
     return out
-
-
-def _bolder(out, line, ink, strength, keep):
-    """A line drawn in `ink` (its coverage `line`) one pixel bolder,
-    below and to the right, `strength` of that pixel, in place; nothing is
-    added on the pixels of `keep` (the fills)."""
-    grown = np.zeros_like(line)
-    grown[1:, :] = np.maximum(grown[1:, :], line[:-1, :])
-    grown[:, 1:] = np.maximum(grown[:, 1:], line[:, :-1])
-    add = np.clip(grown - line, 0, 1) * strength * ~keep
-    add = np.where(out[..., 3] > 0.5, np.minimum(add, 1 - line), add)
-    add = add * (add > 0.05)
-    if not add.any():
-        return
-    color = np.array(_rgb(ink), np.float32)
-    alpha = out[..., 3]
-    new_alpha = alpha + add * (1 - alpha)
-    safe = np.maximum(new_alpha, 1e-6)
-    out[..., :3] = (out[..., :3] * (alpha * (1 - add))[..., None] + color * add[..., None]) / safe[..., None]
-    out[..., 3] = new_alpha
 
 
 _FOUR = ((-1, 0), (1, 0), (0, -1), (0, 1))

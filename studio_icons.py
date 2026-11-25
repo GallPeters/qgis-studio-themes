@@ -3388,13 +3388,44 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             # Badge dots in the accent and danger colours stay in their
             # masks; the screen's line width is kept at every px.
             return render_icon_color_px(spec, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
-        # Badged icons are not enlarged: their badge masks (drawn apart)
-        # would no longer line up.
         glyph, badge = _color_spec(spec)
-        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT,
-                                  line=stroke_px(size) if width is None else width)
+        line = stroke_px(size) if width is None else width
+        if badge in COLOR_BADGE_MARKS:
+            # A coloured dot badge: the drawing alone enlarged to fill the
+            # square like any other icon, then the hole and the dot in the
+            # corner (badged icons looked smaller than their neighbours).
+            def plain(px):
+                return render_icon_color_px(glyph, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
+            body = studio_pro.upgrade(plain, size, pro_ink, fill=True, bright=glyph in PRO_BRIGHT, line=line)
+            return _pro_badged(body, badge, size)
+        # Other badges (drawn in the accent masks) keep the drawing's place,
+        # so the masks line up.
+        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT, line=line)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
+
+
+_IMAGE = re.compile(r"<image\b[^>]*/>")
+
+
+def _pro_badged(body, badge, size):
+    """A Colourful Pro drawing (an SVG holding its PNG) with a dot badge:
+    a hole cut around the corner and the dot, in Colourful Pro's colours."""
+    try:
+        from . import studio_pro  # pylint: disable=import-outside-toplevel
+    except ImportError:  # imported on its own (tools/)
+        import studio_pro  # pylint: disable=import-outside-toplevel
+    image = _IMAGE.search(body)
+    if image is None:  # no numpy: plain Colourful
+        return body
+    center, hole = _badge_hole(size)
+    color = BADGE_COLORS[BADGE_KINDS.get(COLOR_BADGE_MARKS[badge], "other")]
+    r = _badge_size(size) / 2 - 0.5
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+            f'width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+            + _badge_mask(center, hole, size) + f'<g mask="url(#b)">{image.group(0)}</g>'
+            f'<circle cx="{_num(center)}" cy="{_num(center)}" r="{_num(r)}" fill="{color}" '
+            f'stroke="{studio_pro._badge_edge(color)}" stroke-width="1"/></svg>')  # pylint: disable=protected-access
 
 
 def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode):
