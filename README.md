@@ -99,7 +99,9 @@ pixel-sharp at every screen scaling.
 - **Layers panel**: a search field and a List by Data Source view.
 - **Clean layout**: flat buttons and tabs, roomy panel rows, slim scrollbars
   and the bundled Inter typeface.
-- **QGIS icon size**: the ribbon, panels and dialogs follow it.
+- **QGIS icon size**: the ribbon, panels and dialogs follow it. **On a small
+  screen (e.g. a 14" laptop at 100% scaling), set it to 24 in Settings >
+  Options > General.**
 - **Fast**: icons are drawn once and shared by every theme.
 
 ## Contributing

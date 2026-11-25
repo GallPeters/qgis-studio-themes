@@ -27,6 +27,7 @@ changelog=
           - New or refined icons: Pan, zoom tools, Shapefile, Virtual Layer, Filter by Expression, Expand and Collapse All, Help, About, Report Issue, Support and more.
           - Pages with letters (PDF, CSV, SVG) have bolder letters; Project Properties keeps its page with a gear.
           - Icons that faded on dark themes are clear again.
+          - Settings: a shorter note, with a tip for small screens (icon size 24); icons drawn at unusual sizes take half the time.
 
      ** v1.5 (15.11.2026):
           - The ribbon is compact by default: about as high as other ribbons, with the same icon sizes. Standard density keeps the former look.

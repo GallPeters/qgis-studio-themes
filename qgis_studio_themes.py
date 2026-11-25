@@ -402,10 +402,12 @@ def render_masks(folder, size, width, scale, stop, outline=studio_icons.DEFAULT_
     return True
 
 
-def render_one(spec, size, width, scale, outline=studio_icons.DEFAULT_OUTLINE):
+def render_one(spec, size, width, scale, outline=studio_icons.DEFAULT_OUTLINE, modes=studio_icons.COLOR_MODES):
     """The mask layers of one drawing at one exact pixel size, drawn as
     render_masks draws an atlas cell (same layers and formats as
-    load_masks): for sizes no atlas covers, so they are never resampled."""
+    load_masks): for sizes no atlas covers, so they are never resampled.
+    Only the colour layers of `modes` are drawn (the others left empty):
+    drawn on the GUI thread, so only what the theme shows."""
     cell = QRectF(0, 0, size, size)
     images = {}
     for layer in MASK_LAYERS:
@@ -421,10 +423,11 @@ def render_one(spec, size, width, scale, outline=studio_icons.DEFAULT_OUTLINE):
     for layer in ("glyph", badge_layer(spec)):
         if layer is not None:
             draw(layer, studio_icons.render_icon_px(spec, MASK_LAYERS[layer], size, scale, width))
-    for mode in studio_icons.COLOR_MODES:
+    for mode in modes:
         draw(f"color-{mode}", studio_icons.render_icon_color_px(spec, size, scale, width, "color", mode=mode,
                                                                outline=outline))
-    draw("ink", studio_icons.render_icon_color_px(spec, size, scale, width, "ink", outline=outline))
+    if modes:
+        draw("ink", studio_icons.render_icon_color_px(spec, size, scale, width, "ink", outline=outline))
     return {
         layer: image if layer.startswith("color") else image.convertToFormat(QImage.Format.Format_Alpha8)
         for layer, image in images.items()
@@ -1788,12 +1791,18 @@ class IconSwapper(QObject):
         pixmap = self._pixmaps.get(key)
         if pixmap is None:
             width = studio_icons.screen_stroke_px(ratio)
-            mask_key = (spec, size, width, self._scale)
+            colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
+            # Only the colour layer this theme shows (none for single-colour
+            # icons): Colourful Pro drawings cost a few ms each.
+            if self._style in COLOR_STYLES:
+                modes = ("dark",) if colors["window"].lightness() < 128 else ("light",)
+            else:
+                modes = ()
+            mask_key = (spec, size, width, self._scale, modes)
             masks = self._one_masks.get(mask_key)
             if masks is None:
-                masks = render_one(spec, size, width, self._scale, self._outline)
+                masks = render_one(spec, size, width, self._scale, self._outline, modes)
                 self._one_masks[mask_key] = masks
-            colors = self._colors[[name for name, _mode in ICON_STATES].index(state)]
             pixmap = compose_atlas(masks, colors, self._style in COLOR_STYLES, state == "disabled")
             pixmap.setDevicePixelRatio(ratio)
             self._pixmaps[key] = pixmap
@@ -2602,6 +2611,10 @@ class SettingsDialog(QDialog):
         ("regular", "Regular"),
         ("light", "Light"),
     )
+    SMALL_SCREEN_TIP = (
+        "Small screen (e.g. a 14\" laptop at 100% scaling)? Set the icon size to 24 in "
+        "Settings > Options > General."
+    )
 
     def __init__(self, plugin, parent=None):
         super().__init__(parent)
@@ -2644,6 +2657,7 @@ class SettingsDialog(QDialog):
         form.addRow("Font size", self._size)
         form.addRow("Font weight", self._weight)
         self._note = note = QLabel()
+        note.setTextFormat(Qt.TextFormat.RichText)
         note.setWordWrap(True)
         self._inactive = QLabel("Toolbar names and the ribbon show while a Studio theme is in use.")
         self._inactive.setWordWrap(True)
@@ -2731,17 +2745,11 @@ class SettingsDialog(QDialog):
         for combo in (self._size, self._weight):
             combo.setEnabled(position != "off")
         if ribbon:
-            self._note.setText(
-                "The ribbon shows every toolbar button in tabs. Its groups' names can go above or below "
-                "the buttons, left of them, or be turned off to save height. Double-click a tab to "
-                "collapse the ribbon. Toolbars in layout designers keep the toolbar names' settings."
-            )
+            text = "All toolbar buttons in tabs. Double-click a tab to hide or show the ribbon."
         else:
-            self._note.setText(
-                "Applies to toolbars docked in rows. Toolbars docked at the window's sides keep a short "
-                "name on their handle, and floating toolbars show their name in their title bar. "
-                "Hover over a toolbar to see its full name."
-            )
+            text = "Names show on toolbars docked in rows. Hover over a toolbar to see its full name."
+        tip = self.SMALL_SCREEN_TIP.replace(">", "&gt;")
+        self._note.setText(f"{text}<br><br><b>{tip}</b>")
         vertical = position == "left_vertical"
         self._names.model().item(self._names.findData("full")).setEnabled(not vertical)
         if vertical and self._names.currentData() == "full":
@@ -3255,7 +3263,7 @@ class QgisStudioThemesPlugin:
         """(position, name style, size, weight, ribbon size, density) of the
         ribbon: its groups' names (below the buttons, full where they fit, by default;
         in the toolbar names' font) and the size and density set in the
-        settings dialog (QGIS's icon size, standard density by default)."""
+        settings dialog (QGIS's icon size, compact density by default)."""
         settings = QgsSettings()
         _position, _names, size, weight = QgisStudioThemesPlugin.label_style()
         position = settings.value(RIBBON_POSITION_SETTING, CAPTION_POSITION, type=str)
