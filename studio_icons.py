@@ -2262,25 +2262,25 @@ _COLOR_DRAWINGS = {
              ("gray", "blueS")),
     "clock": ('<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 4v1.5M20 12h-1.5M12 20v-1.5M4 12h1.5"/>'
               '<path d="M12 7.5v4.5l3 2"/>', ("paper", "ink", "ink")),
-    # Pages with letters (PDF, CSV, SVG): Tabler's drawings, the letters
-    # heavy (class "heavy": twice the line, see HEAVY), as thin they were
-    # barely seen.
+    # Pages with letters (PDF, CSV, SVG): Tabler's drawings, the letters a
+    # unit closer together and heavy (class "heavy", see _render_color_px),
+    # as thin they were barely seen.
     "file-type-pdf": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M5 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6" class="heavy"/><path d="M17 18h2" class="heavy"/>'
-                      '<path d="M20 15h-3v6" class="heavy"/>'
+                      '<path d="M6 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6" class="heavy"/><path d="M16 18h2" class="heavy"/>'
+                      '<path d="M19 15h-3v6" class="heavy"/>'
                       '<path d="M11 15v6h1a2 2 0 0 0 2 -2v-2a2 2 0 0 0 -2 -2h-1" class="heavy"/>',
                       ("paper/", "paper!", "redS/")),
     "file-type-csv": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M7 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" class="heavy"/>'
+                      '<path d="M8 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" class="heavy"/>'
                       '<path d="M10 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
                       'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
-                      '<path d="M16 15l2 6l2 -6" class="heavy"/>',
+                      '<path d="M15 15l2 6l2 -6" class="heavy"/>',
                       ("paper/", "paper!", "greenS/")),
     "file-type-svg": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M4 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
+                      '<path d="M5 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
                       'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
                       '<path d="M10 15l2 6l2 -6" class="heavy"/>'
-                      '<path d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3" class="heavy"/>',
+                      '<path d="M19 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3" class="heavy"/>',
                       ("paper/", "paper!", "orangeS/")),
 }
 COLOR_GLYPHS = {name: body for name, (body, _materials) in _COLOR_DRAWINGS.items()}
@@ -3432,13 +3432,14 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
     if layer != "ink":
         colored = "".join(
             _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit), mark)[0])
-        # Heavy lines (a page's letters): from 28 px twice the line, moved
-        # half a pixel so the even width covers whole pixels; smaller, half
-        # as much again (twice ran the letters together).
-        if size >= 28:
+        # Heavy lines (a page's letters): from 20 px twice the line, moved
+        # half a pixel so the even width covers whole pixels; smaller, the
+        # line itself (twice ran the letters together). Whole pixels only:
+        # 1.5 px left a dark fringe around the letters.
+        if size >= 20:
             heavy = f' stroke-width="{2 * thin}"' + (' transform="translate(.5 .5)"' if thin % 2 else "")
         else:
-            heavy = f' stroke-width="{_num(1.5 * thin)}"'
+            heavy = ""
         colored = colored.replace(' data-heavy="1"', heavy)
     if layer != "color":
         inked = "".join(

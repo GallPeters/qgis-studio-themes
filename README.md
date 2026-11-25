@@ -73,7 +73,7 @@ With toolbars, the group name settings apply to the toolbar names.
 ## Icons
 
 - **Monochrome**: clean line icons in the theme's colour.
-- **Colourful Pro**: flat colour icons in soft tones, like professional GIS icon sets: outlines in each object's own colour and, on large icons, a flat shadow on the lower right. The default.
+- **Colourful Pro**: flat colour icons in soft tones, like professional GIS icon sets: outlines in each object's own colour and a curved flat shadow on the lower right. The default.
 - **QGIS classic**: QGIS's own icons.
 
 Monochrome and Colourful Pro replace icons across the whole interface and stay

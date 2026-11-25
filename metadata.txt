@@ -19,7 +19,7 @@ changelog=
 
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.
-          - Colourful Pro replaces Colourful: soft colours, outlines in each object's own colour, a flat shadow on the lower right of large icons, and every icon fills its whole square.
+          - Colourful Pro replaces Colourful: soft colours, outlines in each object's own colour, flat colours with a curved flat shadow on the lower half (lighter on dark colours), and every icon fills its whole square.
           - The Processing Toolbox's models button has the ribbon's Project Models icon.
           - The current ribbon tab's underline no longer touches its name in compact density.
           - Ribbon: Select and Deselect are separate large buttons, also on the Edit and Modify tabs; a click runs the last tool used, the arrow picks another. Reselect has a button of its own.

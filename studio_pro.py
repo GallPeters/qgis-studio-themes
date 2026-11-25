@@ -8,10 +8,12 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   and on the window;
 - lines drawn inside a fill (a globe's meridians, a table's grid) a step
   softer than the outline;
-- from 24 px: a flat shadow on the lower right of each coloured shape,
-  bounded by one gentle curve across the whole drawing (as if lit from the
-  top left): one flat colour, no gradient, no highlight edge, its edge
-  smoothed over a pixel; white and paper surfaces stay unshaded;
+- gradients flattened to one colour (the average of their stops);
+- from 16 px: a flat shadow on the lower right of each coloured shape,
+  bounded by one gentle curve across the whole drawing, about half of it
+  (as if lit from the top left): one flat colour, no gradient, no
+  highlight edge, its edge smoothed over a pixel; on dark fills the part
+  is lighter instead, so it shows; white and paper surfaces unshaded;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -39,6 +41,7 @@ AVAILABLE = np is not None
 LEAF = re.compile(r"<(path|rect|circle|ellipse|polygon|polyline|line)\b[^>]*?/>")
 DEFS = re.compile(r"<defs>.*?</defs>", re.S)
 GRADIENT = re.compile(r'<linearGradient id="(\w+)"><stop offset="0" stop-color="(#[0-9a-fA-F]{6})"')
+GRADIENT_BLOCK = re.compile(r'<linearGradient id="(\w+)"[^>]*>(.*?)</linearGradient>', re.S)
 STOP_COLOR = re.compile(r'stop-color="(#[0-9a-fA-F]{6})"')
 HEX = re.compile(r"#[0-9a-f]{6}")
 URL = re.compile(r"url\(#(\w+)\)")
@@ -49,16 +52,18 @@ BLACK = "#000000"
 SOFT_BLACK = "#2a2e33"
 # Shading from this many device pixels up; shapes thinner than SHADE_MIN
 # px get none.
-EFFECTS_FROM = 24
+EFFECTS_FROM = 16
 SHADE_MIN = 6
 # The shadow's edge: an arc of the circle centred at (CURVE_CX, CURVE_CY),
 # radius CURVE_R, in units of the drawing's width and height from its top
-# left. It runs from near the top right edge down the right side and
-# sweeps to the lower left, leaving about the lower right two fifths in
+# left. It runs from the top edge near the right corner through about the
+# middle and sweeps to the lower left: about the lower right half in
 # shadow.
-CURVE_CX, CURVE_CY, CURVE_R = -0.2, -0.1, 1.15
-# How much darker the shadow is (lightness).
-SHADOW_DARKER = 0.10
+CURVE_CX, CURVE_CY, CURVE_R = -0.3, -0.2, 1.13
+# How much darker the shadow is (lightness); on fills darker than
+# DARK_FILL, how much lighter (a dark shadow on a dark body hid).
+SHADOW_DARKER = 0.13
+DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 
@@ -127,8 +132,11 @@ def inner_line_for(fill, size, bright=False):
 
 
 def shadow_for(fill):
-    """The flat shadow colour on a shape filled `fill`."""
+    """The flat shadow colour on a shape filled `fill` (lighter on a dark
+    fill)."""
     h, l, s = _hls(fill)  # noqa: E741
+    if l < DARK_FILL:
+        return _from_hls(h, l + SHADOW_LIGHTER, s)
     if s < 0.06:
         return _from_hls(h, l - SHADOW_DARKER - 0.01, s)
     return _from_hls(h, l - SHADOW_DARKER, min(1.0, s * 1.06))
@@ -260,7 +268,12 @@ def _filling(draw, size, svg):
 
 def _upgrade(svg, size, ink, bright=False):
     gradients = dict(GRADIENT.findall(svg))
-
+    # Each gradient as one flat colour: the average of its stops.
+    flat = {}
+    for gid, stops in GRADIENT_BLOCK.findall(svg):
+        colors = [_rgb(c) for c in STOP_COLOR.findall(stops)]
+        if colors:
+            flat[gid] = _hex(tuple(sum(c[k] for c in colors) / len(colors) for k in range(3)))
 
     def fill_of(tag):
         fill = _attr(tag, "fill")
@@ -284,7 +297,10 @@ def _upgrade(svg, size, ink, bright=False):
     tags = []
     for _start, _end, tag in leaves:
         fill, raw = fill_of(tag), _attr(tag, "fill") or ""
-        if fill == BLACK:
+        url = URL.match(raw)
+        if url and url.group(1) in flat:
+            tag = _set(tag, "fill", soften(flat[url.group(1)]))
+        elif fill == BLACK:
             tag = _set(tag, "fill", SOFT_BLACK)
         elif fill and fill not in BADGES and not raw.startswith("url"):
             tag = _set(tag, "fill", soften(fill))
