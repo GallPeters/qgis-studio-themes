@@ -6,8 +6,8 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   objects, green for green, grey for grey), never near-black: a little
   deeper on small icons (20 px and under), always readable on the fill
   and on the window;
-- lines drawn inside a fill (a globe's meridians, a table's grid) a step
-  softer than the outline;
+- lines drawn inside a fill (a globe's meridians, a table's grid) in the
+  outline's shade, 2 px from 20 px (INNER_LINE_FROM), so they show;
 - gradients flattened to one colour (the average of their stops);
 - from 16 px: a flat shadow on the lower right of each coloured shape,
   bounded by one gentle curve across the whole drawing, about half of it
@@ -90,7 +90,7 @@ EXTERIOR_INNER = 1.0
 # (crisp, not a 1 px line with a faint second pixel beside it).
 FREE_LINE_FROM = 20
 # All lines 2 px (inner ones too) from this size (_upgrade).
-INNER_LINE_FROM = 24
+INNER_LINE_FROM = 20
 # Their smoothed edges: coverage below this cleared, above 1 - it solid.
 FIRM_LOW = 0.15
 
@@ -150,12 +150,6 @@ def outline_for(fill, size, bright=False):
     color = _from_hls(h, target, s * 0.5) if s < 0.12 else _from_hls(h, target, min(s * 0.6, 0.34))
     on_fill, on_window = (1.8, 3.0) if bright else (3.0 if size <= 20 else 2.3, 5.0 if size <= 20 else 4.0)
     return _darken_until(color, lambda c: _contrast(c, fill) >= on_fill and _contrast(c, "#ffffff") >= on_window)
-
-
-def inner_line_for(fill, size, bright=False):
-    """A line drawn inside a fill: a step softer than its outline."""
-    h, l, s = _hls(outline_for(fill, size, bright))  # noqa: E741
-    return _darken_until(_from_hls(h, l + 0.06, s), lambda c: _contrast(c, fill) >= 2.0)
 
 
 def shadow_for(fill, small=False):
@@ -425,10 +419,9 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
                 if under and len(under) >= 0.3 * line.sum():
                     j = max(set(under), key=under.count)
                     inside = (fill_masks[j] > 0.99)[line].mean()
-                    # Small icons (SMALL_DETAIL px and under): the full
-                    # outline shade, as the softer one vanished in the fill.
-                    soft = inside > 0.7 and size > SMALL_DETAIL
-                    tag = _set(tag, "stroke", (inner_line_for if soft else outline_for)(fills[j], size, bright))
+                    # Lines on a fill in the full outline shade at every
+                    # size (the softer inner shade vanished in the fill).
+                    tag = _set(tag, "stroke", outline_for(fills[j], size, bright))
                 else:
                     tag = _set(tag, "stroke", ink)
         if i in bold:
