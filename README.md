@@ -60,7 +60,7 @@ Open them in Plugins → QGIS Studio Themes → Settings. Every change shows at 
 </p>
 
 - **Interface**: toolbars or a ribbon (the default).
-- **Icons**: monochrome, colourful, colourful pro (softer colours, outlines in each object's own colour, sharp shading) or QGIS classic.
+- **Icons**: monochrome, colourful pro (the default) or QGIS classic.
 - **Ribbon size**: small, medium, large, or follow QGIS's icon size.
 - **Ribbon density**: compact (the default) saves height, standard gives the icons more room.
 - **Group name position**: above, below or left of the buttons, or off.
@@ -73,18 +73,18 @@ With toolbars, the group name settings apply to the toolbar names.
 ## Icons
 
 - **Monochrome**: clean line icons in the theme's colour.
-- **Colourful**: solid, flat colour icons, like professional GIS and Office icon sets. The default.
+- **Colourful Pro**: flat colour icons in soft tones, like professional GIS icon sets: outlines in each object's own colour and, on large icons, a flat shadow on the lower right. The default.
 - **QGIS classic**: QGIS's own icons.
 
-Monochrome and Colourful replace icons across the whole interface and stay
+Monochrome and Colourful Pro replace icons across the whole interface and stay
 pixel-sharp at every screen scaling.
 
 <p>
 <b>Monochrome</b><br>
 <kbd><img src="docs/screenshots/pro-light_icons-mono.png" alt="Monochrome icons" width="820"></kbd><br><br>
 
-<b>Colourful</b><br>
-<kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful icons" width="820"></kbd><br><br>
+<b>Colourful Pro</b><br>
+<kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful Pro icons" width="820"></kbd><br><br>
 
 <b>QGIS classic</b><br>
 <kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>

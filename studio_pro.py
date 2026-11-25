@@ -8,9 +8,10 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   and on the window;
 - lines drawn inside a fill (a globe's meridians, a table's grid) a step
   softer than the outline;
-- from 24 px: a soft, sharp-edged inner shadow along each shape's lower
-  right (as if lit from the top left) and a 1 px highlight inside its top
-  left edge, in whole pixels so the icons stay crisp;
+- from 24 px: a flat shadow on the lower right of each coloured shape,
+  bounded by one gentle curve across the whole drawing (as if lit from the
+  top left): one flat colour, no gradient, no highlight edge, its edge
+  smoothed over a pixel; white and paper surfaces stay unshaded;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -47,9 +48,19 @@ BLACK = "#000000"
 # Pure black fills (a pencil's tip, small marks): a soft near-black.
 SOFT_BLACK = "#2a2e33"
 # Shading from this many device pixels up; shapes thinner than SHADE_MIN
-# px get none, a highlight needs HIGHLIGHT_MIN.
+# px get none.
 EFFECTS_FROM = 24
-SHADE_MIN, HIGHLIGHT_MIN = 6, 8
+SHADE_MIN = 6
+# The shadow's edge: an arc of the circle centred at (CURVE_CX, CURVE_CY),
+# radius CURVE_R, in units of the drawing's width and height from its top
+# left. It runs from near the top right edge down the right side and
+# sweeps to the lower left, leaving about the lower right two fifths in
+# shadow.
+CURVE_CX, CURVE_CY, CURVE_R = -0.2, -0.1, 1.15
+# How much darker the shadow is (lightness).
+SHADOW_DARKER = 0.10
+# White and paper surfaces (this light and this grey) get no shadow.
+UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -97,33 +108,30 @@ def soften(color):
     return _from_hls(h, l + (1 - l) * 0.03, s * 0.92)
 
 
-def outline_for(fill, size):
+def outline_for(fill, size, bright=False):
     """The outline of a shape filled `fill`: a greyish mid-dark shade of
     its own hue, a little deeper on small icons; at least 2.3:1 on the
-    fill and readable on a light window."""
+    fill and readable on a light window. `bright`: a lighter one at every
+    size (still 1.8:1 on the fill, 3:1 on the window)."""
     h, l, s = _hls(fill)  # noqa: E741
-    target = 0.33 if size <= 20 else 0.40
+    target = 0.5 if bright else 0.33 if size <= 20 else 0.40
     color = _from_hls(h, target, s * 0.5) if s < 0.12 else _from_hls(h, target, min(s * 0.6, 0.34))
-    on_window = 5.0 if size <= 20 else 4.0
-    return _darken_until(color, lambda c: _contrast(c, fill) >= 2.3 and _contrast(c, "#ffffff") >= on_window)
+    on_fill, on_window = (1.8, 3.0) if bright else (2.3, 5.0 if size <= 20 else 4.0)
+    return _darken_until(color, lambda c: _contrast(c, fill) >= on_fill and _contrast(c, "#ffffff") >= on_window)
 
 
-def inner_line_for(fill, size):
+def inner_line_for(fill, size, bright=False):
     """A line drawn inside a fill: a step softer than its outline."""
-    h, l, s = _hls(outline_for(fill, size))  # noqa: E741
+    h, l, s = _hls(outline_for(fill, size, bright))  # noqa: E741
     return _darken_until(_from_hls(h, l + 0.06, s), lambda c: _contrast(c, fill) >= 2.0)
 
 
 def shadow_for(fill):
+    """The flat shadow colour on a shape filled `fill`."""
     h, l, s = _hls(fill)  # noqa: E741
     if s < 0.06:
-        return _from_hls(h, l - 0.085, s)
-    return _from_hls(h, l - 0.08, s * 1.04)
-
-
-def highlight_for(fill):
-    h, l, s = _hls(fill)  # noqa: E741
-    return _from_hls(h, l + (1 - l) * 0.4, s)
+        return _from_hls(h, l - SHADOW_DARKER - 0.01, s)
+    return _from_hls(h, l - SHADOW_DARKER, min(1.0, s * 1.06))
 
 
 def _badge_edge(fill):
@@ -181,14 +189,6 @@ def _raster(svg, size):
     return np.frombuffer(bits, np.uint8).reshape(size, size, 4).astype(np.float32) / 255
 
 
-def _shift(mask, dx, dy):
-    out = np.zeros_like(mask)
-    h, w = mask.shape
-    out[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
-        mask[max(0, -dy):h + min(0, -dy), max(0, -dx):w + min(0, -dx)]
-    return out
-
-
 def _png_svg(rgba):
     """An SVG holding `rgba` (uint8, straight alpha) as a PNG, 1:1."""
     size = rgba.shape[0]
@@ -209,18 +209,20 @@ def _png_svg(rgba):
 FILL_GROW = 1.4
 
 
-def upgrade(draw, size, ink, fill=True):
+def upgrade(draw, size, ink, fill=True, bright=False):
     """A Colourful icon at `size` px in the Pro look, as an SVG of that
     size. draw(px) is its studio_icons SVG at px (black outlines, ink parts
     in `ink`). With `fill`, drawn at the largest size whose drawing still
-    fits `size` px and cropped around it, so it fills the whole square."""
+    fits `size` px and cropped around it, so it fills the whole square.
+    With `bright`, lighter outlines at every size (a small drawing of
+    small shapes turned dark)."""
     svg = draw(size)
     if np is None:
         return svg
     big, box = size, None
     if fill:
         big, svg, box = _filling(draw, size, svg)
-    image = _upgrade(svg, big, ink)
+    image = _upgrade(svg, big, ink, bright)
     if box is not None and big > size:
         x0, y0, x1, y1 = box
         left = min(max(0, (x0 + x1 - size) // 2), big - size)
@@ -256,8 +258,9 @@ def _filling(draw, size, svg):
     return size, svg, box
 
 
-def _upgrade(svg, size, ink):
+def _upgrade(svg, size, ink, bright=False):
     gradients = dict(GRADIENT.findall(svg))
+
 
     def fill_of(tag):
         fill = _attr(tag, "fill")
@@ -320,14 +323,14 @@ def _upgrade(svg, size, ink):
             if fills[i] in BADGES:
                 tag = _set(tag, "stroke", _badge_edge(fills[i]))
             elif fills[i]:
-                tag = _set(tag, "stroke", outline_for(fills[i], size))
+                tag = _set(tag, "stroke", outline_for(fills[i], size, bright))
             elif stroke_masks[i] is not None:
                 line = stroke_masks[i] > 0.4
                 under = [j for j in top[line].tolist() if j >= 0 and j != i]
                 if under and len(under) >= 0.3 * line.sum():
                     j = max(set(under), key=under.count)
                     inside = (fill_masks[j] > 0.99)[line].mean()
-                    tag = _set(tag, "stroke", (inner_line_for if inside > 0.7 else outline_for)(fills[j], size))
+                    tag = _set(tag, "stroke", (inner_line_for if inside > 0.7 else outline_for)(fills[j], size, bright))
                 else:
                     tag = _set(tag, "stroke", ink)
         tags.append(tag)
@@ -336,32 +339,42 @@ def _upgrade(svg, size, ink):
     if size < EFFECTS_FROM:
         return out
 
-    # Sharp inner shadow (lower right) and highlight (upper left) on each
-    # shape where it shows: not under a later shape, not on a line.
+    # A flat shadow on each coloured shape where it shows (not under a
+    # later shape, not on a line), beyond one arc across the whole drawing.
     lines = np.zeros((size, size), np.float32)
     for mask in stroke_masks:
         if mask is not None:
             lines = np.maximum(lines, mask)
+    drawn = np.zeros((size, size), bool)
+    for mask in fill_masks:
+        if mask is not None:
+            drawn |= mask > 0.5
+    gy, gx = np.nonzero(drawn)
+    if not len(gx):
+        return out
+    x0, y0 = gx.min(), gy.min()
+    width, height = gx.max() + 1 - x0, gy.max() + 1 - y0
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32) + 0.5
+    u, v = (xx - x0) / width - CURVE_CX, (yy - y0) / height - CURVE_CY
+    beyond = np.clip((np.sqrt(u * u + v * v) - CURVE_R) * (width + height) / 2 + 0.5, 0, 1)
     for i, mask in enumerate(fill_masks):
         fill = fills[i]
         if mask is None or fill is None or fill in BADGES or fill in (BLACK, SOFT_BLACK):
             continue
+        _h, light, saturation = _hls(fill)
+        if light > UNSHADED_LIGHTNESS and saturation < UNSHADED_SATURATION:
+            continue
         solid = mask > 0.5
         ys, xs = np.nonzero(solid)
-        if len(ys) < 30:
+        if len(ys) < 30 or min(xs.max() - xs.min() + 1, ys.max() - ys.min() + 1) < SHADE_MIN:
             continue
-        thin = min(xs.max() - xs.min() + 1, ys.max() - ys.min() + 1)
-        if thin < SHADE_MIN:
-            continue
+        # Later shapes cover it, translucent ones too (a toolbox's seam).
         later = np.zeros((size, size), bool)
         for other in fill_masks[i + 1:]:
             if other is not None:
-                later |= other > 0.5
-        free = solid & ~later & (lines < 0.25)
-        depth = int(max(1, min(4, round(thin * 0.15 * (size / 32) ** 0.3))))
-        shade = free & ~_shift(solid, -depth, -depth)
-        light = (free & ~_shift(solid, 2, 2) & ~shade) if thin >= HIGHLIGHT_MIN else None
-        for region, color in ((shade, shadow_for(fill)), (light, highlight_for(fill))):
-            if region is not None and region.any():
-                out[..., :3][region] = np.array(_rgb(color), np.float32)
+                later |= other > 0.25
+        cover = beyond * (solid & ~later & (lines < 0.25))
+        if cover.any():
+            color = np.array(_rgb(shadow_for(fill)), np.float32)
+            out[..., :3] = out[..., :3] * (1 - cover[..., None]) + color * cover[..., None]
     return out

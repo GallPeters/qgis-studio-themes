@@ -1096,6 +1096,10 @@ COLOR_HUES = {  # (light body, medium body, edge)
     "steel": ("#8a939d", "#5f6873", "#3a414a"),
     # Leaf: a light green a little deeper than green's (the puzzle piece).
     "leaf": ("#93c287", "#66a466", "#417a43"),
+    # Brighter tones for the Python logo and a hammer's handle.
+    "pyblue": ("#b5d0ec", "#7aaee3", "#3f73a8"),
+    "pyyellow": ("#f3dc94", "#ecc25c", "#a37a1f"),
+    "woodlight": ("#e6cba9", "#d3a675", "#8c6235"),
 }
 # Paper (fill, edge) on light and dark themes.
 COLOR_MODES = ("light", "dark")
@@ -1124,6 +1128,7 @@ MATERIAL_HUES = {
     "purple": "purple", "purpleS": "purple", "teal": "teal", "tealS": "teal", "toolred": "toolred", "wood": "wood", "woodS": "wood",
     "toolredS": "toolred", "steel": "steel", "steelS": "steel", "gold": "gold", "goldS": "gold",
     "leaf": "leaf", "sheet": "sheet",
+    "pyblueS": "pyblue", "pyyellowS": "pyyellow", "woodlightS": "woodlight",
 }
 # Colourful badges (since 1.6) are small solid dots in the icon's
 # bottom-right corner, without a symbol: green to add or create, red to
@@ -2195,7 +2200,7 @@ _COLOR_DRAWINGS = {
     # so rounding the ends never flips the arc.
     "tool": ('<path d="M6.28 19.67L14.95 11L13 9.05L4.33 17.72A1.43 1.43 0 0 0 6.28 19.67z"/>'
              '<path d="M20.19 10.76L17.28 13.66L12.24 8.62L10.96 6.11L12.63 4.44L15.16 5.72z"/>',
-             ("woodS~", "steel")),
+             ("woodlightS~", "steel")),
     # About: a square sign with a bold i on whole pixels (a 1 px i was
     # barely seen on the ribbon).
     "info-square-rounded": ('<path d="M3 3h18v18h-18z"/><path d="M12 7.6v.01" class="bolddot"/>'
@@ -2227,7 +2232,7 @@ _COLOR_DRAWINGS = {
                      'a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z"/>'
                      '<path d="M16 15v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-5a2 2 0 0 1 2 -2h4a2 2 0 0 0 2 -2v-3h3'
                      'a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2z"/><path d="M11 6l0 .01"/><path d="M13 18l0 .01"/>',
-                     ("blueS", "yellowS", "white/", "white/")),
+                     ("pyblueS", "pyyellowS", "white/", "white/")),
     # A brush: its head, a closed handle, the ferrule.
     "brush": ('<path d="M3 21v-4a4 4 0 1 1 4 4h-4"/>'
               '<path d="M21 3a16 16 0 0 0 -12.8 10.2l2.6 2.6a16 16 0 0 0 10.2 -12.8z"/>'
@@ -2257,6 +2262,26 @@ _COLOR_DRAWINGS = {
              ("gray", "blueS")),
     "clock": ('<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 4v1.5M20 12h-1.5M12 20v-1.5M4 12h1.5"/>'
               '<path d="M12 7.5v4.5l3 2"/>', ("paper", "ink", "ink")),
+    # Pages with letters (PDF, CSV, SVG): Tabler's drawings, the letters
+    # heavy (class "heavy": twice the line, see HEAVY), as thin they were
+    # barely seen.
+    "file-type-pdf": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
+                      '<path d="M5 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6" class="heavy"/><path d="M17 18h2" class="heavy"/>'
+                      '<path d="M20 15h-3v6" class="heavy"/>'
+                      '<path d="M11 15v6h1a2 2 0 0 0 2 -2v-2a2 2 0 0 0 -2 -2h-1" class="heavy"/>',
+                      ("paper/", "paper!", "redS/")),
+    "file-type-csv": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
+                      '<path d="M7 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" class="heavy"/>'
+                      '<path d="M10 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
+                      'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
+                      '<path d="M16 15l2 6l2 -6" class="heavy"/>',
+                      ("paper/", "paper!", "greenS/")),
+    "file-type-svg": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
+                      '<path d="M4 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
+                      'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
+                      '<path d="M10 15l2 6l2 -6" class="heavy"/>'
+                      '<path d="M20 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3" class="heavy"/>',
+                      ("paper/", "paper!", "orangeS/")),
 }
 COLOR_GLYPHS = {name: body for name, (body, _materials) in _COLOR_DRAWINGS.items()}
 COLOR_RECIPES.update({name: materials for name, (_body, materials) in _COLOR_DRAWINGS.items()})
@@ -2835,7 +2860,8 @@ COLOR_STROKE = 'stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimi
 # Glyphs whose Tabler drawing leaves a corner to a symbol (an arrow, a gear,
 # a check): drawn whole with a disc badge instead, in the Colourful style
 # (the other styles keep the Tabler drawing). A badge on the spec itself
-# wins over the glyph's own.
+# wins over the glyph's own. Project Properties (file-settings) keeps its
+# page with the gear on it: a blue dot said nothing about settings.
 COLOR_BADGED = {
     "database-plus": "database+plus", "database-cog": "database+cog",
     "database-export": "database+out", "database-import": "database+down",
@@ -2843,7 +2869,7 @@ COLOR_BADGED = {
     "world-search": "world+search",
     "eye-check": "eye+check", "eye-minus": "eye+minus", "eye-x": "eye+x",
     "shield-check": "shield+check", "clock-play": "clock+play",
-    "file-export": "file+out", "file-import": "file+down", "file-x": "file+x", "file-settings": "file+cog",
+    "file-export": "file+out", "file-import": "file+down", "file-x": "file+x",
     "pencil-cog": "pencil+cog", "pencil-bolt": "pencil+bolt", "pencil-cancel": "pencil+x",
     "photo-down": "photo+down", "map-pin-search": "map-pin+search",
     "pointer-plus": "pointer+plus", "pointer-minus": "pointer+minus",
@@ -2970,6 +2996,9 @@ OUTLINE = "#000000"
 OUTLINE_STYLES = ("crisp", "medium", "soft", "pro")
 DEFAULT_OUTLINE = "medium"
 PRO_OUTLINE = "pro"
+# Colourful Pro drawings with lighter outlines at every size (their small
+# shapes turned dark when small): the photo and the model.
+PRO_BRIGHT = frozenset(("photo", "sitemap"))
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
@@ -3170,7 +3199,8 @@ def _color_body(glyph, mode, ink, draw, mark=None):
         # _deepen leaves its colour, which reads on light and dark windows.
         # Likewise a line in its fill's own colour ("name~"): no outline.
         free = ' class="bg"' if line and ((fill is None and not _covered(segments, areas)) or line == fill) else ""
-        lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"{free}/>')
+        heavy = ' data-heavy="1"' if 'class="heavy"' in attrs else ""
+        lines.append(f'<path d="{draw(segments)}" stroke="{line or ink}"{free}{heavy}/>')
     return [path for _, _, path in sorted(fills)] + colored, inked
 
 
@@ -3257,7 +3287,8 @@ def _render_color(spec, colors, scale, mode):
         mask = ' mask="url(#b)"'
     # Coloured edges and details finer than ink lines (see color_stroke_px).
     fine = stroke if glyph in SIGNS else round(stroke * 2 / 3, 3)
-    coloured = f'<g stroke-width="{fine}">{"".join(colored)}</g>'
+    coloured = f'<g stroke-width="{fine}">{"".join(colored)}</g>'.replace(
+        ' data-heavy="1"', f' stroke-width="{round(fine * 2, 3)}"')
     body = _deepen(coloured, mode) + "".join(inked)
     parts.append(_shading(body))
     parts.append(f'<g{mask}><g transform="{transform}" stroke-width="{stroke}">{body}</g></g>')
@@ -3352,7 +3383,8 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             return render_icon_color_px(spec, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
         # Badged icons are not enlarged: their badge masks (drawn apart)
         # would no longer line up.
-        return studio_pro.upgrade(draw, size, pro_ink, fill=not _color_spec(spec)[1])
+        glyph, badge = _color_spec(spec)
+        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 
@@ -3400,6 +3432,14 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
     if layer != "ink":
         colored = "".join(
             _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap_thin, unit), mark)[0])
+        # Heavy lines (a page's letters): from 28 px twice the line, moved
+        # half a pixel so the even width covers whole pixels; smaller, half
+        # as much again (twice ran the letters together).
+        if size >= 28:
+            heavy = f' stroke-width="{2 * thin}"' + (' transform="translate(.5 .5)"' if thin % 2 else "")
+        else:
+            heavy = f' stroke-width="{_num(1.5 * thin)}"'
+        colored = colored.replace(' data-heavy="1"', heavy)
     if layer != "color":
         inked = "".join(
             _color_body(glyph, mode, ink, lambda segments: _snapped_path(segments, place, snap, unit), mark)[1])

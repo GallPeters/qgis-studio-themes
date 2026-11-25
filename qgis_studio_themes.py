@@ -235,8 +235,8 @@ MASK_LAYERS = {
 # Icon styles (Settings > Icons): the theme's single-colour icons, the same
 # icons in their objects' colours (studio_icons.COLOR_RECIPES), those with
 # the Pro look (studio_pro), or QGIS's own icons.
-ICON_STYLES = ("mono", "color", "color_pro", "classic")
-COLOR_STYLES = ("color", "color_pro")
+ICON_STYLES = ("mono", "color_pro", "classic")
+COLOR_STYLES = ("color_pro",)
 ICON_STYLE_SETTING = "studio_themes/iconStyle"
 # A disabled Colourful icon: its colours faded, its ink in the theme's
 # disabled icon colour.
@@ -2569,7 +2569,6 @@ class SettingsDialog(QDialog):
     )
     ICON_STYLES = (
         ("mono", "Monochrome"),
-        ("color", "Colourful"),
         ("color_pro", "Colourful Pro"),
         ("classic", "QGIS classic"),
     )
@@ -2614,9 +2613,9 @@ class SettingsDialog(QDialog):
         self._interface = self._combo(self.INTERFACES, plugin.interface())
         self._icon_style = self._combo(self.ICON_STYLES, plugin.icon_style())
         self._icon_style.setToolTip(
-            "Monochrome: the theme's single-colour icons. Colourful: the same icons in their objects' "
-            "own colours. Colourful Pro: softer colours, outlines in each object's colour and sharp "
-            "shading. QGIS classic: QGIS's own icons."
+            "Monochrome: the theme's single-colour icons. Colourful Pro: the same icons in their "
+            "objects' own soft colours, outlines in each object's colour and a flat shadow. "
+            "QGIS classic: QGIS's own icons."
         )
         self._ribbon_size = self._combo(self.RIBBON_SIZES, ribbon_size)
         self._ribbon_size.setToolTip(
@@ -3289,15 +3288,17 @@ class QgisStudioThemesPlugin:
     @staticmethod
     def icon_style():
         """The icon style set in the settings dialog (ICON_STYLES)."""
-        value = QgsSettings().value(ICON_STYLE_SETTING, "color", type=str)
-        if value == "duotone":
-            value = "color"  # its name in early 1.3 builds
-        return value if value in ICON_STYLES else "color"
+        value = QgsSettings().value(ICON_STYLE_SETTING, "color_pro", type=str)
+        # Colourful (and its early 1.3 name) is now Colourful Pro.
+        if value in ("color", "duotone"):
+            value = "color_pro"
+        return value if value in ICON_STYLES else "color_pro"
 
     @classmethod
     def icon_outline(cls):
         """The outline look of the coloured icons (studio_icons.OUTLINE_STYLES):
-        Colourful Pro's own, else Medium (Colourful)."""
+        Colourful Pro's own (the default Medium only draws the masks of the
+        other styles, which have no coloured layer)."""
         return studio_icons.PRO_OUTLINE if cls.icon_style() == "color_pro" else studio_icons.DEFAULT_OUTLINE
 
     def _icons_stamp(self, style):

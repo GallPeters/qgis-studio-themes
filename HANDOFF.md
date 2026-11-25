@@ -3,7 +3,7 @@
 ## 1. Project
 QGIS 4 (Qt 6) plugin that themes the whole QGIS UI. Repo: github.com/GallPeters/qgis-studio-themes, branch `main`.
 - `themes/` — `style.qss` with `@tokens`, per-theme `variables.qss`, `base.qss`. Six themes: Pro Light, Orange Light, QGIS Light, Premium Dark, Web Dark, Orange Dark.
-- `studio_icons.py` — the icon set (`ICON_MAP`: QGIS icon name → Tabler glyph + optional badge), Monochrome / Colourful / QGIS classic styles, detailed hand-drawn Colourful drawings (`DETAILED`, 32-unit grid).
+- `studio_icons.py` — the icon set (`ICON_MAP`: QGIS icon name → Tabler glyph + optional badge), Monochrome / Colourful Pro / QGIS classic styles (Colourful is the base drawing of Colourful Pro), detailed hand-drawn Colourful drawings (`DETAILED`, 32-unit grid).
 - `qgis_studio_themes.py` — plugin core: theme building, `IconSwapper` (replaces icons on live widgets), `SharpIconEngine`, sizing.
 - `studio_ribbon.py` (optional ribbon), `studio_toolbars.py` (toolbar names), `studio_layers.py` (Layers panel search + List by Data Source), `studio_tokens.py`, `studio_events.py`.
 
@@ -22,7 +22,7 @@ v1.5:
 - A user screenshot showed "Qt: QMetaEnum::keysToValue: empty keys string" in the message bar; not reproducible here (no plugin code sets an empty enum value). If it comes back, find which setting/stylesheet triggers it.
 
 ### Colourful Pro (in v1.6, 25.11.2026)
-4th icon style **Colourful Pro** (`color_pro`, `studio_pro.py`): the Colourful drawing rendered crisp, then restyled in device pixels with numpy: soft fills, greyish outlines in each object's own hue (a little deeper at 20 px and under), inner lines a step softer, from 24 px a soft sharp-edged lower-right inner shadow and a 1 px top-left highlight; each drawing enlarged to fill its whole square (drawn natively larger, cropped; badged icons are not enlarged, their accent masks are drawn apart). The colour layer holds everything (ink baked in `THEME_INK`), the ink layer is empty. Internally it is the outline look `"pro"` (own mask folder and build stamp). The Outlines setting is gone: Colourful is fixed at Medium (`DEFAULT_OUTLINE`). `processingModel.svg` is `sitemap` (as the ribbon's Project Models). The settings screenshot in `docs/` still shows the old Outlines row.
+The only colour icon style is **Colourful Pro** (`color_pro`, `studio_pro.py`); plain Colourful was removed from the settings (a saved `color` reads as `color_pro`), its drawing remains the base. The Colourful drawing is rendered crisp, then restyled in device pixels with numpy: soft fills, greyish outlines in each object's own hue (a little deeper at 20 px and under; `PRO_BRIGHT` glyphs, photo and sitemap, lighter at every size), inner lines a step softer, and from 24 px a flat shadow beyond one arc across the whole drawing (`CURVE_*`, lower right, edge smoothed over a pixel, no highlight, white/paper surfaces unshaded; translucent later shapes count as covering). Each drawing is enlarged to fill its whole square (drawn natively larger, cropped; badged icons are not enlarged, their accent masks are drawn apart). The colour layer holds everything (ink baked in `THEME_INK`), the ink layer is empty. Internally it is the outline look `"pro"` (own mask folder and build stamp). `processingModel.svg` is `sitemap`. Project Properties (`file-settings`) keeps its page with the gear (not a badge). The settings screenshot in `docs/` still shows the old rows, and `pro-light_icons-color.png` the old Colourful.
 
 ## 3. Open ideas (not approved, not built)
 Previewed to the user but not requested for building:

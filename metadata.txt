@@ -18,15 +18,14 @@ icon=icon.png
 changelog=
 
      ** v1.6 (23.11.2026):
-          - New defaults: ribbon interface, Colourful icons, compact ribbon density, group names auto, 9 px names.
-          - Colourful icons redesigned: thin black outlines and details, sharper corners, vivid small markers, the same drawing at every size.
-          - New Colourful Pro icon style: soft colours, greyish outlines in each object's own colour, soft sharp-edged shading on large icons, and every icon fills its whole square.
+          - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.
+          - Colourful Pro replaces Colourful: soft colours, outlines in each object's own colour, a flat shadow on the lower right of large icons, and every icon fills its whole square.
           - The Processing Toolbox's models button has the ribbon's Project Models icon.
-          - Colourful icons have dark outlines in each object's own colour.
           - The current ribbon tab's underline no longer touches its name in compact density.
           - Ribbon: Select and Deselect are separate large buttons, also on the Edit and Modify tabs; a click runs the last tool used, the arrow picks another. Reselect has a button of its own.
-          - Colourful badges are small dots in the corner: green to add, red to remove, blue for other actions; icons with a symbol in one corner (download, export, settings...) are drawn whole with a dot.
+          - Colour badges are small dots in the corner: green to add, red to remove, blue for other actions; icons with a symbol in one corner (download, export...) are drawn whole with a dot.
           - New or refined icons: Pan, zoom tools, Shapefile, Virtual Layer, Filter by Expression, Expand and Collapse All, Help, About, Report Issue, Support and more.
+          - Pages with letters (PDF, CSV, SVG) have bolder letters; Project Properties keeps its page with a gear.
           - Icons that faded on dark themes are clear again.
 
      ** v1.5 (15.11.2026):
