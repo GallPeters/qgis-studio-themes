@@ -4,7 +4,7 @@ Six modern UI themes for QGIS 4: a clean stylesheet, a complete icon set,
 the Inter typeface and an optional ribbon.
 
 <p align="center">
-<kbd><img src="docs/screenshots/hero-project.png" alt="Studio Pro Light with Natural Earth data" width="820"></kbd>
+<kbd><img src="docs/screenshots/hero-project.png" alt="Studio Premium Dark with Natural Earth data" width="820"></kbd>
 </p>
 
 ## Install
@@ -56,7 +56,7 @@ Requires QGIS 4.0 or later.
 Open them in Plugins → QGIS Studio Themes → Settings. Every change shows at once.
 
 <p align="center">
-<kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="442"></kbd>
+<kbd><img src="docs/screenshots/settings.png" alt="QGIS Studio Themes Settings" width="460"></kbd>
 </p>
 
 - **Interface**: toolbars or a ribbon (the default).
@@ -81,13 +81,13 @@ pixel-sharp at every screen scaling.
 
 <p>
 <b>Monochrome</b><br>
-<kbd><img src="docs/screenshots/pro-light_icons-mono.png" alt="Monochrome icons" width="820"></kbd><br><br>
+<kbd><img src="docs/screenshots/premium-dark_icons-mono.png" alt="Monochrome icons" width="820"></kbd><br><br>
 
 <b>Colourful Pro</b><br>
-<kbd><img src="docs/screenshots/pro-light_icons-color.png" alt="Colourful Pro icons" width="820"></kbd><br><br>
+<kbd><img src="docs/screenshots/premium-dark_icons-color.png" alt="Colourful Pro icons" width="820"></kbd><br><br>
 
 <b>QGIS classic</b><br>
-<kbd><img src="docs/screenshots/pro-light_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>
+<kbd><img src="docs/screenshots/premium-dark_icons-classic.png" alt="QGIS classic icons" width="820"></kbd>
 </p>
 
 ## Features
