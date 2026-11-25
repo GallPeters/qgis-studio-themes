@@ -2306,7 +2306,7 @@ DETAIL_GROW = 1.15
 # (panel toolbars at 100 percent); the edit pencil, map and raster turn
 # faint or fuzzy there and keep the simpler drawings below DETAIL_MIN.
 DETAIL_SMALL = 24
-DETAIL_ONLY_LARGE = frozenset(("pencil", "map", "photo"))
+DETAIL_ONLY_LARGE = frozenset(("pencil", "map"))
 # Drawings detailed down to 16 px (menus and trees too): every other one,
 # set after DETAILED below.
 _TEXT = "#97a1ab"
@@ -2593,14 +2593,16 @@ DETAILED = {
         '<path d="M6.5 16A9.5 3.5 0 0 0 25.5 16" stroke="#1d4677"/>'
         '<ellipse cx="16" cy="7.5" rx="9.5" ry="3.5" fill="#9cc4ec" stroke="#1d4677"/>',
     ),
-    # The layer stack at small sizes (SMALL_VARIANTS): two flat blue
-    # layers, as three coloured ones were too busy in panel tool rows;
-    # drawn to the top left so, enlarged for its badge (BADGED_SCALE), it
-    # fills the whole square like the row's other icons.
+    # The layer stack at small sizes (SMALL_VARIANTS): the large stack's
+    # three layers in its colours (yellow on green on blue, see the
+    # colour rule at SMALL_VARIANTS), flat, wider apart and larger so each
+    # reads in a panel's tool row; drawn to the top left so, enlarged for
+    # its badge (BADGED_SCALE), it fills the whole square.
     "stack-2-small": (
         "",
-        '<path d="M0.5 19.25L14.5 10.5L28.5 19.25L14.5 28Z" fill="#3f78b8" stroke="#1d4677" stroke-linejoin="round"/>'
-        '<path d="M0.5 9.25L14.5 0.5L28.5 9.25L14.5 18Z" fill="#8cc0f0" stroke="#204f86" stroke-linejoin="round"/>',
+        '<path d="M0.5 19.5L14.5 11.5L28.5 19.5L14.5 27.5Z" fill="#6198d4" stroke="#204f86" stroke-linejoin="round"/>'
+        '<path d="M0.5 14.5L14.5 6.5L28.5 14.5L14.5 22.5Z" fill="#7bbb6b" stroke="#36752f" stroke-linejoin="round"/>'
+        '<path d="M0.5 9.5L14.5 1.5L28.5 9.5L14.5 17.5Z" fill="#f1c35f" stroke="#a0711a" stroke-linejoin="round"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -3346,6 +3348,9 @@ def _finish(svg, size, ink, mode="light"):  # pylint: disable=unused-argument
 
 # Glyphs drawn simpler at small sizes (panel tool rows, menus): up to
 # SMALL_VARIANT_MAX device pixels per screen line width.
+# Rule for every icon: its colours never change with its size. A smaller
+# drawing may have fewer details (SMALL_VARIANTS, DETAIL_ONLY_LARGE), but
+# each object keeps the colour it has at large sizes.
 SMALL_VARIANTS = {"stack-2": "stack-2-small"}
 SMALL_VARIANT_MAX = 20
 

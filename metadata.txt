@@ -20,9 +20,10 @@ changelog=
      ** v1.7 (25.11.2026):
           - Colourful Pro: thicker outlines (about 2.4 px) around each icon's outer edge, one even line in a darker, richer shade of the icon's own colour (lighter than before); inner lines unchanged.
           - Colourful Pro: thin line icons (History, Refresh, Statistics, Raster Calculator, undo and similar) bolder, from 16 px.
-          - Simpler panel tool icons: Expand and Collapse All are blue line arrows to and from a centre line, List by Data Source a database, and the layer stack (Add and Remove Layer) two blue layers filling the square at small sizes.
+          - Simpler panel tool icons: Expand and Collapse All are blue line arrows to and from a centre line, List by Data Source a database, and the layer stack (Add and Remove Layer) simpler and filling the square at small sizes, in the same colours.
+          - Icons keep their colours at every size (smaller ones may have fewer details): the layer stack and the photo now match their large versions.
           - Layers panel: Filter Legend by Expression is now in the Filter Legend button's menu (one filter button).
-          - The photo icon is brighter, especially when small.
+          - The photo icon is brighter, and drawn the same (grey frame, sky, mountains, sun) at every size.
 
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.
