@@ -1975,7 +1975,7 @@ COLOR_RECIPES = {
     "home": ("redS/", "paper!", "grayS!"), "user": ("gray", "blueS!"),
     "users": ("gray", "blueS!", "gray/", "blue!"), "settings": ("grayS", "paper"),
     "lock": ("grayS", "dark/", "grayS/"), "lock-open": ("grayS", "dark/", "grayS/"),
-    "keyboard": ("gray", "ink"), "app-window": ("paper", "redS/", "yellowS/"),
+    "keyboard": ("gray", "dark/"), "app-window": ("paper", "redS/", "yellowS/"),
     "list-details": ("ink", "ink", "ink", "ink", "blue", "green"),
     # Renderers and labelling (Layer Styling, Layer Properties).
     "square-rounded": ("blue",), "category": ("redS", "blueS", "greenS", "yellowS"),
@@ -2987,6 +2987,9 @@ PRO_OUTLINE = "pro"
 # Colourful Pro drawings with lighter outlines at every size (their small
 # shapes turned dark when small): the photo and the model.
 PRO_BRIGHT = frozenset(("photo", "sitemap"))
+# Colourful Pro drawings with darker exterior outlines: the layer stack's
+# light layers faded into dark panels.
+PRO_FIRM = frozenset(("stack-2", "stack-2-small"))
 # Colourful Pro symbols drawn flat, without the curved shadow.
 PRO_FLAT = frozenset(("tree-expand", "tree-collapse"))
 # Colourful Pro symbols drawn straight in device pixels (_tree_px), so they
@@ -2995,10 +2998,10 @@ PRO_PIXEL = frozenset(("tree-expand", "tree-collapse"))
 
 
 def _tree_px(expand, size, mode):
-    """Expand All (triangles pointing away from a centre line) or Collapse
-    All (towards it) at `size` px, every edge placed so the line is exactly
-    in the middle: 1 px on an odd height, 2 px on an even one, equal gaps,
-    the triangles centred. The height is a pixel short from 20 px, as
+    """Expand All (two triangles pointing away from the middle) or Collapse
+    All (towards it) at `size` px, every edge placed so they are exactly
+    symmetric: the gap between them odd on an odd height, even on an even
+    one, the triangles centred. The height is a pixel short from 20 px, as
     Colourful Pro's other icons (studio_pro.upgrade)."""
     height = size - 1 if size >= 20 else size
     line = 1 if height % 2 else 2
@@ -3015,11 +3018,11 @@ def _tree_px(expand, size, mode):
         shapes = triangle(top + tall, top) + triangle(lower, lower + tall)
     else:
         shapes = triangle(top, top + tall) + triangle(lower + tall, lower)
-    margin = max(1, round(size * 0.06))
-    grey = THEME_INK.get(mode, THEME_INK["light"])
+    # The gap where the centre line was is kept, so the triangles stay
+    # exactly symmetric (mode is kept for callers).
+    del mode
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
-            + shapes + f'<rect x="{margin}" y="{top + tall + gap}" width="{size - 2 * margin}" height="{line}" '
-            f'fill="{grey}"/></svg>')
+            + shapes + '</svg>')
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
@@ -3432,12 +3435,12 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             def plain(px):
                 return render_icon_color_px(glyph, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
             body = studio_pro.upgrade(plain, size, pro_ink, fill=True, bright=glyph in PRO_BRIGHT, line=line,
-                                      shade=glyph not in PRO_FLAT)
+                                      shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM)
             return _pro_badged(body, badge, size)
         # Other badges (drawn in the accent masks) keep the drawing's place,
         # so the masks line up.
         return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT, line=line,
-                                  shade=glyph not in PRO_FLAT)
+                                  shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 
