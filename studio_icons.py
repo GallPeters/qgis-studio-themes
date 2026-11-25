@@ -1461,15 +1461,14 @@ CUSTOM_GLYPHS = {
 }
 
 
-# The Layers panel's own drawings: Expand All, line arrows (a tall thin
-# body, a two-line head) pointing apart from a centre line, Collapse All
-# towards it (blue lines in the Colourful style, COLOR_RECIPES); List by
+# The Layers panel's own drawings: Expand All, two triangles pointing
+# apart from a thin centre line, Collapse All towards it (solid blue in
+# the Colourful style, COLOR_RECIPES; no arrow shafts, so the triangles
+# can be large); List by
 # Data Source a file beside a database (Colourful: DETAILED).
 CUSTOM_GLYPHS.update({
-    "tree-expand": ('<path d="M12 2.5v7"/><path d="M9 5.5l3 -3l3 3"/><path d="M12 21.5v-7"/><path d="M9 18.5l3 3l3 -3"/>'
-                    '<path d="M5 12h14"/>'),
-    "tree-collapse": ('<path d="M12 2.5v7"/><path d="M9 6.5l3 3l3 -3"/><path d="M12 21.5v-7"/><path d="M9 17.5l3 -3l3 3"/>'
-                      '<path d="M5 12h14"/>'),
+    "tree-expand": ('<path d="M12 1.5l6.5 7h-13z"/><path d="M12 22.5l-6.5 -7h13z"/><path d="M3 12h18"/>'),
+    "tree-collapse": ('<path d="M5.5 1.5h13l-6.5 7z"/><path d="M5.5 22.5h13l-6.5 -7z"/><path d="M3 12h18"/>'),
     "layers-source": ('<path d="M4 4h6l3 3v13h-9z"/><path d="M7 11h3"/><path d="M7 14h3"/>'
                       '<path d="M14 9a3 1.5 0 1 0 6 0a3 1.5 0 1 0 -6 0"/><path d="M14 9v9a3 1.5 0 0 0 6 0v-9"/>'
                       '<path d="M14 13.5a3 1.5 0 0 0 6 0"/>'),
@@ -1939,8 +1938,8 @@ COLOR_RECIPES = {
     
     "terminal-2": ("greenS/", "greenS/", "grayS"), "code": ("blueS/", "blueS/", "grayS/"),
     "filter": ("grayS",), "filter-code": ("grayS", "blueS/"),
-    "tree-expand": ("blueS/", "blueS/", "blueS/", "blueS/", "grayS/"),
-    "tree-collapse": ("blueS/", "blueS/", "blueS/", "blueS/", "grayS/"),
+    "tree-expand": ("blueS", "blueS", "grayS/"),
+    "tree-collapse": ("blueS", "blueS", "grayS/"),
     # Viewing: eyes, pins, bookmarks, clocks, calendars, pointers.
     "eye": ("blueS", "paper!"), "eye-off": ("blueS/", "ink", "redS/"),
     "eye-check": ("blueS", "paper!", "greenS/"), "eye-minus": ("blueS", "paper!", "redS/"),
@@ -2988,6 +2987,8 @@ PRO_OUTLINE = "pro"
 # Colourful Pro drawings with lighter outlines at every size (their small
 # shapes turned dark when small): the photo and the model.
 PRO_BRIGHT = frozenset(("photo", "sitemap"))
+# Colourful Pro symbols drawn flat, without the curved shadow.
+PRO_FLAT = frozenset(("tree-expand", "tree-collapse"))
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
@@ -3396,11 +3397,13 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             # corner (badged icons looked smaller than their neighbours).
             def plain(px):
                 return render_icon_color_px(glyph, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
-            body = studio_pro.upgrade(plain, size, pro_ink, fill=True, bright=glyph in PRO_BRIGHT, line=line)
+            body = studio_pro.upgrade(plain, size, pro_ink, fill=True, bright=glyph in PRO_BRIGHT, line=line,
+                                      shade=glyph not in PRO_FLAT)
             return _pro_badged(body, badge, size)
         # Other badges (drawn in the accent masks) keep the drawing's place,
         # so the masks line up.
-        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT, line=line)
+        return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT, line=line,
+                                  shade=glyph not in PRO_FLAT)
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 

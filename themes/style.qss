@@ -54,16 +54,19 @@ QDockWidget {
     titlebar-close-icon: url(@theme_path/icons/studio/dock-close.svg);
     titlebar-normal-icon: url(@theme_path/icons/studio/dock-float.svg);
 }
-/* Panel titles: one point larger (compact sizes: same size) and bold,
- * so panels are easy to find and tell apart. The (title-less) font goes on the dock, the contents get
- * the normal UI font back (sizes filled in by the plugin). */
+/* Panel titles: one point larger (compact sizes: same size), semibold
+ * in a softer text colour, so panels are easy to find without shouting.
+ * The (title-less) font goes on the dock, the contents get the normal UI
+ * font and colour back (sizes filled in by the plugin). */
 QMainWindow > QDockWidget {
     font-size: @panel_title_font_size;
-    font-weight: 700;
+    font-weight: 600;
+    color: @text_light;
 }
 QMainWindow > QDockWidget > QWidget {
     font-size: @ui_font_size;
     font-weight: normal;
+    color: @text;
 }
 /* A panel is one surface: its title, toolbar and contents share the
  * panel's colour, with no band or line between them; the title has room

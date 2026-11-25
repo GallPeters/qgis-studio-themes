@@ -15,8 +15,7 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards (a full 2 px line, the next
-  pixel inwards part way), so the icon keeps its size, in one darker, richer shade of the
+  pixel thicker, inwards (a full 2 px line), so the icon keeps its size, in one darker, richer shade of the
   fill it surrounds per shape (not the greyish outline), painted evenly
   over the whole band so it reads as one line; lines inside the drawing
   keep their width and colour;
@@ -75,18 +74,18 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.82, 0.7
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.87, 0.75
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
 # The pixel added inside the outline: how far it takes the outline's
 # colour (the rest stays fill): all of it, a full 2 px line.
 EXTERIOR_INNER = 1.0
-# And the next pixel inwards, this much of it (about 2.4 px in all).
-EXTERIOR_SECOND = 0.4
 # Free lines (no fill of their own and none under them: a clock, arrows, a
 # sigma, in the theme's ink or a colour) from FREE_LINE_FROM px: drawn
 # 2 px wide, moved half a pixel so the even width covers whole pixels
 # (crisp, not a 1 px line with a faint second pixel beside it).
 FREE_LINE_FROM = 20
+# Their smoothed edges: coverage below this cleared, above 1 - it solid.
+FIRM_LOW = 0.15
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -238,24 +237,28 @@ def _png_svg(rgba):
 FILL_GROW = 1.4
 
 
-def upgrade(draw, size, ink, fill=True, bright=False, line=1):
+def upgrade(draw, size, ink, fill=True, bright=False, line=1, shade=True):
     """A Colourful icon at `size` px in the Pro look, as an SVG of that
     size. draw(px) is its studio_icons SVG at px (black outlines, ink parts
     in `ink`). With `fill`, drawn at the largest size whose drawing still
     fits `size` px and cropped around it, so it fills the whole square.
     With `bright`, lighter outlines at every size (a small drawing of
-    small shapes turned dark). `line`: the drawing's line width in px."""
+    small shapes turned dark). `line`: the drawing's line width in px.
+    Without `shade`, no shadow (flat symbols)."""
     svg = draw(size)
     if np is None:
         return svg
     big, box = size, None
     if fill:
-        big, svg, box = _filling(draw, size, svg)
-    image = _upgrade(svg, big, ink, bright, line)
+        # A pixel to spare (right and bottom) where free lines widen
+        # (FREE_LINE_FROM), so they are not cut off at the edge.
+        big, svg, box = _filling(draw, size, svg, size - 1 if size >= FREE_LINE_FROM else size)
+    image = _upgrade(svg, big, ink, bright, line, shade)
     if box is not None and big > size:
         x0, y0, x1, y1 = box
-        left = min(max(0, (x0 + x1 - size) // 2), big - size)
-        top = min(max(0, (y0 + y1 - size) // 2), big - size)
+        # Centred, an odd spare pixel on the right and at the bottom.
+        left = min(max(0, (x0 + x1 - size + 1) // 2), big - size)
+        top = min(max(0, (y0 + y1 - size + 1) // 2), big - size)
         image = image[top:top + size, left:left + size]
     return _png_svg((image.clip(0, 1) * 255 + 0.5).astype(np.uint8))
 
@@ -268,26 +271,27 @@ def _extent(svg, px):
     return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
 
 
-def _filling(draw, size, svg):
+def _filling(draw, size, svg, room=None):
     """(px, SVG at px, its extent): the largest px up to FILL_GROW times
-    `size` whose drawing is at most `size` px wide and high; `size`
-    itself when nothing larger fits."""
+    `size` whose drawing is at most `room` (`size`) px wide and high;
+    `size` itself when nothing larger fits."""
+    room = size if room is None else room
     box = _extent(svg, size)
     if box is None:
         return size, svg, None
     span = max(box[2] - box[0], box[3] - box[1])
     # A first guess from the drawing's span, then down until it fits.
-    big = min(int(size * FILL_GROW), size * size // max(1, span))
+    big = min(int(size * FILL_GROW), size * room // max(1, span))
     while big > size:
         candidate = draw(big)
         found = _extent(candidate, big)
-        if found is not None and max(found[2] - found[0], found[3] - found[1]) <= size:
+        if found is not None and max(found[2] - found[0], found[3] - found[1]) <= room:
             return big, candidate, found
         big -= 1
     return size, svg, box
 
 
-def _upgrade(svg, size, ink, bright=False, line_px=1):
+def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True):
     gradients = dict(GRADIENT.findall(svg))
     # Each gradient as one flat colour: the average of its stops.
     flat = {}
@@ -362,6 +366,15 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
                 drawn = stroke_masks[i] > 0.4
                 if drawn.any() and (near_fill & drawn).sum() < 0.3 * drawn.sum():
                     free.add(i)
+    # Widened towards the right and bottom, or inwards where the lines
+    # already touch that edge (never cut off).
+    shift = [".5", ".5"]
+    if free:
+        reach = np.maximum.reduce([stroke_masks[i] for i in free]) > 0.1
+        if reach[-1, :].any():
+            shift[1] = "-.5"
+        if reach[:, -1].any():
+            shift[0] = "-.5"
 
     # Outlines in each object's own colour; lines on a fill from that fill.
     tags = []
@@ -383,7 +396,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
         if i in free:
             moved = _attr(tag, "transform")
             tag = _set(tag, "stroke-width", "2")
-            tag = _set(tag, "transform", "translate(.5 .5)" + (f" {moved}" if moved else ""))
+            tag = _set(tag, "transform", f"translate({shift[0]} {shift[1]})" + (f" {moved}" if moved else ""))
         tags.append(tag)
     svg = _rebuild(svg, leaves, tags)
     out = _raster(svg, size)
@@ -391,8 +404,13 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
     for i, mask in enumerate(fill_masks):
         if mask is not None and fills[i] in BADGES:
             badges |= mask > 0.25
-    if size >= EFFECTS_FROM:
+    if shade and size >= EFFECTS_FROM:
         _shade(out, size, fills, fill_masks, stroke_masks)
+    if free:
+        # Free lines' smoothed edge pixels firmer, so curves read as one
+        # solid colour, not a lighter rim like a shadow.
+        alone = ~_dilated(top >= 0) & (out[..., 3] < 1)
+        out[..., 3] = np.where(alone, np.clip((out[..., 3] - FIRM_LOW) / (1 - 2 * FIRM_LOW), 0, 1), out[..., 3])
     out = _exterior(out, size, top, fills, badges, line_px)
     return out
 
@@ -470,8 +488,6 @@ def _exterior(out, size, top, fills, badges, line_px=1):
     # beyond it within two pixels (corners included), so a bar a few pixels
     # wide is not all outline.
     ring = inner & ~core & known & _dilated(_dilated(core))
-    deep = _eroded(core)
-    second = core & ~deep & known & ~badges & _dilated(_dilated(deep))
     # The outline band and the smoothed pixels outside it.
     fringe = (alpha > 0.02) & ~solid & _dilated(solid, _FOUR)
     band = (edge | fringe) & ~_dilated(badges)
@@ -497,10 +513,6 @@ def _exterior(out, size, top, fills, badges, line_px=1):
     inner_only = ring & ~band
     out[..., :3][inner_only] = (out[..., :3][inner_only] * (1 - EXTERIOR_INNER)
                                 + colour[inner_only] * EXTERIOR_INNER)
-    # The second pixel only along the drawn ring, so it follows the line.
-    second &= _dilated(inner_only)
-    out[..., :3][second] = (out[..., :3][second] * (1 - EXTERIOR_SECOND)
-                            + colour[second] * EXTERIOR_SECOND)
     return out
 
 
