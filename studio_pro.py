@@ -15,8 +15,7 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards (that pixel mostly outline, a quarter fill:
-  about 1.75 px), so the icon keeps its size, in one darker, richer shade of the
+  pixel thicker, inwards (a full 2 px line), so the icon keeps its size, in one darker, richer shade of the
   fill it surrounds per shape (not the greyish outline), painted evenly
   over the whole band so it reads as one line; lines inside the drawing
   keep their width and colour;
@@ -75,11 +74,17 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.8, 0.68
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.84, 0.72
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
 # The pixel added inside the outline: how far it takes the outline's
-# colour (the rest stays fill), so the line reads about 1.75 px.
-EXTERIOR_INNER = 0.75
+# colour (the rest stays fill): all of it, a full 2 px line.
+EXTERIOR_INNER = 1.0
+# Free lines (no fill of their own and none under them: a clock, arrows, a
+# sigma, in the theme's ink or a colour) from INK_BOLD_FROM px: a pixel added below and right of them, this much
+# of it at INK_BOLD_FULL px and up and part of it below, so they are no
+# longer hairlines on large icons.
+INK_BOLD_FROM, INK_BOLD_FULL = 20, 28
+INK_BOLD = {"partial": 0.45, "full": 0.75}
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -372,7 +377,40 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
             badges |= mask > 0.25
     if size >= EFFECTS_FROM:
         _shade(out, size, fills, fill_masks, stroke_masks)
-    return _exterior(out, size, top, fills, badges, line_px)
+    out = _exterior(out, size, top, fills, badges, line_px)
+    if size >= INK_BOLD_FROM:
+        strength = INK_BOLD["full" if size >= INK_BOLD_FULL else "partial"]
+        filled = top >= 0
+        near_fill = _dilated(filled)
+        for i, (_s, _e, tag) in enumerate(leaves):
+            line, color = stroke_masks[i], (_attr(tag, "stroke") or "").lower()
+            if fills[i] is not None or line is None or not HEX.fullmatch(color):
+                continue
+            drawn = line > 0.4
+            # Free lines only: not edges or details drawn on a fill.
+            if drawn.any() and (near_fill & drawn).sum() < 0.3 * drawn.sum():
+                _bolder(out, line * ~filled, color, strength, filled)
+    return out
+
+
+def _bolder(out, line, ink, strength, keep):
+    """A line drawn in `ink` (its coverage `line`) one pixel bolder,
+    below and to the right, `strength` of that pixel, in place; nothing is
+    added on the pixels of `keep` (the fills)."""
+    grown = np.zeros_like(line)
+    grown[1:, :] = np.maximum(grown[1:, :], line[:-1, :])
+    grown[:, 1:] = np.maximum(grown[:, 1:], line[:, :-1])
+    add = np.clip(grown - line, 0, 1) * strength * ~keep
+    add = np.where(out[..., 3] > 0.5, np.minimum(add, 1 - line), add)
+    add = add * (add > 0.05)
+    if not add.any():
+        return
+    color = np.array(_rgb(ink), np.float32)
+    alpha = out[..., 3]
+    new_alpha = alpha + add * (1 - alpha)
+    safe = np.maximum(new_alpha, 1e-6)
+    out[..., :3] = (out[..., :3] * (alpha * (1 - add))[..., None] + color * add[..., None]) / safe[..., None]
+    out[..., 3] = new_alpha
 
 
 _FOUR = ((-1, 0), (1, 0), (0, -1), (0, 1))

@@ -2175,7 +2175,7 @@ _COLOR_DRAWINGS = {
     "map": ('<path d="M3 5l6 -2l6 2l6 -2v16l-6 2l-6 -2l-6 2z"/><path d="M9 3v16M15 5v16"/>'
             '<path d="M5 15l3 -3l3 2l3 -4l4 2"/>', ("green", "greenS/", "redS/")),
     "photo": ('<path d="M3 4h18v16h-18z"/><path d="M3 18l5 -6l4 4l3 -3l6 6v1h-18z"/>'
-              '<path d="M14 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>', ("blue", "greenS", "yellowS")),
+              '<path d="M14 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>', ("glass", "leaf", "yellowS")),
     # Gold, like the detailed lock (it was grey below 24 px).
     "lock": ('<path d="M5 11h14v10h-14z"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/><path d="M12 14.5v3"/>',
              ("goldS", "grayS/", "dark/")),
@@ -2374,22 +2374,18 @@ def _flat_funnel(k=1.0):
 
 
 def _tree(expand):
-    """Expand All (+, two child rows) and Collapse All (-, one child row):
-    a node box with its mark and its row, the children on a tree line.
-    The line is black, and light on dark themes (data-dark, _detailed_px)."""
-    edge = "#262d34"
-    mark = ('<rect x="5.5" y="8.75" width="8" height="1.5" fill="#1f262d"/>'
-            + ('<rect x="8.75" y="5.5" width="1.5" height="8" fill="#1f262d"/>' if expand else ""))
+    """Expand All (two block arrows pointing away from a bar) and Collapse
+    All (pointing towards it): blue arrows, a slate bar; simple enough for
+    a panel's 16 px tool row (the earlier tree with rows was too busy)."""
+    arrow = 'fill="#5d95d1" stroke="#24548c" stroke-linejoin="round"'
+    bar = f'<rect x="3.5" y="14" width="25" height="4" fill="{SLATE_FILL}" stroke="{SLATE_EDGE}"/>'
     if expand:
-        line = "M9.5 15.5V26.5H16.5M9.5 19.5H16.5"
-        rows = (f'<rect x="16.5" y="17.5" width="12" height="4" fill="#dfe5eb" stroke="{edge}"/>'
-                f'<rect x="16.5" y="24.5" width="12" height="4" fill="#dfe5eb" stroke="{edge}"/>')
+        top = f'<path d="M16 2.5L24.5 10.5H19.5V12.5H12.5V10.5H7.5Z" {arrow}/>'
+        bottom = f'<path d="M16 29.5L7.5 21.5H12.5V19.5H19.5V21.5H24.5Z" {arrow}/>'
     else:
-        line = "M9.5 15.5V23.5H16.5"
-        rows = f'<rect x="16.5" y="21.5" width="12" height="4" fill="#dfe5eb" stroke="{edge}"/>'
-    return (f'<path d="{line}" stroke="#000000" class="bg" data-dark="1"/>'
-            f'<rect x="3.5" y="3.5" width="12" height="12" fill="#ffffff" stroke="{edge}"/>' + mark
-            + f'<rect x="18.5" y="7.5" width="10" height="4" fill="{SLATE_FILL}" stroke="{edge}"/>' + rows)
+        top = f'<path d="M16 12.5L7.5 4.5H12.5V2.5H19.5V4.5H24.5Z" {arrow}/>'
+        bottom = f'<path d="M16 19.5L24.5 27.5H19.5V29.5H12.5V27.5H7.5Z" {arrow}/>'
+    return top + bar + bottom
 
 
 def _sector(cx, cy, r_out, r_in, a1, a2):
@@ -2475,13 +2471,13 @@ DETAILED = {
         '<circle cx="24" cy="12.5" r="1.6" fill="#c9443a" stroke="#ffffff" stroke-width=".7"/>',
     ),
     "photo": (
-        _lg("s", (0, "#a9d3f6"), (1, "#e8f4fe")) + _lg("m", (0, "#86c874"), (1, "#478f3f"))
-        + _lg("n", (0, "#b5c9b0"), (1, "#7d9878")) + '<clipPath id="k"><rect x="5" y="7" width="22" height="18"/></clipPath>',
+        _lg("s", (0, "#b9ddf9"), (1, "#eef7fe")) + _lg("m", (0, "#a2d891"), (1, "#68ad5c"))
+        + _lg("n", (0, "#c8d8c3"), (1, "#97ae92")) + '<clipPath id="k"><rect x="5" y="7" width="22" height="18"/></clipPath>',
         '<rect x="3.5" y="5.5" width="25" height="21" fill="#ffffff" stroke="#5d6873"/>'
         '<rect x="5" y="7" width="22" height="18" fill="url(#s)"/><g clip-path="url(#k)">'
         '<circle cx="22" cy="11.5" r="2.5" fill="#f8cf4f" stroke="#c9951e" stroke-width=".8"/>'
-        '<path d="M14 25L20 15.5L27.5 25Z" fill="url(#n)" stroke="#5f7a5a" stroke-width=".8"/>'
-        '<path d="M4 25L12 13.5L19.5 25Z" fill="url(#m)" stroke="#36752f" stroke-width=".8" stroke-linejoin="round"/>'
+        '<path d="M14 25L20 15.5L27 24.2V25Z" fill="url(#n)" stroke="#5f7a5a" stroke-width=".8"/>'
+        '<path d="M5 25V23.6L12 13.5L19.5 25Z" fill="url(#m)" stroke="#36752f" stroke-width=".8" stroke-linejoin="round"/>'
         '<path d="M10.2 16.1L12 13.5L13.8 16.1L12.8 15.6L12 16.4L11.2 15.6Z" fill="#ffffff"/></g>'
         '<rect x="5" y="7" width="22" height="18" stroke="#9aa5b0" stroke-width=".8"/>',
     ),
@@ -2604,16 +2600,20 @@ DETAILED = {
     ),
     "tree-expand": ("", _tree(True)),
     "tree-collapse": ("", _tree(False)),
-    # List by Data Source: a file beside a database (the database's colours).
+    # List by Data Source: one plain database cylinder (a page beside a
+    # database was too busy for a panel's tool row).
     "layers-source": (
-        _lg("d", (0, "#3f78b8"), (.45, "#5d95d1"), (1, "#3a6ea8"), x2=1, y2=0)
-        + _lg("t", (0, "#a9cdf2"), (1, "#7fb0e3")),
-        '<path d="M3.5 5.5H12.5L16.5 9.5V26.5H3.5Z" fill="#ffffff" stroke="#7d8792"/>'
-        '<path d="M12.5 5.5V9.5H16.5Z" fill="#dfe4ea" stroke="#7d8792" stroke-linejoin="round"/>'
-        f'<rect x="6" y="13" width="8" height="1.5" fill="{_TEXT}"/><rect x="6" y="17" width="8" height="1.5" fill="{_TEXT}"/>'
-        '<path d="M14.5 11.5V25.5A7 2.5 0 0 0 28.5 25.5V11.5" fill="url(#d)" stroke="#1d4677"/>'
-        '<path d="M14.5 16.5A7 2.5 0 0 0 28.5 16.5M14.5 21A7 2.5 0 0 0 28.5 21" stroke="#1d4677"/>'
-        '<ellipse cx="21.5" cy="11.5" rx="7" ry="2.5" fill="url(#t)" stroke="#1d4677"/>',
+        "",
+        '<path d="M6.5 7.5V24.5A9.5 3.5 0 0 0 25.5 24.5V7.5" fill="#4f88c6" stroke="#1d4677"/>'
+        '<path d="M6.5 16A9.5 3.5 0 0 0 25.5 16" stroke="#1d4677"/>'
+        '<ellipse cx="16" cy="7.5" rx="9.5" ry="3.5" fill="#9cc4ec" stroke="#1d4677"/>',
+    ),
+    # The layer stack at small sizes (SMALL_VARIANTS): two flat blue
+    # layers, as three coloured ones were too busy in panel tool rows.
+    "stack-2-small": (
+        "",
+        '<path d="M2.5 19.5L16 11.5L29.5 19.5L16 27.5Z" fill="#3f78b8" stroke="#1d4677" stroke-linejoin="round"/>'
+        '<path d="M2.5 12.5L16 4.5L29.5 12.5L16 20.5Z" fill="#8cc0f0" stroke="#204f86" stroke-linejoin="round"/>',
     ),
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
@@ -3357,6 +3357,20 @@ def _finish(svg, size, ink, mode="light"):  # pylint: disable=unused-argument
     return _SOLID.sub(vivid, _COLOR.sub(black, svg))
 
 
+# Glyphs drawn simpler at small sizes (panel tool rows, menus): up to
+# SMALL_VARIANT_MAX device pixels per screen line width.
+SMALL_VARIANTS = {"stack-2": "stack-2-small"}
+SMALL_VARIANT_MAX = 20
+
+
+def _small_variant(spec, size, width):
+    """`spec` with its glyph's simpler drawing at small sizes."""
+    glyph, badge = _color_spec(spec)
+    if glyph in SMALL_VARIANTS and size <= SMALL_VARIANT_MAX * (width or 1):
+        return SMALL_VARIANTS[glyph] + (f"+{badge}" if badge else "")
+    return spec
+
+
 def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="#000000",
                          accent="#000000", danger="#000000", mode="light", outline=None):
     """The Colourful version of render_icon_px for a `mode` theme, on the
@@ -3367,6 +3381,7 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
     Colourful Pro (`outline` PRO_OUTLINE) draws everything in the colour
     layer, its ink in the theme's usual ink (THEME_INK), and nothing in the
     ink layer: its shading covers ink lines too."""
+    spec = _small_variant(spec, size, width)
     if outline == PRO_OUTLINE:
         if layer == "ink":
             return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
