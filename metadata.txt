@@ -18,7 +18,7 @@ icon=icon.png
 changelog=
 
      ** v1.7 (25.11.2026):
-          - Colourful Pro: thicker outlines around each icon's outer edge, in a darker shade of the icon's own colour (lighter than before); inner lines unchanged.
+          - Colourful Pro: thicker outlines around each icon's outer edge, one solid line in a darker shade of the icon's own colour (lighter than before); inner lines unchanged.
 
      ** v1.6 (23.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.

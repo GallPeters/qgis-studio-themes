@@ -15,10 +15,10 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards, so the icon keeps its size (the added pixel
-  blended part way on small icons, EXTERIOR_STRENGTH), and in a darker
-  shade of the fill it surrounds rather than the greyish outline; lines
-  inside the drawing keep their width and colour;
+  pixel thicker, inwards, so the icon keeps its size, in one darker
+  shade of the fill it surrounds per shape (not the greyish outline),
+  painted solid over the whole band so it reads as one line; lines inside
+  the drawing keep their width and colour;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -71,10 +71,6 @@ SHADOW_DARKER = 0.13
 DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
-# The exterior outline's extra inner pixel: how far it takes the outline's
-# colour, on icons of SMALL_ICON px and under and on larger ones.
-SMALL_ICON = 18
-EXTERIOR_STRENGTH = {"small": 0.6, "large": 1.0}
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX.
 EXTERIOR_DARKER, EXTERIOR_MAX = 0.8, 0.68
@@ -370,14 +366,18 @@ def _upgrade(svg, size, ink, bright=False, line_px=1):
             badges |= mask > 0.25
     if size >= EFFECTS_FROM:
         _shade(out, size, fills, fill_masks, stroke_masks)
-    return _exterior(out, size, badges, line_px)
+    return _exterior(out, size, top, fills, badges, line_px)
 
 
-def _neighbours(mask):
-    """The four shifted copies of `mask` (False beyond its border), as
-    (copy, dy, dx): copy[y, x] is mask[y + dy, x + dx]."""
+_FOUR = ((-1, 0), (1, 0), (0, -1), (0, 1))
+_EIGHT = _FOUR + ((-1, -1), (-1, 1), (1, -1), (1, 1))
+
+
+def _neighbours(mask, steps=_FOUR):
+    """Shifted copies of `mask` (False beyond its border), as (copy, dy,
+    dx): copy[y, x] is mask[y + dy, x + dx]."""
     result = []
-    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+    for dy, dx in steps:
         shifted = np.zeros_like(mask)
         ys = slice(max(0, -dy), mask.shape[0] - max(0, dy))
         xs = slice(max(0, -dx), mask.shape[1] - max(0, dx))
@@ -403,42 +403,68 @@ def _eroded(mask):
     return result
 
 
-def _exterior(out, size, badges, line_px=1):
-    """The exterior outline (`line_px` wide) one pixel thicker, inwards,
-    where the shape is thick enough to keep a fill beyond it, and both in
-    a darker shade of that fill (_exterior_color). Outlines with no fill
-    inside (lines) and badge dots are left as drawn."""
-    solid = out[..., 3] > 0.5
+def _dilated(mask, steps=_EIGHT):
+    result = mask.copy()
+    for shifted, _dy, _dx in _neighbours(mask, steps):
+        result |= shifted
+    return result
+
+
+def _exterior(out, size, top, fills, badges, line_px=1):
+    """The exterior outline (where the drawing meets the background) one
+    pixel thicker, inwards, in one colour per shape: a darker shade of the
+    fill it surrounds (_exterior_color), on the whole band (the outline,
+    the pixel added inside it, the smoothed pixels just outside), so it
+    reads as one line. Thin parts keep their fill beyond the outline only
+    where there is room. Outlines with no fill inside (lines) and badge
+    dots are left as drawn."""
+    # Each shape's outline colour, where that shape is the topmost fill.
+    colour = np.zeros((size, size, 3), np.float32)
+    known = np.zeros((size, size), bool)
+    for i, fill in enumerate(fills):
+        if fill is None or fill in BADGES or fill in (BLACK, SOFT_BLACK) or not fill.startswith("#"):
+            continue
+        where = top == i
+        if where.any():
+            colour[where] = _exterior_color(np.array(_rgb(fill), np.float32))
+            known |= where
+    known &= ~badges
+    if not known.any():
+        return out
+    alpha = out[..., 3]
+    solid = alpha > 0.5
     inner = solid
     for _step in range(max(1, line_px)):
         inner = _eroded(inner)
     edge = solid & ~inner
     core = _eroded(inner)
-    # The ring: just inside the edge, next to a pixel deeper still, so thin
-    # parts (lines, narrow bars) are not filled with outline.
-    deeper = np.zeros_like(core)
-    for shifted, _dy, _dx in _neighbours(core):
-        deeper |= shifted
-    ring = inner & ~core & deeper & ~badges
-    if not ring.any():
-        return out
-    # The fill each outline pixel borders: the ring's own colour, carried
-    # outwards across the edge.
-    base = np.zeros((size, size, 3), np.float32)
-    base[ring] = out[..., :3][ring]
-    have = ring.copy()
-    for _step in range(max(1, line_px)):
-        reached = np.zeros_like(have)
-        for shifted, dy, dx in _neighbours(have):
-            take = edge & shifted & ~have & ~reached
+    # The added pixel: just inside the outline, on a fill, with a fill
+    # beyond it within two pixels (corners included), so a bar a few pixels
+    # wide is not all outline.
+    ring = inner & ~core & known & _dilated(_dilated(core))
+    # The outline band and the smoothed pixels outside it.
+    fringe = (alpha > 0.02) & ~solid & _dilated(solid, _FOUR)
+    band = (edge | fringe) & ~_dilated(badges)
+    # Carry each shape's colour outwards from its fill over the band.
+    for _step in range(max(1, line_px) + 2):
+        grow = band & ~known
+        if not grow.any():
+            break
+        reached = np.zeros_like(known)
+        for shifted, dy, dx in _neighbours(known, _EIGHT):
+            take = grow & shifted & ~reached
             if take.any():
-                base[take] = _shifted(base, dy, dx)[take]
+                colour[take] = _shifted(colour, dy, dx)[take]
                 reached |= take
-        have |= reached
-    outline = _exterior_color(base)
-    strength = EXTERIOR_STRENGTH["small" if size <= SMALL_ICON else "large"]
-    blend = (ring * strength + (have & ~ring))[..., None]
-    out[..., :3] = out[..., :3] * (1 - blend) + outline * blend
+        known |= reached
+    # Only bands that touch a shape's fill: outline-only drawings keep
+    # their lines.
+    near = ring | (known & inner)
+    for _step in range(max(1, line_px) + 1):
+        near = _dilated(near)
+    band &= known & near
+    paint = ring | band
+    out[..., :3][paint] = colour[paint]
     return out
 
 
