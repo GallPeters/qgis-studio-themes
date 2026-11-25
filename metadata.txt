@@ -22,6 +22,7 @@ changelog=
           - Colourful Pro: line icons (History, Refresh, Statistics, Raster Calculator, Expand and Collapse All, undo and similar) drawn with crisp 2 px lines from 20 px.
           - Colourful Pro: icons with a coloured dot badge fill their square like the others (they looked smaller); no icon is cut off at its edge.
           - Panel titles are semibold in a softer colour (they were bold and dark).
+          - Colourful Pro: small icons (20 px and under) show their inner lines and shadow more clearly (the database's bands).
           - Simpler panel tool icons: Expand and Collapse All are two flat blue triangles pointing away from or towards a thin line, List by Data Source a database, and the layer stack (Add and Remove Layer) simpler and filling the square at small sizes, in the same colours.
           - Icons keep their colours at every size (smaller ones may have fewer details): the layer stack and the photo now match their large versions.
           - Layers panel: Filter Legend by Expression is now in the Filter Legend button's menu (one filter button).

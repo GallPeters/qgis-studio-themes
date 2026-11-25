@@ -69,6 +69,9 @@ CURVE_CX, CURVE_CY, CURVE_R = -0.3, -0.2, 1.13
 # DARK_FILL, how much lighter (a dark shadow on a dark body hid).
 SHADOW_DARKER = 0.13
 DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
+# Icons of SMALL_DETAIL px and under: the shadow this much stronger, and
+# lines inside a fill in the full outline shade.
+SMALL_DETAIL, SMALL_SHADOW_EXTRA = 20, 0.06
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
@@ -151,15 +154,16 @@ def inner_line_for(fill, size, bright=False):
     return _darken_until(_from_hls(h, l + 0.06, s), lambda c: _contrast(c, fill) >= 2.0)
 
 
-def shadow_for(fill):
+def shadow_for(fill, small=False):
     """The flat shadow colour on a shape filled `fill` (lighter on a dark
-    fill)."""
+    fill); stronger on `small` icons, where it hardly showed."""
     h, l, s = _hls(fill)  # noqa: E741
+    extra = SMALL_SHADOW_EXTRA if small else 0.0
     if l < DARK_FILL:
-        return _from_hls(h, l + SHADOW_LIGHTER, s)
+        return _from_hls(h, l + SHADOW_LIGHTER + extra, s)
     if s < 0.06:
-        return _from_hls(h, l - SHADOW_DARKER - 0.01, s)
-    return _from_hls(h, l - SHADOW_DARKER, min(1.0, s * 1.06))
+        return _from_hls(h, l - SHADOW_DARKER - extra - 0.01, s)
+    return _from_hls(h, l - SHADOW_DARKER - extra, min(1.0, s * 1.06))
 
 
 def _badge_edge(fill):
@@ -390,7 +394,10 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True):
                 if under and len(under) >= 0.3 * line.sum():
                     j = max(set(under), key=under.count)
                     inside = (fill_masks[j] > 0.99)[line].mean()
-                    tag = _set(tag, "stroke", (inner_line_for if inside > 0.7 else outline_for)(fills[j], size, bright))
+                    # Small icons (SMALL_DETAIL px and under): the full
+                    # outline shade, as the softer one vanished in the fill.
+                    soft = inside > 0.7 and size > SMALL_DETAIL
+                    tag = _set(tag, "stroke", (inner_line_for if soft else outline_for)(fills[j], size, bright))
                 else:
                     tag = _set(tag, "stroke", ink)
         if i in free:
@@ -568,5 +575,5 @@ def _shade(out, size, fills, fill_masks, stroke_masks):
                 later |= other > 0.25
         cover = beyond * (solid & ~later & (lines < 0.25))
         if cover.any():
-            color = np.array(_rgb(shadow_for(fill)), np.float32)
+            color = np.array(_rgb(shadow_for(fill, size <= SMALL_DETAIL)), np.float32)
             out[..., :3] = out[..., :3] * (1 - cover[..., None]) + color * cover[..., None]

@@ -2989,6 +2989,37 @@ PRO_OUTLINE = "pro"
 PRO_BRIGHT = frozenset(("photo", "sitemap"))
 # Colourful Pro symbols drawn flat, without the curved shadow.
 PRO_FLAT = frozenset(("tree-expand", "tree-collapse"))
+# Colourful Pro symbols drawn straight in device pixels (_tree_px), so they
+# are exactly symmetric at every size.
+PRO_PIXEL = frozenset(("tree-expand", "tree-collapse"))
+
+
+def _tree_px(expand, size, mode):
+    """Expand All (triangles pointing away from a centre line) or Collapse
+    All (towards it) at `size` px, every edge placed so the line is exactly
+    in the middle: 1 px on an odd height, 2 px on an even one, equal gaps,
+    the triangles centred. The height is a pixel short from 20 px, as
+    Colourful Pro's other icons (studio_pro.upgrade)."""
+    height = size - 1 if size >= 20 else size
+    line = 1 if height % 2 else 2
+    gap = max(1, round(height * 0.07))
+    tall = (height - line - 2 * gap) // 2
+    top = (height - (2 * tall + 2 * gap + line)) // 2
+    half = tall + (0.5 if size % 2 else 0)
+    cx = size / 2
+    lower = top + tall + 2 * gap + line
+
+    def triangle(base, apex):
+        return f'<path d="M{_num(cx - half)} {base}H{_num(cx + half)}L{_num(cx)} {apex}Z" fill="#6193c9"/>'
+    if expand:
+        shapes = triangle(top + tall, top) + triangle(lower, lower + tall)
+    else:
+        shapes = triangle(top, top + tall) + triangle(lower + tall, lower)
+    margin = max(1, round(size * 0.06))
+    grey = THEME_INK.get(mode, THEME_INK["light"])
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+            + shapes + f'<rect x="{margin}" y="{top + tall + gap}" width="{size - 2 * margin}" height="{line}" '
+            f'fill="{grey}"/></svg>')
 # (share of the way to black, None for pure black; extra width of
 # Colourful lines in device pixels; width of detailed drawings' edges).
 OUTLINE_LOOKS = {
@@ -3391,6 +3422,9 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             return render_icon_color_px(spec, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
         glyph, badge = _color_spec(spec)
         line = stroke_px(size) if width is None else width
+        if glyph in PRO_PIXEL and not badge:
+            return studio_pro.upgrade(lambda px: _tree_px(glyph == "tree-expand", px, mode), size, pro_ink,
+                                      fill=False, line=line, shade=False)
         if badge in COLOR_BADGE_MARKS:
             # A coloured dot badge: the drawing alone enlarged to fill the
             # square like any other icon, then the hole and the dot in the
