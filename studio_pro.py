@@ -15,9 +15,10 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   highlight edge, its edge smoothed over a pixel; on dark fills the part
   is lighter instead, so it shows; white and paper surfaces unshaded;
 - the exterior outline (where the drawing meets the background) one
-  pixel thicker, inwards, so the icon keeps its size: blended part way
-  (EXTERIOR_STRENGTH) so it reads firmer without turning heavy; lines
-  inside the drawing keep their width;
+  pixel thicker, inwards, so the icon keeps its size (the added pixel
+  blended part way on small icons, EXTERIOR_STRENGTH), and in a darker
+  shade of the fill it surrounds rather than the greyish outline; lines
+  inside the drawing keep their width and colour;
 - each drawing fills its whole square: drawn natively at a larger size
   and cropped around it (badged icons keep their place, as their badge
   masks are drawn separately).
@@ -74,6 +75,9 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # colour, on icons of SMALL_ICON px and under and on larger ones.
 SMALL_ICON = 18
 EXTERIOR_STRENGTH = {"small": 0.6, "large": 1.0}
+# The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
+# the brightest channel at most EXTERIOR_MAX.
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.8, 0.68
 
 
 # ---- Colours -----------------------------------------------------------------
@@ -400,10 +404,10 @@ def _eroded(mask):
 
 
 def _exterior(out, size, badges, line_px=1):
-    """The exterior outline (`line_px` wide) one pixel thicker, inwards:
-    each pixel just inside it takes part of the colour of the outline
-    pixel next to it, where the shape is thick enough to keep a fill
-    beyond it. Badge dots are left as drawn."""
+    """The exterior outline (`line_px` wide) one pixel thicker, inwards,
+    where the shape is thick enough to keep a fill beyond it, and both in
+    a darker shade of that fill (_exterior_color). Outlines with no fill
+    inside (lines) and badge dots are left as drawn."""
     solid = out[..., 3] > 0.5
     inner = solid
     for _step in range(max(1, line_px)):
@@ -418,22 +422,33 @@ def _exterior(out, size, badges, line_px=1):
     ring = inner & ~core & deeper & ~badges
     if not ring.any():
         return out
-    # The darkest outline pixel next to it (lighter edge pixels are a
-    # curve's smoothing).
-    color = np.zeros((size, size, 3), np.float32)
-    darkest = np.full((size, size), np.inf, np.float32)
-    weights = np.array((0.2126, 0.7152, 0.0722), np.float32)
-    for shifted, dy, dx in _neighbours(edge):
-        rgb = _shifted(out[..., :3], dy, dx)
-        light = rgb @ weights
-        take = ring & shifted & (light < darkest)
-        color[take] = rgb[take]
-        darkest[take] = light[take]
-    found = ring & np.isfinite(darkest)
+    # The fill each outline pixel borders: the ring's own colour, carried
+    # outwards across the edge.
+    base = np.zeros((size, size, 3), np.float32)
+    base[ring] = out[..., :3][ring]
+    have = ring.copy()
+    for _step in range(max(1, line_px)):
+        reached = np.zeros_like(have)
+        for shifted, dy, dx in _neighbours(have):
+            take = edge & shifted & ~have & ~reached
+            if take.any():
+                base[take] = _shifted(base, dy, dx)[take]
+                reached |= take
+        have |= reached
+    outline = _exterior_color(base)
     strength = EXTERIOR_STRENGTH["small" if size <= SMALL_ICON else "large"]
-    blend = (found * strength)[..., None]
-    out[..., :3] = out[..., :3] * (1 - blend) + color * blend
+    blend = (ring * strength + (have & ~ring))[..., None]
+    out[..., :3] = out[..., :3] * (1 - blend) + outline * blend
     return out
+
+
+def _exterior_color(rgb):
+    """The exterior outline on a fill `rgb` (float, per pixel): the fill's
+    own colour, darker (EXTERIOR_DARKER), its brightest channel at most
+    EXTERIOR_MAX so white and pale fills still get a visible edge."""
+    top = np.maximum(rgb.max(axis=-1), 1e-3)
+    factor = np.minimum(EXTERIOR_DARKER, EXTERIOR_MAX / top)
+    return rgb * factor[..., None]
 
 
 def _shade(out, size, fills, fill_masks, stroke_masks):
