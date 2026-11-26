@@ -6,8 +6,8 @@ The Colourful drawings (studio_icons) with a softer, more finished look:
   objects, green for green, grey for grey), never near-black: a little
   deeper on small icons (20 px and under), always readable on the fill
   and on the window;
-- lines drawn inside a fill (a globe's meridians, a table's grid) in the
-  outline's shade, 2 px from 20 px (INNER_LINE_FROM), so they show;
+- lines drawn inside a fill (a globe's meridians, a table's grid) 1 px,
+  a touch darker than the outline (INNER_DARKER), so they show;
 - gradients flattened to one colour (the average of their stops);
 - from 16 px: a flat shadow on the lower right of each coloured shape,
   bounded by one gentle curve across the whole drawing, about half of it
@@ -53,6 +53,8 @@ URL = re.compile(r"url\(#(\w+)\)")
 # Badge dots (studio_icons.BADGE_COLORS) keep their colours and get no shading.
 BADGES = frozenset(("#36a447", "#e5463c", "#2f7fe0"))
 BLACK = "#000000"
+# Marks (upgrade(marks=True): a warning's !, a label's letters).
+MARK_COLOR = "#26292d"
 # Pure black fills (a pencil's tip, small marks): a soft near-black.
 SOFT_BLACK = "#2a2e33"
 # Shading from this many device pixels up; shapes thinner than SHADE_MIN
@@ -79,8 +81,10 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
 EXTERIOR_DARKER, EXTERIOR_MAX = 0.87, 0.75
 # Firm outlines (upgrade(firm=True)): this much darker and capped.
-FIRM_DARKER, FIRM_MAX = 0.68, 0.55
+FIRM_DARKER, FIRM_MAX = 0.78, 0.62
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
+# Grey fills on dark themes: this much lighter (they read too grey).
+DARK_GREY_LIFT = 0.05
 # The pixel added inside the outline: how far it takes the outline's
 # colour (the rest stays fill): all of it, a full 2 px line.
 EXTERIOR_INNER = 1.0
@@ -89,12 +93,12 @@ EXTERIOR_INNER = 1.0
 # 2 px wide, moved half a pixel so the even width covers whole pixels
 # (crisp, not a 1 px line with a faint second pixel beside it).
 FREE_LINE_FROM = 20
-# All lines 2 px (inner ones too) from this size (_upgrade), but small
-# details (under DETAIL_SHARE of the icon wide and high) keep 1 px.
-INNER_LINE_FROM = 20
+# Lines inside a fill stay 1 px, this much darker (lightness) than the
+# outline shade; small details (under DETAIL_SHARE of the icon wide and
+# high) DETAIL_DARKER.
+INNER_DARKER = 0.14
 DETAIL_SHARE = 0.45
-# Small filled details' outlines: this much darker (lightness).
-DETAIL_DARKER = 0.1
+DETAIL_DARKER = 0.16
 # Their smoothed edges: coverage below this cleared, above 1 - it solid.
 FIRM_LOW = 0.15
 
@@ -135,10 +139,12 @@ def _darken_until(color, ok):
     return color
 
 
-def soften(color):
+def soften(color, dark=False):
     """A fill a little less saturated and a touch lighter; greys, white
-    and near-black kept."""
+    and near-black kept (on `dark` themes, mid greys a touch whiter)."""
     h, l, s = _hls(color)  # noqa: E741
+    if dark and s < GREY and 0.3 < l < 0.92:
+        return _from_hls(h, l + DARK_GREY_LIFT, s)
     if s < 0.06 or l > 0.97 or l < 0.12:
         return color
     return _from_hls(h, l + (1 - l) * 0.03, s * 0.92)
@@ -251,7 +257,8 @@ def _png_svg(rgba):
 FILL_GROW = 1.4
 
 
-def upgrade(draw, size, ink, fill=True, bright=False, line=1, shade=True, firm=False):
+def upgrade(draw, size, ink, fill=True, bright=False, line=1, shade=True, firm=False, marks=False, text=False,
+            dark=False):
     """A Colourful icon at `size` px in the Pro look, as an SVG of that
     size. draw(px) is its studio_icons SVG at px (black outlines, ink parts
     in `ink`). With `fill`, drawn at the largest size whose drawing still
@@ -259,7 +266,9 @@ def upgrade(draw, size, ink, fill=True, bright=False, line=1, shade=True, firm=F
     With `bright`, lighter outlines at every size (a small drawing of
     small shapes turned dark). `line`: the drawing's line width in px.
     Without `shade`, no shadow (flat symbols); with `firm`, darker exterior
-    outlines (light objects that faded into dark themes)."""
+    outlines (light objects that faded into dark themes); with `marks`,
+    lines keep their own colour; with `text`, lines are not widened;
+    `dark`: for a dark theme (greys a touch whiter)."""
     svg = draw(size)
     if np is None:
         return svg
@@ -268,7 +277,7 @@ def upgrade(draw, size, ink, fill=True, bright=False, line=1, shade=True, firm=F
         # A pixel to spare (right and bottom) where free lines widen
         # (FREE_LINE_FROM), so they are not cut off at the edge.
         big, svg, box = _filling(draw, size, svg, size - 1 if size >= FREE_LINE_FROM else size)
-    image = _upgrade(svg, big, ink, bright, line, shade, firm)
+    image = _upgrade(svg, big, ink, bright, line, shade, firm, marks, text, dark)
     if box is not None and big > size:
         x0, y0, x1, y1 = box
         # Centred, an odd spare pixel on the right and at the bottom.
@@ -306,7 +315,8 @@ def _filling(draw, size, svg, room=None):
     return size, svg, box
 
 
-def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
+def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, marks=False, text=False,
+             dark=False):
     gradients = dict(GRADIENT.findall(svg))
     # Each gradient as one flat colour: the average of its stops.
     flat = {}
@@ -329,7 +339,9 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
     tags = []
     for _start, _end, tag in leaves:
         stroke = (_attr(tag, "stroke") or "").lower()
-        tags.append(_set(tag, "stroke", BLACK) if _greyline(stroke) else tag)
+        # Marks (`marks`: lines without a fill) keep their own dark colour.
+        keep = marks and (_attr(tag, "fill") or "none") == "none"
+        tags.append(_set(tag, "stroke", BLACK) if _greyline(stroke) and not keep else tag)
     svg = _rebuild(svg, leaves, tags)
 
     # Soft fills.
@@ -343,7 +355,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
         elif fill == BLACK:
             tag = _set(tag, "fill", SOFT_BLACK)
         elif fill and fill not in BADGES and not raw.startswith("url"):
-            tag = _set(tag, "fill", soften(fill))
+            tag = _set(tag, "fill", soften(fill, dark))
         tags.append(tag)
     svg = _rebuild(svg, leaves, tags)
     svg = STOP_COLOR.sub(lambda m: f'stop-color="{soften(m.group(1))}"', svg)
@@ -374,21 +386,15 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
 
     # Free lines (FREE_LINE_FROM): no fill, none within a pixel of them.
     free = set()
-    if size >= FREE_LINE_FROM:
+    if size >= FREE_LINE_FROM and not text:
         near_fill = _dilated(top >= 0)
         for i in range(count):
             if fills[i] is None and stroke_masks[i] is not None:
                 drawn = stroke_masks[i] > 0.4
                 if drawn.any() and (near_fill & drawn).sum() < 0.3 * drawn.sum():
                     free.add(i)
-    # Widened towards the right and bottom, or inwards where the lines
-    # already touch that edge (never cut off).
-    # From INNER_LINE_FROM px (on screens of 1 px lines) every line is 2 px:
-    # the lines inside a drawing (bands, folds, meridians) were barely seen
-    # at 1 px; fine details drawn thinner than a pixel keep their width.
-    bold = set(free)
-    # Small details (a gear on a page, a lock's plate): kept 1 px below,
-    # their lines a touch darker so they stay readable.
+    # Small details (a gear on a page, a lock's plate): their lines a
+    # touch darker so they stay readable.
     details = set()
     for i in range(count):
         if fills[i] not in BADGES and stroke_masks[i] is not None and i not in free:
@@ -397,26 +403,9 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
                 ys, xs = np.nonzero(drawn)
                 if max(xs.max() - xs.min(), ys.max() - ys.min()) + 1 < DETAIL_SHARE * size:
                     details.add(i)
-    if size >= INNER_LINE_FROM and line_px == 1:
-        solid = np.zeros((size, size), bool)
-        for mask in fill_masks:
-            if mask is not None:
-                solid |= mask > 0.99
-        for i, (_s, _e, tag) in enumerate(leaves):
-            width = _attr(tag, "stroke-width")
-            if stroke_masks[i] is None or fills[i] in BADGES or (width is not None and _number(width) < 1):
-                continue
-            # A shape's own outline, or a line well inside a fill; not a
-            # frame drawn along a shape's edge (it turned the edge heavy),
-            # nor a small detail (a gear, a mark: 2 px filled it in).
-            drawn = stroke_masks[i] > 0.4
-            if not drawn.any():
-                continue
-            ys, xs = np.nonzero(drawn)
-            if max(xs.max() - xs.min(), ys.max() - ys.min()) + 1 < DETAIL_SHARE * size:
-                continue
-            if fills[i] is not None or solid[drawn].mean() > 0.7:
-                bold.add(i)
+    # Free lines widened towards the right and bottom, or inwards where
+    # they already touch that edge (never cut off).
+    bold = set(free)
     shift = [".5", ".5"]
     if bold:
         reach = np.maximum.reduce([stroke_masks[i] for i in bold]) > 0.1
@@ -428,7 +417,9 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
     # Outlines in each object's own colour; lines on a fill from that fill.
     tags = []
     for i, (_s, _e, tag) in enumerate(leaves):
-        if strokes[i] == BLACK:
+        if marks and fills[i] is None and strokes[i] == BLACK:
+            tag = _set(tag, "stroke", MARK_COLOR)
+        elif strokes[i] == BLACK:
             if fills[i] in BADGES:
                 tag = _set(tag, "stroke", _badge_edge(fills[i]))
             elif fills[i]:
@@ -445,10 +436,12 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
                     inside = (fill_masks[j] > 0.99)[line].mean()
                     # Lines on a fill in the full outline shade at every
                     # size (the softer inner shade vanished in the fill).
+                    # Lines inside a fill stay 1 px (2 px read heavy), a
+                    # touch darker than the outline so they show; small
+                    # details a little more.
                     edge = outline_for(fills[j], size, bright)
-                    if i in details:
-                        h, l, s = _hls(edge)  # noqa: E741
-                        edge = _from_hls(h, l - DETAIL_DARKER, s)
+                    h, l, s = _hls(edge)  # noqa: E741
+                    edge = _from_hls(h, l - (DETAIL_DARKER if i in details else INNER_DARKER), s)
                     tag = _set(tag, "stroke", edge)
                 else:
                     tag = _set(tag, "stroke", ink)
@@ -470,10 +463,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False):
         # solid colour, not a lighter rim like a shadow.
         alone = ~_dilated(top >= 0) & (out[..., 3] < 1)
         out[..., 3] = np.where(alone, np.clip((out[..., 3] - FIRM_LOW) / (1 - 2 * FIRM_LOW), 0, 1), out[..., 3])
-    # Outlines drawn 2 px (INNER_LINE_FROM) are already the exterior's two
-    # pixels: recoloured as one band, no pixel added inside them.
-    widened = any(fills[i] is not None for i in bold)
-    out = _exterior(out, size, top, fills, badges, 2 if widened else line_px, firm, add=not widened)
+    out = _exterior(out, size, top, fills, badges, line_px, firm)
     return out
 
 
@@ -518,7 +508,7 @@ def _dilated(mask, steps=_EIGHT):
     return result
 
 
-def _exterior(out, size, top, fills, badges, line_px=1, firm=False, add=True):
+def _exterior(out, size, top, fills, badges, line_px=1, firm=False):
     """The exterior outline (where the drawing meets the background) one
     pixel thicker, inwards, in one colour per shape: a darker shade of the
     fill it surrounds (_exterior_color), on the whole band (the outline,
@@ -533,7 +523,9 @@ def _exterior(out, size, top, fills, badges, line_px=1, firm=False, add=True):
         if fill is None or fill in BADGES or fill in (BLACK, SOFT_BLACK) or not fill.startswith("#"):
             continue
         where = top == i
-        if where.any():
+        # Thin shapes (a text line, a bar a pixel or two high) keep their
+        # own colour: an outline turned them dark and heavy.
+        if where.any() and _eroded(where).any():
             colour[where] = np.array(_rgb(_exterior_color(fill, firm)), np.float32)
             known |= where
     known &= ~badges
@@ -550,8 +542,9 @@ def _exterior(out, size, top, fills, badges, line_px=1, firm=False, add=True):
     # beyond it within two pixels (corners included), so a bar a few pixels
     # wide is not all outline.
     ring = inner & ~core & known & _dilated(_dilated(core))
-    if not add:
-        ring &= False
+    # Small shapes (a vector's corner squares, a few pixels across) keep a
+    # 1 px outline: the added pixel left them all outline.
+    ring &= _dilated(_dilated(_dilated(_eroded(core))))
     # The outline band and the smoothed pixels outside it.
     fringe = (alpha > 0.02) & ~solid & _dilated(solid, _FOUR)
     band = (edge | fringe) & ~_dilated(badges)

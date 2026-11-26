@@ -1097,13 +1097,13 @@ COLOR_HUES = {  # (light body, medium body, edge)
     # Leaf: a light green a little deeper than green's (the puzzle piece).
     "leaf": ("#93c287", "#66a466", "#417a43"),
     # Brighter tones for the Python logo and a hammer's handle.
-    "pyblue": ("#b5d0ec", "#7aaee3", "#3f73a8"),
-    "pyyellow": ("#f3dc94", "#ecc25c", "#a37a1f"),
+    "pyblue": ("#bcd9f7", "#5fa2ea", "#2f6fb5"),
+    "pyyellow": ("#ffe49c", "#ffc93d", "#b07f12"),
     "woodlight": ("#e6cba9", "#d3a675", "#8c6235"),
 }
 # Paper (fill, edge) on light and dark themes.
 COLOR_MODES = ("light", "dark")
-PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#c9ced4", "#9aa2ab")}
+PAPER = {"light": ("#ffffff", "#8a939d"), "dark": ("#d3d7dc", "#a3abb3")}
 # A sheet: paper, but lighter on dark themes (the palette).
 SHEET_DARK = "#eceef1"
 # A magnifier's light glass, in an ink frame.
@@ -2086,6 +2086,17 @@ COLOR_RECIPES.update({
 LENS = '<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
 HANDLE = '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
 _COLOR_DRAWINGS = {
+    # Packages: three solid boxes, each with a light top and two shaded
+    # sides, in the package's wood (wire boxes read like a failed 3D effect).
+    "packages": ('<path d="M12 2l5 2.5l-5 2.5l-5 -2.5z"/><path d="M7 4.5v5l5 2.5v-5z"/><path d="M17 4.5v5l-5 2.5v-5z"/><path d="M7 11.5l5 2.5l-5 2.5l-5 -2.5z"/><path d="M2 14.0v5l5 2.5v-5z"/><path d="M12 14.0v5l-5 2.5v-5z"/><path d="M17 11.5l5 2.5l-5 2.5l-5 -2.5z"/><path d="M12 14.0v5l5 2.5v-5z"/><path d="M22 14.0v5l-5 2.5v-5z"/>',
+                 ("woodlightS", "wood", "woodS") * 3),
+    # Magnet: a red horseshoe with white pole tips (thin white lines were
+    # not seen).
+    "magnet": ('<path d="M4 13v-9h5v9a3 3 0 0 0 6 0v-9h5v9a8 8 0 0 1 -16 0z"/>'
+               '<path d="M4 4h5v4h-5z"/><path d="M15 4h5v4h-5z"/>', ("redS", "white", "white")),
+    # A window with two solid buttons in its title bar (dots were not seen).
+    "app-window": ('<path d="M3 5h18v14h-18z"/><path d="M5.5 7h2v2h-2z"/><path d="M9 7h2v2h-2z"/>',
+                   ("paper", "redS", "yellowS")),
     # Save: a floppy with a metal shutter and its slot, a label with lines.
     "device-floppy": ('<path d="M4 3h13l4 4v14h-17z"/><path d="M8 3h8v6h-8z"/><path d="M13 4.5v3"/>'
                       '<path d="M7 13h10v8h-10z"/><path d="M9 16h6M9 18.5h6"/>',
@@ -2221,7 +2232,7 @@ _COLOR_DRAWINGS = {
             '<path d="M7.25 12.75v.75a1.5 1.5 0 1 1 -3 0v-.75a1.5 1.5 0 1 1 3 0"/>'
             '<path d="M9.5 9v4.5a1.5 1.5 0 1 0 3 0v-.75a1.5 1.5 0 1 0 -3 0v.75"/>'
             '<path d="M17.549 12a1.5 1.5 0 0 0 -2.799 .75v.75a1.5 1.5 0 0 0 2.795 .758"/>',
-            ("yellow", "ink")),
+            ("yellow", "dark/")),
     # Blocking: a road barrier, a red board with white stripes on two legs.
     "barrier-block": ('<path d="M3 6h18v7h-18z"/><path d="M8.5 7.5l-2.5 4M14 7.5l-2.5 4M19.5 7.5l-2.5 4"/>'
                       '<path d="M6 13v7M18 13v7M4 20h4M16 20h4"/>', ("redS", "white/", "ink")),
@@ -2267,21 +2278,21 @@ _COLOR_DRAWINGS = {
     # unit closer together and heavy (class "heavy", see _render_color_px),
     # as thin they were barely seen.
     "file-type-pdf": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M6 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6" class="heavy"/><path d="M16 18h2" class="heavy"/>'
-                      '<path d="M19 15h-3v6" class="heavy"/>'
+                      '<path d="M5.5 18h1.5a1.5 1.5 0 0 0 0 -3h-1.5v6" class="heavy"/><path d="M16.5 18h2" class="heavy"/>'
+                      '<path d="M19.5 15h-3v6" class="heavy"/>'
                       '<path d="M11 15v6h1a2 2 0 0 0 2 -2v-2a2 2 0 0 0 -2 -2h-1" class="heavy"/>',
                       ("paper/", "paper!", "redS/")),
     "file-type-csv": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M8 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" class="heavy"/>'
+                      '<path d="M7.5 16.5a1.5 1.5 0 0 0 -3 0v3a1.5 1.5 0 0 0 3 0" class="heavy"/>'
                       '<path d="M10 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
                       'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
-                      '<path d="M15 15l2 6l2 -6" class="heavy"/>',
+                      '<path d="M15.5 15l2 6l2 -6" class="heavy"/>',
                       ("paper/", "paper!", "greenS/")),
     "file-type-svg": ('<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 12v-7a2 2 0 0 1 2 -2h7l5 5v4"/>'
-                      '<path d="M5 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
+                      '<path d="M4.5 20.25c0 .414 .336 .75 .75 .75h1.25a1 1 0 0 0 1 -1v-1a1 1 0 0 0 -1 -1h-1a1 1 0 0 1 -1 -1'
                       'v-1a1 1 0 0 1 1 -1h1.25a.75 .75 0 0 1 .75 .75" class="heavy"/>'
                       '<path d="M10 15l2 6l2 -6" class="heavy"/>'
-                      '<path d="M19 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3" class="heavy"/>',
+                      '<path d="M19.5 15h-1a2 2 0 0 0 -2 2v2a2 2 0 0 0 2 2h1v-3" class="heavy"/>',
                       ("paper/", "paper!", "orangeS/")),
 }
 COLOR_GLYPHS = {name: body for name, (body, _materials) in _COLOR_DRAWINGS.items()}
@@ -2309,6 +2320,8 @@ DETAIL_ONLY_LARGE = frozenset(("pencil", "map"))
 # Drawings detailed down to 16 px (menus and trees too): every other one,
 # set after DETAILED below.
 _TEXT = "#97a1ab"
+# A page's text lines, lighter so they read as fine lines.
+_TEXT_LIGHT = "#b3bbc4"
 # Detailed drawings since 1.6: mid-light edges and text lines this far
 # towards black.
 DETAIL_LIGHT_DARKEN = 0.5
@@ -2411,7 +2424,7 @@ DETAILED = {
         '<path d="M7.5 3.5H19.5L25.5 9.5V28.5H7.5Z" fill="url(#a)" stroke="#7d8792"/>'
         '<path d="M19.5 3.5V9.5H25.5Z" fill="url(#b)" stroke="#7d8792" stroke-linejoin="round"/>'
         '<rect x="10" y="12" width="8" height="1.5" fill="#3d7fc8"/>'
-        + _lines(10, (15, 17.5, 20, 22.5), 13) + _lines(10, (25,), 8),
+        + _lines(10, (15, 17.5, 20, 22.5), 13, color=_TEXT_LIGHT) + _lines(10, (25,), 8, color=_TEXT_LIGHT),
     ),
     "device-floppy": (
         _lg("a", (0, "#6aa9e6"), (1, "#2c66ab")) + _lg("b", (0, "#f1f3f5"), (1, "#b3bcc6")),
@@ -2425,8 +2438,8 @@ DETAILED = {
     # A regular database: a cylinder in a calm, even shade with two deep
     # band lines and a lighter lid; no glossy rings or glint.
     "database": (
-        _lg("a", (0, "#3f78b8"), (.45, "#5d95d1"), (1, "#3a6ea8"), x2=1, y2=0)
-        + _lg("t", (0, "#a9cdf2"), (1, "#7fb0e3")),
+        _lg("a", (0, "#5a90cc"), (.45, "#78acdf"), (1, "#5587c2"), x2=1, y2=0)
+        + _lg("t", (0, "#c3dff8"), (1, "#9cc6ee")),
         '<path d="M5.5 7.5V24.5A10.5 3.5 0 0 0 26.5 24.5V7.5" fill="url(#a)" stroke="#1d4677"/>'
         '<path d="M5.5 13.5A10.5 3.5 0 0 0 26.5 13.5M5.5 19A10.5 3.5 0 0 0 26.5 19" stroke="#1d4677"/>'
         '<ellipse cx="16" cy="7.5" rx="10.5" ry="3.5" fill="url(#t)" stroke="#1d4677"/>',
@@ -2458,14 +2471,14 @@ DETAILED = {
     ),
     "photo": (
         _lg("s", (0, "#b9ddf9"), (1, "#eef7fe")) + _lg("m", (0, "#a2d891"), (1, "#68ad5c"))
-        + _lg("n", (0, "#c8d8c3"), (1, "#97ae92")) + '<clipPath id="k"><rect x="5" y="7" width="22" height="18"/></clipPath>',
+        + _lg("n", (0, "#c8d8c3"), (1, "#97ae92")) + '<clipPath id="k"><rect x="4.5" y="6.5" width="23" height="19"/></clipPath>',
         '<rect x="3.5" y="5.5" width="25" height="21" fill="#ffffff" stroke="#5d6873"/>'
-        '<rect x="5" y="7" width="22" height="18" fill="url(#s)"/><g clip-path="url(#k)">'
+        '<rect x="4.5" y="6.5" width="23" height="19" fill="url(#s)"/><g clip-path="url(#k)">'
         '<circle cx="22" cy="11.5" r="2.5" fill="#f8cf4f" stroke="#c9951e" stroke-width=".8"/>'
         '<path d="M14 25L20 15.5L27 24.2V25Z" fill="url(#n)" stroke="#5f7a5a" stroke-width=".8"/>'
         '<path d="M5 25V23.6L12 13.5L19.5 25Z" fill="url(#m)" stroke="#36752f" stroke-width=".8" stroke-linejoin="round"/>'
         '<path d="M10.2 16.1L12 13.5L13.8 16.1L12.8 15.6L12 16.4L11.2 15.6Z" fill="#ffffff"/></g>'
-        '<rect x="5" y="7" width="22" height="18" stroke="#9aa5b0" stroke-width=".8"/>',
+        '<rect x="4.5" y="6.5" width="23" height="19" stroke="#9aa5b0" stroke-width=".8"/>',
     ),
     "printer": (
         _lg("a", (0, "#e7eaee"), (1, "#98a2ad")),
@@ -2536,17 +2549,13 @@ DETAILED = {
         '<path d="M6.5 5.5L26.5 25.5" stroke="#000" stroke-width="5"/></mask>',
         f'<g mask="url(#m)">{EYE}</g><path d="M6.5 5.5L26.5 25.5" stroke="#c9443a" stroke-width="2" class="bg"/>',
     ),
-    # Scissors: two pointed steel blades crossing at a screw, red ring
-    # handles (Tabler's two blobs and two lines read poorly as scissors).
+    # Cut (Edit Cut, Clip): a blue shape split along a diagonal, its right
+    # piece in a lighter blue lifted away from the cut (scissors read
+    # poorly at icon sizes).
     "cut": (
         "",
-        '<path d="M8.5 3.5L17.5 14.5L20.5 19L18.5 20.5L14.5 16.5Z" fill="#e3e7eb" stroke="#4f5a66"/>'
-        '<path d="M23.5 3.5L14.5 14.5L11.5 19L13.5 20.5L17.5 16.5Z" fill="#e3e7eb" stroke="#4f5a66"/>'
-        f'<path d="{_circle(10, 23.5, 4.5)}{_circle(10, 23.5, 2.2)}" fill="#d65a4f" fill-rule="evenodd" '
-        'stroke="#7d2620"/>'
-        f'<path d="{_circle(22, 23.5, 4.5)}{_circle(22, 23.5, 2.2)}" fill="#d65a4f" fill-rule="evenodd" '
-        'stroke="#7d2620"/>'
-        '<circle cx="16" cy="15.5" r="1.3" fill="#3d4650"/>',
+        '<path d="M4.5 6.5H19L11 28.5H4.5Z" fill="#6aa0d8" stroke="#24548c" stroke-linejoin="round"/>'
+        '<path d="M22.5 3.5H28.5V25.5H14.5Z" fill="#a9c9ee" stroke="#24548c" stroke-linejoin="round"/>',
     ),
     # Shapefile: a green page with a green polygon (a vector file).
     "shp-raised": (
@@ -2584,13 +2593,22 @@ DETAILED = {
         '<circle cx="12" cy="11.5" r="4.5" fill="#e6e9ed" stroke="#5d6873"/>'
         '<path d="M4 28.5V24L7 18.5H17L20 24V28.5Z" fill="#5b93cf" stroke="#24548c"/>',
     ),
+    # SpatiaLite's feather: a filled light quill with a thin spine, like the
+    # other filled icons (as ink lines alone it read heavy and spiky).
+    "feather": (
+        "",
+        '<path d="M28 4C20.5 4 12 9 8.5 19L7.5 24.5L13 23.5C23 20 28 12 28 4Z" fill="#d5dce4" '
+        'stroke="#4f5a66" stroke-linejoin="round"/>'
+        '<path d="M14.5 17.5H19M11.5 20.5H15" stroke="#9aa3ad"/>'
+        '<path d="M26 6L4 28" stroke="#4f5a66" stroke-linecap="round"/>',
+    ),
     # List by Data Source: one plain database cylinder (a page beside a
     # database was too busy for a panel's tool row).
     "layers-source": (
         "",
-        '<path d="M6.5 7.5V24.5A9.5 3.5 0 0 0 25.5 24.5V7.5" fill="#4f88c6" stroke="#1d4677"/>'
+        '<path d="M6.5 7.5V24.5A9.5 3.5 0 0 0 25.5 24.5V7.5" fill="#6a9fd6" stroke="#1d4677"/>'
         '<path d="M6.5 16A9.5 3.5 0 0 0 25.5 16" stroke="#1d4677"/>'
-        '<ellipse cx="16" cy="7.5" rx="9.5" ry="3.5" fill="#9cc4ec" stroke="#1d4677"/>',
+        '<ellipse cx="16" cy="7.5" rx="9.5" ry="3.5" fill="#b5d5f3" stroke="#1d4677"/>',
     ),
     # The layer stack at small sizes (SMALL_VARIANTS): the large stack's
     # three layers in its colours (yellow on green on blue, see the
@@ -2606,7 +2624,7 @@ DETAILED = {
     "clipboard": (
         _lg("w", (0, "#dca56c"), (1, "#a4652c")) + _lg("m", (0, "#f2f4f6"), (1, "#9aa3ad")),
         '<rect x="5.5" y="4.5" width="21" height="25" rx="1.5" fill="url(#w)" stroke="#6b4218"/>'
-        '<rect x="8.5" y="7.5" width="15" height="19" fill="#ffffff" stroke="#a5835c"/>'
+        '<rect x="7.5" y="6.5" width="17" height="21" fill="#ffffff" stroke="#a5835c"/>'
         '<path d="M10.5 12.5L11.8 13.8L14 11.2M10.5 17.5L11.8 18.8L14 16.2" stroke="#4f9d46" stroke-width="1.1"/>'
         + _lines(15.5, (12, 17), 6) + _lines(10.5, (21.5,), 11)
         + '<rect x="11.5" y="2.5" width="9" height="5" rx="1" fill="url(#m)" stroke="#4f5a66"/>'
@@ -2840,7 +2858,7 @@ COLOR_PREFIX = "color:"
 # pixel grid: moving each corner onto it bent their edges (a pale near-
 # vertical column down the hammer head's side); exact diagonals are
 # smoothed evenly instead.
-UNSNAPPED = frozenset(("tool", "chevrons-down", "chevrons-up"))
+UNSNAPPED = frozenset(("tool", "chevrons-down", "chevrons-up", "barrier-block"))
 # Colourful lines: square ends and sharp joins since 1.6 (round ends and
 # joins cut at a miter of 2 looked soft); a line ending on a pixel centre
 # then ends on a pixel edge.
@@ -2990,8 +3008,16 @@ PRO_BRIGHT = frozenset(("photo", "sitemap"))
 # Colourful Pro drawings with darker exterior outlines: the layer stack's
 # light layers faded into dark panels.
 PRO_FIRM = frozenset(("stack-2", "stack-2-small"))
-# Colourful Pro symbols drawn flat, without the curved shadow.
-PRO_FLAT = frozenset(("tree-expand", "tree-collapse"))
+# Colourful Pro symbols drawn flat, without the curved shadow (boxes:
+# their faces already show their shape).
+PRO_FLAT = frozenset(("tree-expand", "tree-collapse", "package", "packages"))
+# Colourful Pro drawings whose marks keep their own dark colour (a
+# warning's !, a label's letters), not the fill's shade.
+PRO_MARKS = frozenset(("alert-triangle", "abc"))
+# Colourful Pro drawings of letters: their lines are not widened nor
+# sharpened (that distorted the letters).
+PRO_TEXT = frozenset(("file-type-pdf", "file-type-csv", "file-type-svg", "html", "world-www", "api",
+                      "binary", "decimal", "number-123", "abc"))
 # Colourful Pro symbols drawn straight in device pixels (_tree_px), so they
 # are exactly symmetric at every size.
 PRO_PIXEL = frozenset(("tree-expand", "tree-collapse"))
@@ -3333,7 +3359,7 @@ BLACK_BELOW = 0.07
 # than this share of the icon) in vivid colours instead of the medium
 # tones, which sank beside their black outlines.
 MARKER_SHARE = 0.3
-VIVID = {"red": "#ec4f44", "blue": "#3a8ef0", "green": "#3fb54e", "amber": "#f5b82a",
+VIVID = {"blue": "#3a8ef0", "green": "#3fb54e", "amber": "#f5b82a",
          "orange": "#f58a35", "purple": "#9b67e6", "teal": "#22b8a8"}
 _VIVID = {COLOR_HUES[hue][1]: vivid for hue, vivid in VIVID.items()}
 _COLOR = re.compile(r'(stroke|fill|stop-color)="(#[0-9a-fA-F]{6})"')
@@ -3435,12 +3461,14 @@ def render_icon_color_px(spec, size, scale=SCALE, width=None, layer="all", ink="
             def plain(px):
                 return render_icon_color_px(glyph, px, scale, width, "all", pro_ink, "none", "none", mode, "crisp")
             body = studio_pro.upgrade(plain, size, pro_ink, fill=True, bright=glyph in PRO_BRIGHT, line=line,
-                                      shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM)
+                                      shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM,
+                                      marks=glyph in PRO_MARKS, text=glyph in PRO_TEXT, dark=mode == "dark")
             return _pro_badged(body, badge, size)
         # Other badges (drawn in the accent masks) keep the drawing's place,
         # so the masks line up.
         return studio_pro.upgrade(draw, size, pro_ink, fill=not badge, bright=glyph in PRO_BRIGHT, line=line,
-                                  shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM)
+                                  shade=glyph not in PRO_FLAT, firm=glyph in PRO_FIRM,
+                                  marks=glyph in PRO_MARKS, text=glyph in PRO_TEXT, dark=mode == "dark")
     with _outlined(outline):
         return _finish(_render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode), size, ink, mode)
 
@@ -3515,7 +3543,7 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
         # half a pixel so the even width covers whole pixels; smaller, the
         # line itself (twice ran the letters together). Whole pixels only:
         # 1.5 px left a dark fringe around the letters.
-        if size >= 20:
+        if size >= 28:
             heavy = f' stroke-width="{2 * thin}"' + (' transform="translate(.5 .5)"' if thin % 2 else "")
         else:
             heavy = ""
