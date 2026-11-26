@@ -95,6 +95,8 @@ EXTERIOR_RING = False
 # 2 px wide, moved half a pixel so the even width covers whole pixels
 # (crisp, not a 1 px line with a faint second pixel beside it).
 FREE_LINE_FROM = 10 ** 6  # v1.7: never (every line 1 px)
+# v1.7: no line wider than the screen's line width (_cap_widths).
+CAP_LINES = True
 # Lines inside a fill stay 1 px, this much darker (lightness) than the
 # outline shade; small details (under DETAIL_SHARE of the icon wide and
 # high) DETAIL_DARKER.
@@ -452,7 +454,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
             tag = _set(tag, "stroke-width", "2")
             tag = _set(tag, "transform", f"translate({shift[0]} {shift[1]})" + (f" {moved}" if moved else ""))
         tags.append(tag)
-    svg = _rebuild(svg, leaves, tags)
+    svg = _cap_widths(_rebuild(svg, leaves, tags), line_px)
     out = _raster(svg, size)
     badges = np.zeros((size, size), bool)
     for i, mask in enumerate(fill_masks):
@@ -471,6 +473,26 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
 
 _FOUR = ((-1, 0), (1, 0), (0, -1), (0, 1))
 _EIGHT = _FOUR + ((-1, -1), (-1, 1), (1, -1), (1, 1))
+
+
+_WIDTH = re.compile(r'stroke-width="([\d.]+)"')
+
+
+def _cap_widths(svg, line_px):
+    """Every line at most `line_px` wide (the screen's line width: every
+    outline 1 px at 100 percent), the drawings' own wider lines (a handle,
+    a slash, a river) included; masks (in <defs>) are left as drawn."""
+    if not CAP_LINES:
+        return svg
+
+    def cap(match):
+        return f'stroke-width="{line_px}"' if float(match.group(1)) > line_px else match.group(0)
+    parts, last = [], 0
+    for block in DEFS.finditer(svg):
+        parts += [_WIDTH.sub(cap, svg[last:block.start()]), block.group(0)]
+        last = block.end()
+    parts.append(_WIDTH.sub(cap, svg[last:]))
+    return "".join(parts)
 
 
 def _neighbours(mask, steps=_FOUR):
