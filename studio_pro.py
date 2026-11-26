@@ -80,6 +80,13 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
 EXTERIOR_DARKER, EXTERIOR_MAX = 0.70, 0.59
+# White and pale shapes (brightest channel above PALE_FILL, little colour):
+# their outline capped darker, as a light grey edge melted into light
+# backgrounds and their curves read blurred.
+PALE_FILL, PALE_MAX = 0.85, 0.5
+# The drawing's smoothed outer edge pixels firmer (coverage below this
+# cleared, above 1 - it solid), so curves read sharper on large pixels.
+EDGE_FIRM = 0.12
 # Firm outlines (upgrade(firm=True)): this much darker and capped.
 FIRM_DARKER, FIRM_MAX = 0.78, 0.62
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
@@ -468,6 +475,10 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
         alone = ~_dilated(top >= 0) & (out[..., 3] < 1)
         out[..., 3] = np.where(alone, np.clip((out[..., 3] - FIRM_LOW) / (1 - 2 * FIRM_LOW), 0, 1), out[..., 3])
     out = _exterior(out, size, top, fills, badges, line_px, firm)
+    # Firmer outer edges: the smoothed pixels around the drawing.
+    alpha = out[..., 3]
+    out[..., 3] = np.where((alpha > 0) & (alpha < 1), np.clip((alpha - EDGE_FIRM) / (1 - 2 * EDGE_FIRM), 0, 1),
+                           alpha)
     return out
 
 
@@ -606,6 +617,8 @@ def _exterior_color(fill, firm=False):
     more saturated at that lightness (greys stay grey); `firm`: darker."""
     rgb = _rgb(fill)
     darker, cap = (FIRM_DARKER, FIRM_MAX) if firm else (EXTERIOR_DARKER, EXTERIOR_MAX)
+    if max(rgb) > PALE_FILL and colorsys.rgb_to_hls(*rgb)[2] < UNSHADED_SATURATION:
+        cap = min(cap, PALE_MAX)
     factor = min(darker, cap / max(max(rgb), 1e-3))
     h, l, sat = colorsys.rgb_to_hls(*(v * factor for v in rgb))  # noqa: E741
     if sat >= GREY:
