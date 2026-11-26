@@ -382,7 +382,7 @@ SKIPPED_MENU_ITEMS = (
 ICON_FALLBACKS = {
     "mActionCloseProject": "ribbon/close.svg", "mActionExit": "ribbon/exit.svg",
     "mActionRevertProject": "ribbon/revert.svg", "mActionSnappingOptions": "ribbon/snapping.svg",
-    "mActionReselect": "ribbon/reselect.svg", "mActionShowProcessingToolbox": "ribbon/processing-toolbox.svg",
+    "mActionReselect": "ribbon/reselect.svg",
     "mActionDxfExport": "ribbon/export.svg", "mActionDwgImport": "ribbon/import.svg",
     "mProjectFromTemplateMenu": "ribbon/template.svg", "mRecentProjectsMenu": "ribbon/recent.svg",
     "mProjectFromStorageMenu": "ribbon/open-from.svg", "mProjectToStorageMenu": "ribbon/save-to.svg",

@@ -40,7 +40,7 @@ ICON_MAP = {
     "mActionProjectProperties.svg": "file-settings",
     "mActionSaveAsPDF.svg": "file-type-pdf",
     "mActionSaveMapAsImage.svg": "photo-down",
-    "mActionOptions.svg": "wrench",
+    "mActionOptions.svg": "settings",
     "mActionInterfaceCustomization.svg": "layout-dashboard",
     "mActionKeyboardShortcuts.svg": "keyboard",
     "mActionShowPluginManager.svg": "puzzle",
@@ -115,10 +115,10 @@ ICON_MAP = {
     # Toolbox's models button, the Model Designer).
     "processingModel.svg": "sitemap",
     "processingScript.svg": "file-code",
-    "processingAlgorithm.svg": "gear-blue",
+    "processingAlgorithm.svg": "tool",
     # Not a QGIS icon: the plugin's own for the Processing Toolbox's groups
     # (see IconSwapper.GROUP_ICON).
-    "processingToolbox.svg": "qgis-logo",
+    "processingToolbox.svg": "toolbox",
     "mIconLayerTree.svg": "stack-2",
     # The plugin's own Layers panel button (studio_layers).
     "studio/listByDataSource.svg": "layers-source",
@@ -949,7 +949,6 @@ ICON_MAP = {
     "ribbon/manage.svg": "settings",
     "ribbon/profiles.svg": "user",
     "ribbon/tools.svg": "tool",
-    "ribbon/processing-toolbox.svg": "qgis-logo",
     "ribbon/calculator.svg": "calculator",
     "ribbon/docs.svg": "book",
     "ribbon/bug.svg": "bug",
@@ -1469,17 +1468,7 @@ CUSTOM_GLYPHS = {
 # can be large); List by
 # Data Source a file beside a database (Colourful: DETAILED).
 CUSTOM_GLYPHS.update({
-    # Options' wrench, an algorithm's gear, the QGIS logo and the home page's
-    # browser window, in single-colour lines.
-    "wrench": ('<path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5"/>'),
-    "gear-blue": ('<path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066'
-                  'c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35'
-                  'a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065'
-                  'c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37'
-                  'a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573'
-                  'c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/>'
-                  '<path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>'),
-    "qgis-logo": ('<path d="M13.6 18.7A7 7 0 1 1 18.6 13.9"/><path d="M12.5 12.5l8 8"/><path d="M16 16h4v4"/>'),
+    # The home page's browser window, in single-colour lines.
     "browser-www": ('<path d="M3 4h18v16h-18z"/><path d="M3 8h18"/><path d="M7 14h10"/>'),
 
     "tree-expand": ('<path d="M12 1.5l6.5 7h-13z"/><path d="M12 22.5l-6.5 -7h13z"/><path d="M3 12h18"/>'),
@@ -3028,17 +3017,10 @@ PRO_FALLBACK = "soft"
 # Colourful Pro drawings with lighter outlines at every size (their small
 # shapes turned dark when small): the photo and the model.
 PRO_BRIGHT = frozenset(("photo", "sitemap"))
-# ---- Colourful Pro drawings with real letters and traced logos -----------
+# ---- Colourful Pro drawings with real letters ------------------------------
 # Drawn as SVG at the icon's pixel size (Colourful Pro adds its outlines and
 # shading): letters in the bundled Inter SemiBold, the plugin registers it.
 _FONT = 'font-family="Inter" font-weight="600"'
-# The QGIS logo, traced from QGIS's own (256 x 256), its two greens flat.
-_QGIS_GREEN = "#78a32b"
-_QGIS_RING = ("M144.826 199.3C139.606 200.502 134.183 201.154 128.588 201.154C88.561 201.154 54.516 168.24 54.516 "
-              "125.564C54.516 82.887 88.182 50.695 128.588 50.695C168.989 50.695 201.158 82.882 201.158 125.564"
-              "C201.158 132.501 200.295 139.183 198.697 145.509L235.744 182.551C245.296 165.815 250.64 146.354 250.64 "
-              "125.277C250.64 59.499 198.147 10.251 127.839 10.251C57.849 10.251 5.36 59.178 5.36 125.277C5.36 "
-              "191.698 57.849 241.598 127.839 241.598C145.905 241.598 162.791 238.275 177.916 232.227Z")
 
 
 def _pro_svg(px, body, grid=24):
@@ -3087,33 +3069,6 @@ def _browser_www(px, mode):  # pylint: disable=unused-argument
                     'stroke="none">WWW</text>')
 
 
-def _wrench(px, mode):  # pylint: disable=unused-argument
-    """Options: a steel wrench, its open jaw at the top right (as QGIS's)."""
-    head = ("M4.5 13.5L16.46 13.5A7 7 0 0 1 29.32 13L24.5 13L24.5 19L29.32 19A7 7 0 0 1 16.46 18.5"
-            "L4.5 18.5A2.5 2.5 0 0 1 4.5 13.5Z")
-    return _pro_svg(px, f'<g transform="rotate(-45 16 16)"><path d="{head}" fill="#b9c1ca" stroke="#000000"/>'
-                        '<path d="M7 16H15" stroke="#7d8792"/></g>', 32)
-
-
-def _gear_blue(px, mode):  # pylint: disable=unused-argument
-    """A processing algorithm: a blue gear, as QGIS's own."""
-    return _pro_svg(px, f'<path d="{_gear(16, 16, 13.5, 10.2, 8)}{_circle(16, 16, 4.5)}" fill="#6f9fd8" '
-                        'fill-rule="evenodd" stroke="#000000"/>', 32)
-
-
-def _qgis_logo(px, mode):  # pylint: disable=unused-argument
-    """The QGIS logo: the green Q ring and tail bar, the orange and yellow
-    steps in its opening."""
-    return _pro_svg(px,
-                    f'<path d="{_QGIS_RING}" fill="{_QGIS_GREEN}" stroke="#000000"/>'
-                    '<path d="M248.061 212.048L186.618 151.306L152.01 151.306L152.01 187.067L210.891 245.749'
-                    f'L248.061 245.749Z" fill="{_QGIS_GREEN}" stroke="#000000"/>'
-                    '<path d="M137.607 136.899L172.044 136.899L142.898 108.083L107.19 108.083L107.19 142.392'
-                    'L137.607 172.708Z" fill="#ee7913" stroke="#000000"/>'
-                    '<path d="M152.01 151.306L186.618 151.306L172.044 136.899L137.607 136.899L137.607 172.708'
-                    'L152.01 187.067Z" fill="#f0e64a" stroke="#000000"/>', 256)
-
-
 # Glyph: draw(px, mode) for Colourful Pro (and its scalable fallback).
 PRO_DRAWN = {
     "file-type-pdf": _page_tag("PDF", "#d9534a"),
@@ -3123,9 +3078,6 @@ PRO_DRAWN = {
     "number-123": _numbers,
     "abc": _label_abc,
     "browser-www": _browser_www,
-    "wrench": _wrench,
-    "gear-blue": _gear_blue,
-    "qgis-logo": _qgis_logo,
 }
 
 
