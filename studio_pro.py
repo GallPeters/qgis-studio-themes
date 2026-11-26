@@ -426,6 +426,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
             shift[0] = "-.5"
 
     # Outlines in each object's own colour; lines on a fill from that fill.
+    inner = set()
     tags = []
     for i, (_s, _e, tag) in enumerate(leaves):
         if marks and fills[i] is None and strokes[i] == BLACK:
@@ -450,6 +451,8 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
                     # Lines inside a fill stay 1 px (2 px read heavy), a
                     # touch darker than the outline so they show; small
                     # details a little more.
+                    if inside > 0.5:
+                        inner.add(i)
                     edge = outline_for(fills[j], size, bright)
                     h, l, s = _hls(edge)  # noqa: E741
                     edge = _from_hls(h, l - (DETAIL_DARKER if i in details else INNER_DARKER), s)
@@ -463,6 +466,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
         tags.append(tag)
     svg = _cap_widths(_rebuild(svg, leaves, tags), line_px)
     out = _raster(svg, size)
+    _trim_inner(out, size, inner, fill_masks, stroke_masks)
     badges = np.zeros((size, size), bool)
     for i, mask in enumerate(fill_masks):
         if mask is not None and fills[i] in BADGES:
@@ -484,6 +488,26 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
 
 _FOUR = ((-1, 0), (1, 0), (0, -1), (0, 1))
 _EIGHT = _FOUR + ((-1, -1), (-1, 1), (1, -1), (1, 1))
+
+
+def _trim_inner(out, size, inner, fill_masks, stroke_masks):
+    """Lines drawn inside a fill (a brush's ferrule, a box's straps) stop at
+    the fill's edge: pixels where only such a line is drawn, outside every
+    fill and every other line, are cleared, in place."""
+    if not inner:
+        return
+    others = np.zeros((size, size), np.float32)
+    for i, mask in enumerate(fill_masks):
+        if mask is not None:
+            others = np.maximum(others, mask)
+    for i, mask in enumerate(stroke_masks):
+        if mask is not None and i not in inner:
+            others = np.maximum(others, mask)
+    lines = np.zeros((size, size), np.float32)
+    for i in inner:
+        lines = np.maximum(lines, stroke_masks[i])
+    stray = (lines > 0.1) & (others < 0.25)
+    out[..., 3][stray] = 0
 
 
 _WIDTH = re.compile(r'stroke-width="([\d.]+)"')

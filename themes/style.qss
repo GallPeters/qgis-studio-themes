@@ -918,6 +918,14 @@ QComboBox::down-arrow {
 QComboBox::down-arrow:disabled {
     image: url(@theme_path/icons/studio/chevron-down-disabled.svg);
 }
+/* The popup's frame and its list (also when the list is not the frame's
+ * direct child): the menu colour and a border, so it never reads as part of
+ * the panel below it (Layer Styling's renderer list). */
+QComboBoxPrivateContainer {
+    background-color: @bg_menu;
+    border: 1px solid @menu_edge;
+}
+QComboBoxPrivateContainer QAbstractItemView,
 QComboBoxPrivateContainer > QAbstractItemView {
     background-color: @bg_menu;
     color: @text;
@@ -1600,8 +1608,8 @@ QgsDevToolsPanelWidget QListWidget#mOptionsListWidget {
     border: none;
     border-right: 1px solid @divider;
     padding: 4px;
+    /* A minimum only: the rail can be widened or narrowed. */
     min-width: 48px;
-    max-width: 48px;
 }
 QgsLayerStylingWidget QListWidget#mOptionsListWidget::item,
 QgsDevToolsPanelWidget QListWidget#mOptionsListWidget::item {

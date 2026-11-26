@@ -95,7 +95,8 @@ ICON_MAP = {
     "mActionExpandTree.svg": "tree-expand",
     "mActionCollapseTree.svg": "tree-collapse",
     "mActionFilter2.svg": "filter",
-    "mActionPropertiesWidget.svg": "brush",
+    # The Browser's properties panel: a details list (the brush is styling).
+    "mActionPropertiesWidget.svg": "list-details",
     "mActionAddAllToOverview.svg": "map+plus",
     "mActionRemoveAllFromOverview.svg": "map+minus",
     "mActionInOverview.svg": "map",
