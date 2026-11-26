@@ -79,7 +79,7 @@ UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.87, 0.75
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.74, 0.62
 # Firm outlines (upgrade(firm=True)): this much darker and capped.
 FIRM_DARKER, FIRM_MAX = 0.78, 0.62
 EXTERIOR_SATURATE, GREY = 1.35, 0.1
@@ -88,11 +88,13 @@ DARK_GREY_LIFT = 0.05
 # The pixel added inside the outline: how far it takes the outline's
 # colour (the rest stays fill): all of it, a full 2 px line.
 EXTERIOR_INNER = 1.0
+# v1.7: no pixel is added inside the outline (every outline 1 px).
+EXTERIOR_RING = False
 # Free lines (no fill of their own and none under them: a clock, arrows, a
 # sigma, in the theme's ink or a colour) from FREE_LINE_FROM px: drawn
 # 2 px wide, moved half a pixel so the even width covers whole pixels
 # (crisp, not a 1 px line with a faint second pixel beside it).
-FREE_LINE_FROM = 20
+FREE_LINE_FROM = 10 ** 6  # v1.7: never (every line 1 px)
 # Lines inside a fill stay 1 px, this much darker (lightness) than the
 # outline shade; small details (under DETAIL_SHARE of the icon wide and
 # high) DETAIL_DARKER.
@@ -542,6 +544,8 @@ def _exterior(out, size, top, fills, badges, line_px=1, firm=False):
     # beyond it within two pixels (corners included), so a bar a few pixels
     # wide is not all outline.
     ring = inner & ~core & known & _dilated(_dilated(core))
+    if not EXTERIOR_RING:
+        ring &= False
     # Small shapes (a vector's corner squares, a few pixels across) keep a
     # 1 px outline: the added pixel left them all outline.
     ring &= _dilated(_dilated(_dilated(_eroded(core))))

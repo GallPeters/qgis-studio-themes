@@ -2085,6 +2085,9 @@ COLOR_RECIPES.update({
 # The Zoom In magnifier: flat light glass, a solid handle at 45 degrees.
 LENS = '<path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>'
 HANDLE = '<path d="M14.53 16.08L20.18 21.74L21.74 20.18L16.08 14.53z"/>'
+# Page letters twice the line from this size (v1.7: never, every line 1 px).
+HEAVY_FROM = 10 ** 6
+
 _COLOR_DRAWINGS = {
     # Packages: three solid boxes, each with a light top and two shaded
     # sides, in the package's wood (wire boxes read like a failed 3D effect).
@@ -3543,7 +3546,7 @@ def _render_color_px(spec, size, scale, width, layer, ink, accent, danger, mode)
         # half a pixel so the even width covers whole pixels; smaller, the
         # line itself (twice ran the letters together). Whole pixels only:
         # 1.5 px left a dark fringe around the letters.
-        if size >= 28:
+        if size >= HEAVY_FROM:
             heavy = f' stroke-width="{2 * thin}"' + (' transform="translate(.5 .5)"' if thin % 2 else "")
         else:
             heavy = ""
