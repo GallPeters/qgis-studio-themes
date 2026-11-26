@@ -529,6 +529,9 @@ def load_masks(folder, size, width, scale):
     return masks
 
 
+# Delay (ms) before the masks are drawn in a worker thread: after
+# startup's busiest moment, but short, as icons show their fallback until then.
+PRERENDER_DELAY = 500
 # Threads writing a theme's icon files (see build_theme).
 WRITE_THREADS = 8
 
@@ -3465,7 +3468,8 @@ class QgisStudioThemesPlugin:
                 # Also after an error, so the next request tries again.
                 self._rendering.discard(scale)
 
-        QTimer.singleShot(3000, lambda: self._start(work))
+        # Soon after startup (the icons wait for these masks).
+        QTimer.singleShot(PRERENDER_DELAY, lambda: self._start(work))
 
     def _pngs_ready(self, _scale):
         """A worker finished drawing masks: move icons over, and draw any

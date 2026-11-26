@@ -3009,6 +3009,8 @@ OUTLINE = "#000000"
 OUTLINE_STYLES = ("crisp", "medium", "soft", "pro")
 DEFAULT_OUTLINE = "medium"
 PRO_OUTLINE = "pro"
+# The look of Colourful Pro's scalable fallback (render_icon_color).
+PRO_FALLBACK = "soft"
 # Colourful Pro drawings with lighter outlines at every size (their small
 # shapes turned dark when small): the photo and the model.
 PRO_BRIGHT = frozenset(("photo", "sitemap"))
@@ -3314,8 +3316,10 @@ def render_icon_color(spec, colors, scale=SCALE, mode="light", outline=None):
     parts in colors["icon"]. Detailed glyphs are drawn detailed: this SVG
     serves the large sizes without a pre-rendered PNG."""
     # Colourful Pro is drawn in device pixels only: the scalable fallback
-    # (shown until the pre-rendered PNGs are ready) is plain Colourful.
-    with _outlined(DEFAULT_OUTLINE if outline == PRO_OUTLINE else outline):
+    # (shown until the pre-rendered PNGs are ready) is plain Colourful with
+    # soft outlines in each object's own colour, close to Colourful Pro (the
+    # medium look's dark outlines flashed black on every new install).
+    with _outlined(PRO_FALLBACK if outline == PRO_OUTLINE else outline):
         return _render_color(spec, colors, scale, mode)
 
 

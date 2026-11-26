@@ -22,6 +22,7 @@ changelog=
           - Colourful Pro: curved icons sharper (firmer outer edges), white and pale shapes with a clearer outline; styling icons (Style Manager, Symbology, Layer Styling, colours) are a brush instead of a palette; the Browser's properties button a details list.
           - Colourful Pro: lines inside a shape stop at its edge (none sticks out).
           - Drop-down lists have the menu colour and a border (Layer Styling's renderer list read as part of the panel); Layer Styling's icon rail is no longer fixed at 48 px.
+          - No more black-outlined icons for a few seconds after installing or on new screens: the stand-in shown while Colourful Pro is prepared has its soft outlines, and the preparation starts sooner.
 
      ** v1.6 (25.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.
