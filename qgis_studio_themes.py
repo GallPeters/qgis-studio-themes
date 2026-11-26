@@ -3145,11 +3145,12 @@ class QgisStudioThemesPlugin:
         dark = is_dark(self._tokens["@bg_window"])
         self._set_color_scheme("Dark" if dark else "Light")
         QApplication.setPalette(make_palette(self._tokens))
+        # Registered whatever the UI font: icons draw their letters in Inter.
+        if not self._fonts_loaded:
+            for font_file in sorted(FONTS_DIR.glob("*.ttf")):
+                QFontDatabase.addApplicationFont(str(font_file))
+            self._fonts_loaded = True
         if not QgsSettings().contains("app/fontFamily"):
-            if not self._fonts_loaded:
-                for font_file in sorted(FONTS_DIR.glob("*.ttf")):
-                    QFontDatabase.addApplicationFont(str(font_file))
-                self._fonts_loaded = True
             font = QFont(self._original_font)
             font.setFamily(self._tokens["@font_family"].strip("\"'"))
             set_tabular_digits(font)

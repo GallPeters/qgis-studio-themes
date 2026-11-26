@@ -23,6 +23,8 @@ changelog=
           - Colourful Pro: lines inside a shape stop at its edge (none sticks out).
           - Drop-down lists have the menu colour and a border (Layer Styling's renderer list read as part of the panel); Layer Styling's icon rail is no longer fixed at 48 px.
           - No more black-outlined icons for a few seconds after installing or on new screens: the stand-in shown while Colourful Pro is prepared has its soft outlines, and the preparation starts sooner.
+          - Colourful Pro: letters and numbers in real Inter letters (PDF, CSV and SVG as coloured tags, HTML, abc, 123); QGIS Home Page a browser window with a WWW tag.
+          - Like QGIS's own icons, in our style: Options is a wrench, the Processing Toolbox and its groups the QGIS logo, algorithms a blue gear.
 
      ** v1.6 (25.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.

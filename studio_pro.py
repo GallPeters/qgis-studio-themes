@@ -50,6 +50,8 @@ GRADIENT_BLOCK = re.compile(r'<linearGradient id="(\w+)"[^>]*>(.*?)</linearGradi
 STOP_COLOR = re.compile(r'stop-color="(#[0-9a-fA-F]{6})"')
 HEX = re.compile(r"#[0-9a-f]{6}")
 URL = re.compile(r"url\(#(\w+)\)")
+# Letters (real text in a drawing): no shape of their own.
+TEXT = re.compile(r"<text\b.*?</text>", re.S)
 # Badge dots (studio_icons.BADGE_COLORS) keep their colours and get no shading.
 BADGES = frozenset(("#36a447", "#e5463c", "#2f7fe0"))
 BLACK = "#000000"
@@ -385,7 +387,7 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
                 continue
             tag = _set(tag, "fill", "#ffffff" if fill else "none")
             tags.append(_set(tag, "stroke", "#ffffff" if stroke else "none"))
-        return _raster(_rebuild(svg, leaves, tags), size)[..., 3]
+        return _raster(TEXT.sub("", _rebuild(svg, leaves, tags)), size)[..., 3]
 
     fill_masks = [alone(i, True, False) if fills[i] else None for i in range(count)]
     stroke_masks = [alone(i, False, True) if strokes[i] not in ("", "none") else None for i in range(count)]
@@ -483,6 +485,14 @@ def _upgrade(svg, size, ink, bright=False, line_px=1, shade=True, firm=False, ma
     alpha = out[..., 3]
     out[..., 3] = np.where((alpha > 0) & (alpha < 1), np.clip((alpha - EDGE_FIRM) / (1 - 2 * EDGE_FIRM), 0, 1),
                            alpha)
+    # Letters (real text) on top, as drawn: the shadow and outlines above
+    # repainted the shapes under them.
+    if TEXT.search(svg):
+        letters = _raster(LEAF.sub("", svg), size)
+        a = letters[..., 3:4]
+        top_alpha = a + out[..., 3:4] * (1 - a)
+        out[..., :3] = (letters[..., :3] * a + out[..., :3] * out[..., 3:4] * (1 - a)) / np.maximum(top_alpha, 1e-6)
+        out[..., 3:4] = top_alpha
     return out
 
 
