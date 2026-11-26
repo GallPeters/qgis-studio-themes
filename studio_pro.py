@@ -69,17 +69,17 @@ SHADE_MIN = 6
 CURVE_CX, CURVE_CY, CURVE_R = -0.3, -0.2, 1.13
 # How much darker the shadow is (lightness); on fills darker than
 # DARK_FILL, how much lighter (a dark shadow on a dark body hid).
-SHADOW_DARKER = 0.13
-DARK_FILL, SHADOW_LIGHTER = 0.4, 0.12
+SHADOW_DARKER = 0.11
+DARK_FILL, SHADOW_LIGHTER = 0.4, 0.10
 # Icons of SMALL_DETAIL px and under: the shadow this much stronger, and
 # lines inside a fill in the full outline shade.
-SMALL_DETAIL, SMALL_SHADOW_EXTRA = 20, 0.06
+SMALL_DETAIL, SMALL_SHADOW_EXTRA = 20, 0.05
 # White and paper surfaces (this light and this grey) get no shadow.
 UNSHADED_LIGHTNESS, UNSHADED_SATURATION = 0.9, 0.25
 # The exterior outline's colour: its fill's colour times EXTERIOR_DARKER,
 # the brightest channel at most EXTERIOR_MAX, then more saturated
 # (EXTERIOR_SATURATE, same lightness) so it reads in the object's colour.
-EXTERIOR_DARKER, EXTERIOR_MAX = 0.74, 0.62
+EXTERIOR_DARKER, EXTERIOR_MAX = 0.70, 0.59
 # Firm outlines (upgrade(firm=True)): this much darker and capped.
 FIRM_DARKER, FIRM_MAX = 0.78, 0.62
 EXTERIOR_SATURATE, GREY = 1.35, 0.1

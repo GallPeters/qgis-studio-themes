@@ -18,7 +18,7 @@ icon=icon.png
 changelog=
 
      ** v1.7 (26.11.2026):
-          - Colourful Pro: every outline 1 px (outer outlines a darker shade of the icon's colour, inner lines, line icons and letters), for sharper icons on large screens.
+          - Colourful Pro: every outline 1 px (outer outlines a darker shade of the icon's colour, inner lines, line icons and letters), for sharper icons on large screens; the inner shadow a touch lighter.
 
      ** v1.6 (25.11.2026):
           - New defaults: ribbon interface, Colourful Pro icons, compact ribbon density, group names auto, 9 px names.
