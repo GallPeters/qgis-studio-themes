@@ -2171,13 +2171,10 @@ _COLOR_DRAWINGS = {
                      ("ink", "ink", "ink", "blue!")),
     # Style Manager: Tabler's palette with five filled dots (class "disc":
     # whole-pixel discs, which never turn into crosses).
-    # A painter's palette: a large round board with a clean thumb notch and
-    # four bigger paint dots (the smaller board's curves read blurred).
-    "palette": ('<path d="M12 2.5a9.5 9.5 0 1 0 0 19c1.3 0 2 -.9 1.7 -2.1c-.4 -1.5 .5 -2.9 2.1 -2.9h2.2'
-                'a3.5 3.5 0 0 0 3.5 -3.5c0 -5.4 -4.3 -10.5 -9.5 -10.5z"/>'
-                + "".join(f'<path d="M{x - 1.4} {y}a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0 -2.8 0" class="disc" '
-                          f'fill="{color}"/>'
-                          for (x, y), color in zip(((7, 12.5), (8, 7.5), (12.5, 5.5), (16.5, 8.5)),
+    "palette": ('<path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 '
+                '-1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/>'
+                + "".join(f'<path d="M{x - 1} {y}a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" class="disc" fill="{color}"/>'
+                          for (x, y), color in zip(((8, 13.5), (8.5, 8.5), (13, 6.8), (16.5, 9.8)),
                                                    ("#e5463c", "#f2b705", "#36a447", "#2f7fe0"))),
                 ("sheet!", "redS", "yellowS", "greenS", "blueS")),
     # A shield, the base of shield-check (a badge since 1.6).
@@ -2875,6 +2872,9 @@ COLOR_STROKE = 'stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimi
 # wins over the glyph's own. Project Properties (file-settings) keeps its
 # page with the gear on it: a blue dot said nothing about settings.
 COLOR_BADGED = {
+    # Styling (Style Manager, Symbology, Layer Styling, colours): the brush,
+    # clearer than a palette's curved board at icon sizes.
+    "palette": "brush",
     "database-plus": "database+plus", "database-cog": "database+cog",
     "database-export": "database+out", "database-import": "database+down",
     "world-download": "world+down", "world-share": "world+out", "world-cog": "world+cog",
